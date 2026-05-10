@@ -20,7 +20,7 @@ export async function createCategory(prevState: any, formData: FormData) {
 
   if (error) {
     console.error("Error inserting category:", error);
-    return { error: "Gagal menyimpan kategori. Silakan coba lagi." };
+    return { error: `Gagal menyimpan kategori: ${error.message || error.details || JSON.stringify(error)}` };
   }
 
   // Refresh data di halaman categories
