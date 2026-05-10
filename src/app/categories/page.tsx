@@ -1,6 +1,8 @@
-import { Plus, Search, MoreHorizontal, Tags, PackageX } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Tags, PackageX, Edit } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import DeleteButton from "@/components/ui/DeleteButton";
+import { deleteCategory } from "./actions";
 
 export default async function CategoriesPage() {
   const supabase = await createClient();
@@ -67,9 +69,16 @@ export default async function CategoriesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link 
+                          href={`/categories/${category.id}/edit`}
+                          className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </Link>
+                        <DeleteButton id={category.id} onDelete={deleteCategory} />
+                      </div>
                     </td>
                   </tr>
                 ))

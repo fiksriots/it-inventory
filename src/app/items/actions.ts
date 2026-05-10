@@ -38,3 +38,16 @@ export async function createItem(prevState: any, formData: FormData) {
   revalidatePath("/items");
   redirect("/items");
 }
+
+export async function deleteItem(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("items").delete().eq("id", id);
+  
+  if (error) {
+    console.error("Error deleting item:", error);
+    return { error: `Gagal menghapus barang: ${error.message}` };
+  }
+  
+  revalidatePath("/items");
+  return {};
+}

@@ -3,24 +3,28 @@
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { createSupplier } from "../actions";
+import { updateSupplier } from "./actions";
+import { useCallback } from "react";
 
-export default function NewSupplierPage() {
-  const [state, formAction, isPending] = useActionState(createSupplier, null);
+export default function EditSupplierForm({ supplier }: { supplier: any }) {
+  const updateWithId = useCallback(
+    (prevState: any, formData: FormData) => updateSupplier(supplier.id, prevState, formData),
+    [supplier.id]
+  );
+  const [state, formAction, isPending] = useActionState(updateWithId, null);
+
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/suppliers" className="p-2 border border-border rounded-lg hover:bg-background transition-colors">
           <ArrowLeft className="w-5 h-5 text-text-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tambah Supplier Baru</h1>
-          <p className="text-text-muted mt-1">Masukkan informasi vendor atau pemasok barang.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Edit Supplier</h1>
+          <p className="text-text-muted mt-1">Perbarui informasi vendor atau pemasok barang.</p>
         </div>
       </div>
 
-      {/* Form Card */}
       <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
         <form action={formAction} className="space-y-6">
           {state?.error && (
@@ -31,67 +35,67 @@ export default function NewSupplierPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Nama Perusahaan / Supplier <span className="text-rose-500">*</span></label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="name"
                 required
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Contoh: PT. Teknologi Indo Maju" 
+                defaultValue={supplier.name}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="Contoh: PT. Teknologi Indo Maju"
               />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Nama Kontak (Contact Person)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="contact_person"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Contoh: Budi Santoso" 
+                defaultValue={supplier.contact_person || ""}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="Contoh: Budi Santoso"
               />
             </div>
-            
             <div className="space-y-2">
               <label className="text-sm font-medium">Nomor Telepon / HP</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="phone"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Contoh: 0812-3456-7890" 
+                defaultValue={supplier.phone || ""}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="Contoh: 0812-3456-7890"
               />
             </div>
-
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Alamat Email</label>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 name="email"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Contoh: info@tekindo.co.id" 
+                defaultValue={supplier.email || ""}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="Contoh: info@tekindo.co.id"
               />
             </div>
-
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Alamat Lengkap</label>
-              <textarea 
+              <textarea
                 name="address"
-                rows={3} 
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
+                rows={3}
+                defaultValue={supplier.address || ""}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                 placeholder="Alamat lengkap perusahaan supplier..."
               ></textarea>
             </div>
           </div>
-
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Link href="/suppliers" className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-background transition-colors">
               Batal
             </Link>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isPending}
               className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-70"
             >
               {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {isPending ? "Menyimpan..." : "Simpan Supplier"}
+              {isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </button>
           </div>
         </form>

@@ -1,6 +1,8 @@
-import { Plus, Search, MoreHorizontal, Users, Mail, Phone, MapPin, PackageX } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Users, Mail, Phone, MapPin, PackageX, Edit } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import DeleteButton from "@/components/ui/DeleteButton";
+import { deleteSupplier } from "./actions";
 
 export default async function SuppliersPage() {
   const supabase = await createClient();
@@ -80,9 +82,16 @@ export default async function SuppliersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link 
+                          href={`/suppliers/${supplier.id}/edit`}
+                          className="p-2 text-text-muted hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-5 h-5" />
+                        </Link>
+                        <DeleteButton id={supplier.id} onDelete={deleteSupplier} />
+                      </div>
                     </td>
                   </tr>
                 ))

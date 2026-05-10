@@ -27,3 +27,16 @@ export async function createCategory(prevState: any, formData: FormData) {
   revalidatePath("/categories");
   redirect("/categories");
 }
+
+export async function deleteCategory(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("categories").delete().eq("id", id);
+  
+  if (error) {
+    console.error("Error deleting category:", error);
+    return { error: `Gagal menghapus kategori: ${error.message}` };
+  }
+  
+  revalidatePath("/categories");
+  return {};
+}

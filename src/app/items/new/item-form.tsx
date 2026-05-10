@@ -3,7 +3,7 @@
 import { Save, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { createItem } from "./actions";
+import { createItem } from "../actions";
 
 export default function ItemForm({ categories }: { categories: any[] }) {
   const [state, formAction, isPending] = useActionState(createItem, null);
