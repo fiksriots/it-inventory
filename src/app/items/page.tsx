@@ -1,4 +1,5 @@
 import { Plus, Search, Filter, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 
 export default function ItemsPage() {
   // Dummy data untuk representasi visual sementara sebelum dihubungkan ke Supabase
@@ -17,10 +18,10 @@ export default function ItemsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Master Barang</h1>
           <p className="text-text-muted mt-1">Kelola data seluruh barang inventaris IT Anda.</p>
         </div>
-        <button className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium shadow-sm">
+        <Link href="/items/new" className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium shadow-sm">
           <Plus className="w-5 h-5" />
           Tambah Barang
-        </button>
+        </Link>
       </div>
 
       {/* Table Container */}
