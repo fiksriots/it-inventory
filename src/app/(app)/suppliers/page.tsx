@@ -8,6 +8,7 @@ export default async function SuppliersPage() {
   const supabase = await createClient();
   const { data: suppliers, error } = await supabase
     .from("suppliers")
+    .select("*")
     .order("created_at", { ascending: false });
 
   return (
