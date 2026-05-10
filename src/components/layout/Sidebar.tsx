@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X } from "lucide-react";
+import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags } from "lucide-react";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -11,6 +11,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/" },
     { icon: Package, label: "Master Barang", href: "/items" },
+    { icon: Tags, label: "Kategori Barang", href: "/categories" },
     { icon: ArrowRightLeft, label: "Mutasi & Transfer", href: "/transfers" },
     { icon: ShoppingCart, label: "Purchase Orders", href: "/po" },
     { icon: Users, label: "Supplier", href: "/suppliers" },
