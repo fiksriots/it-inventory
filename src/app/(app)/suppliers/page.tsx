@@ -1,4 +1,4 @@
-import { Plus, Search, MoreHorizontal, Users, Mail, Phone, MapPin, PackageX, Edit } from "lucide-react";
+import { Plus, Search, Users, Mail, Phone, MapPin, PackageX, Edit } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import DeleteButton from "@/components/ui/DeleteButton";
@@ -90,7 +90,7 @@ export default async function SuppliersPage() {
                         >
                           <Edit className="w-5 h-5" />
                         </Link>
-                        <DeleteButton id={supplier.id} onDelete={deleteSupplier} />
+                        <DeleteButton id={supplier.id} label={`supplier "${supplier.name}"`} onDelete={deleteSupplier} />
                       </div>
                     </td>
                   </tr>

@@ -97,7 +97,7 @@ export default async function ItemsPage() {
                           >
                             <Edit className="w-5 h-5" />
                           </Link>
-                          <DeleteButton id={item.id} onDelete={deleteItem} />
+                          <DeleteButton id={item.id} label={`barang "${item.name}"`} onDelete={deleteItem} />
                         </div>
                       </td>
                     </tr>

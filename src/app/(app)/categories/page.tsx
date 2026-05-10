@@ -77,7 +77,7 @@ export default async function CategoriesPage() {
                         >
                           <Edit className="w-5 h-5" />
                         </Link>
-                        <DeleteButton id={category.id} onDelete={deleteCategory} />
+                        <DeleteButton id={category.id} label={`kategori "${category.name}"`} onDelete={deleteCategory} />
                       </div>
                     </td>
                   </tr>
