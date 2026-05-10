@@ -11,12 +11,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Mobile Sidebar (Modal) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div className="fixed inset-0 z-[100] lg:hidden flex">
           <div 
-            className="fixed inset-0 bg-black/50 transition-opacity"
+            className="absolute inset-0 bg-black/50 transition-opacity"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="relative z-50 w-64 max-w-sm flex">
+          <div className="relative z-[110] w-64 max-w-sm flex">
             <Sidebar onClose={() => setIsMobileMenuOpen(false)} />
           </div>
         </div>

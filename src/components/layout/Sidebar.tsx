@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X } from "lucide-react";
 

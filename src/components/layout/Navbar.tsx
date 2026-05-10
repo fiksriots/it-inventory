@@ -13,8 +13,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
       <div className="flex items-center flex-1 gap-4">
         {/* Mobile Menu Button */}
         <button 
-          onClick={onMenuClick}
-          className="lg:hidden p-2 text-text-muted hover:text-foreground hover:bg-background rounded-lg transition-colors"
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            if (onMenuClick) onMenuClick();
+          }}
+          className="lg:hidden p-2 text-text-muted hover:text-foreground hover:bg-background rounded-lg transition-colors cursor-pointer"
         >
           <Menu className="w-6 h-6" />
         </button>
