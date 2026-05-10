@@ -19,14 +19,12 @@
   --text-muted: #64748b;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --surface: #121214;
-    --foreground: #fafafa;
-    --border: #27272a;
-    --text-muted: #a1a1aa;
-  }
+.dark {
+  --background: #09090b;
+  --surface: #121214;
+  --foreground: #fafafa;
+  --border: #27272a;
+  --text-muted: #a1a1aa;
 }
 
 body {
