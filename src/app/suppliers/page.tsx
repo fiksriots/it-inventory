@@ -1,13 +1,12 @@
-import { Plus, Search, MoreHorizontal, Users, Mail, Phone, MapPin } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Users, Mail, Phone, MapPin, PackageX } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
 
-export default function SuppliersPage() {
-  // Dummy data untuk supplier
-  const suppliers = [
-    { id: 1, name: "PT. Teknologi Indo Maju", contactPerson: "Budi Santoso", phone: "0812-3456-7890", email: "sales@tekindo.co.id", address: "Jl. Sudirman No. 45, Jakarta" },
-    { id: 2, name: "CV. Jaringan Solusi", contactPerson: "Ani Lestari", phone: "0815-9876-5432", email: "info@jarsolusi.com", address: "Jl. Merdeka Raya 12, Bandung" },
-    { id: 3, name: "Global Aksesoris Komputer", contactPerson: "Rudi Hartono", phone: "0811-1122-3344", email: "rudi@globalaks.net", address: "Harco Mangga Dua Blok C No. 2" },
-  ];
+export default async function SuppliersPage() {
+  const supabase = await createClient();
+  const { data: suppliers, error } = await supabase
+    .from("suppliers")
+    .order("created_at", { ascending: false });
 
   return (
     <div className="space-y-6">
@@ -50,42 +49,54 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {suppliers.map((supplier) => (
-                <tr key={supplier.id} className="hover:bg-background/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-blue-500" />
+              {suppliers && suppliers.length > 0 ? (
+                suppliers.map((supplier: any) => (
+                  <tr key={supplier.id} className="hover:bg-background/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                          <Users className="w-4 h-4 text-blue-500" />
+                        </div>
+                        <span className="font-medium text-foreground">{supplier.name}</span>
                       </div>
-                      <span className="font-medium text-foreground">{supplier.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-text-muted">{supplier.contactPerson}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col space-y-1 text-xs text-text-muted">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3 h-3" />
-                        {supplier.email}
+                    </td>
+                    <td className="px-6 py-4 text-text-muted">{supplier.contact_person || "-"}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col space-y-1 text-xs text-text-muted">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3 h-3" />
+                          {supplier.email || "-"}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3 h-3" />
+                          {supplier.phone || "-"}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3 h-3" />
-                        {supplier.phone}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-2 text-text-muted max-w-xs">
+                        <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span className="truncate" title={supplier.address}>{supplier.address || "-"}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-text-muted">
+                    <div className="flex flex-col items-center justify-center">
+                      <PackageX className="w-12 h-12 mb-3 opacity-20" />
+                      <p>Belum ada data supplier.</p>
+                      {error && <p className="text-rose-500 text-xs mt-2">{error.message}</p>}
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-start gap-2 text-text-muted max-w-xs">
-                      <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span className="truncate" title={supplier.address}>{supplier.address}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
