@@ -1,14 +1,17 @@
-import { Plus, Search, Filter, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, PackageX } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/server";
 
-export default function ItemsPage() {
-  // Dummy data untuk representasi visual sementara sebelum dihubungkan ke Supabase
-  const items = [
-    { id: 1, sku: "ITM-001", name: "Laptop ThinkPad T14", category: "Elektronik", stock: 12, price: "Rp 15.000.000", status: "Aman" },
-    { id: 2, sku: "ITM-002", name: "Kabel UTP Cat6 (Roll)", category: "Jaringan", stock: 2, price: "Rp 1.200.000", status: "Menipis" },
-    { id: 3, sku: "ITM-003", name: "Mouse Wireless Logitech", category: "Aksesoris", stock: 45, price: "Rp 150.000", status: "Aman" },
-    { id: 4, sku: "ITM-004", name: "Monitor Dell 24 inch", category: "Elektronik", stock: 0, price: "Rp 2.500.000", status: "Habis" },
-  ];
+export default async function ItemsPage() {
+  const supabase = await createClient();
+  const { data: items, error } = await supabase
+    .from("items")
+    .select("*, categories(name)")
+    .order("created_at", { ascending: false });
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(price);
+  };
 
   return (
     <div className="space-y-6">
@@ -57,44 +60,58 @@ export default function ItemsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {items.map((item) => (
-                <tr key={item.id} className="hover:bg-background/50 transition-colors">
-                  <td className="px-6 py-4 font-medium">{item.sku}</td>
-                  <td className="px-6 py-4">{item.name}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-background border border-border rounded-md text-xs font-medium">
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium">{item.stock}</td>
-                  <td className="px-6 py-4">{item.price}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                      item.status === 'Aman' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                      item.status === 'Menipis' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                      'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                    }`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
+              {items && items.length > 0 ? (
+                items.map((item: any) => {
+                  // TODO: Implement actual stock calculation using item_stocks table
+                  const stock = 0; 
+                  const status = stock > 10 ? 'Aman' : stock > 0 ? 'Menipis' : 'Habis';
+                  
+                  return (
+                    <tr key={item.id} className="hover:bg-background/50 transition-colors">
+                      <td className="px-6 py-4 font-medium">{item.sku}</td>
+                      <td className="px-6 py-4">{item.name}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-background border border-border rounded-md text-xs font-medium">
+                          {item.categories?.name || "Tidak ada kategori"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-medium">{stock}</td>
+                      <td className="px-6 py-4">{formatPrice(item.price)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+                          status === 'Aman' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          status === 'Menipis' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                          'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button className="p-2 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-colors">
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-text-muted">
+                    <div className="flex flex-col items-center justify-center">
+                      <PackageX className="w-12 h-12 mb-3 opacity-20" />
+                      <p>Belum ada barang yang ditambahkan.</p>
+                      {error && <p className="text-rose-500 text-xs mt-2">{error.message}</p>}
+                    </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
         
-        {/* Pagination Dummy */}
+        {/* Pagination Status */}
         <div className="p-4 border-t border-border flex items-center justify-between text-sm text-text-muted bg-surface">
-          <p>Menampilkan 1 hingga 4 dari 4 barang</p>
-          <div className="flex gap-2">
-            <button className="px-3 py-1 border border-border rounded-md hover:bg-background disabled:opacity-50" disabled>Sebel</button>
-            <button className="px-3 py-1 border border-border rounded-md hover:bg-background disabled:opacity-50" disabled>Lanjut</button>
-          </div>
+          <p>Total {items?.length || 0} barang</p>
         </div>
       </div>
     </div>
