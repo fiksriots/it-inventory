@@ -3,8 +3,9 @@
 import * as React from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
+import type { User } from "@supabase/supabase-js";
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+export function ClientLayout({ children, user }: { children: React.ReactNode; user?: User | null }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   return (
@@ -29,7 +30,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Wrapper */}
       <div className="lg:pl-64 flex flex-col min-h-screen">
-        <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} />
+        <Navbar onMenuClick={() => setIsMobileMenuOpen(true)} user={user} />
         <main className="flex-1 p-4 sm:p-6 overflow-auto">
           {children}
         </main>
