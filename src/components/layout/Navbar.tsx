@@ -1,3 +1,5 @@
+"use client";
+
 import { Bell, Search, Menu } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 
