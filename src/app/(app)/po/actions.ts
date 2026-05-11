@@ -150,6 +150,7 @@ export async function updatePOStatus(id: string, status: string) {
       if (locError) return { error: `Gagal membuat lokasi Temporary: ${locError.message}` };
       tempLocation = newLoc;
     }
+    if (!tempLocation) return { error: "Gagal mengidentifikasi lokasi Temporary (Transit)." };
 
     // 3. Process each item
     for (const poItem of po.po_items) {
