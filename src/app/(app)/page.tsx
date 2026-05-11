@@ -5,7 +5,7 @@ import Link from "next/link";
 export default async function Dashboard() {
   const supabase = await createClient();
 
-  // Ambil semua data summary secara paralel
+  // Fetch counts and recent data
   const [
     { count: totalItems },
     { count: totalCategories },
@@ -71,222 +71,219 @@ export default async function Dashboard() {
 
       {/* Content Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Tables */}
+        {/* Left Column: Tables & Activity */}
         <div className="lg:col-span-2 space-y-6">
-        {/* Barang Terbaru */}
-        <div className="lg:col-span-2 bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-base font-semibold">Barang Terbaru Ditambahkan</h2>
-            <Link href="/items" className="text-sm text-primary hover:underline flex items-center gap-1">
-              Lihat Semua <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-          {recentItems && recentItems.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-text-muted uppercase bg-background">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Nama Barang</th>
-                  <th className="px-6 py-3 text-left font-semibold">SKU</th>
-                  <th className="px-6 py-3 text-left font-semibold">Kategori</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentItems.map((item: any) => (
-                  <tr key={item.id} className="hover:bg-background/50">
-                    <td className="px-6 py-3 font-medium">{item.name}</td>
-                    <td className="px-6 py-3 text-text-muted">{item.sku}</td>
-                    <td className="px-6 py-3">
-                      <span className="px-2 py-0.5 bg-background border border-border rounded text-xs">
-                        {(item as any).categories?.name || "-"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-48 text-text-muted">
-              <Package className="w-10 h-10 mb-3 opacity-20" />
-              <p className="text-sm">Belum ada barang yang ditambahkan.</p>
-              <Link href="/items/new" className="mt-3 text-primary text-sm hover:underline">
-                + Tambah Barang Pertama
+          {/* Barang Terbaru */}
+          <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-base font-semibold">Barang Terbaru Ditambahkan</h2>
+              <Link href="/items" className="text-sm text-primary hover:underline flex items-center gap-1">
+                Lihat Semua <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-          )}
-        </div>
-
-        {/* PO Terbaru */}
-        <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-            <h2 className="text-base font-semibold">Purchase Order Terbaru</h2>
-            <Link href="/po" className="text-sm text-primary hover:underline flex items-center gap-1">
-              Lihat Semua PO <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-          {recentPO && recentPO.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-text-muted uppercase bg-background">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Nomor PO</th>
-                  <th className="px-6 py-3 text-left font-semibold">Supplier</th>
-                  <th className="px-6 py-3 text-left font-semibold">Status</th>
-                  <th className="px-6 py-3 text-right font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentPO.map((po: any) => (
-                  <tr key={po.id} className="hover:bg-background/50">
-                    <td className="px-6 py-3 font-bold text-primary">
-                      <Link href={`/po/${po.id}`}>{po.po_number}</Link>
-                    </td>
-                    <td className="px-6 py-3 text-text-muted font-medium">{(po as any).suppliers?.name || "-"}</td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {po.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : 
-                         po.status === 'Ditolak' ? <XCircle className="w-3 h-3 text-rose-500" /> : 
-                         <Clock className="w-3 h-3 text-amber-500" />}
-                        <span className="text-[10px] font-bold uppercase">{po.status}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-3 text-right font-bold">
-                      Rp. {(po.total_amount || 0).toLocaleString("id-ID")}
-                    </td>
+            {recentItems && recentItems.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead className="text-xs text-text-muted uppercase bg-background">
+                  <tr>
+                    <th className="px-6 py-3 text-left font-semibold">Nama Barang</th>
+                    <th className="px-6 py-3 text-left font-semibold">SKU</th>
+                    <th className="px-6 py-3 text-left font-semibold">Kategori</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-48 text-text-muted">
-              <ShoppingCart className="w-10 h-10 mb-3 opacity-20" />
-              <p className="text-sm">Belum ada PO yang dibuat.</p>
-              <Link href="/po/new" className="mt-3 text-primary text-sm hover:underline">
-                + Buat PO Pertama
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {recentItems.map((item: any) => (
+                    <tr key={item.id} className="hover:bg-background/50 transition-colors">
+                      <td className="px-6 py-3 font-medium">{item.name}</td>
+                      <td className="px-6 py-3 text-text-muted">{item.sku}</td>
+                      <td className="px-6 py-3">
+                        <span className="px-2 py-0.5 bg-background border border-border rounded text-[10px] font-bold">
+                          {(item as any).categories?.name || "-"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-text-muted">
+                <Package className="w-10 h-10 mb-3 opacity-20" />
+                <p className="text-sm">Belum ada barang yang ditambahkan.</p>
+              </div>
+            )}
+          </div>
+
+          {/* PO Terbaru */}
+          <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-base font-semibold">Purchase Order Terbaru</h2>
+              <Link href="/po" className="text-sm text-primary hover:underline flex items-center gap-1">
+                Lihat Semua PO <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
-          )}
-        </div>
-
-        {/* Aktivitas Terbaru */}
-        <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
-            <History className="w-4 h-4 text-primary" />
-            <h2 className="text-base font-semibold">Aktivitas Terakhir</h2>
+            {recentPO && recentPO.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead className="text-xs text-text-muted uppercase bg-background">
+                  <tr>
+                    <th className="px-6 py-3 text-left font-semibold">Nomor PO</th>
+                    <th className="px-6 py-3 text-left font-semibold">Supplier</th>
+                    <th className="px-6 py-3 text-left font-semibold">Status</th>
+                    <th className="px-6 py-3 text-right font-semibold">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {recentPO.map((po: any) => (
+                    <tr key={po.id} className="hover:bg-background/50 transition-colors">
+                      <td className="px-6 py-3 font-bold text-primary">
+                        <Link href={`/po/${po.id}`}>{po.po_number}</Link>
+                      </td>
+                      <td className="px-6 py-3 text-text-muted font-medium truncate max-w-[150px]">
+                        {(po as any).suppliers?.name || "-"}
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {po.status === 'Selesai' ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : 
+                          po.status === 'Ditolak' ? <XCircle className="w-3 h-3 text-rose-500" /> : 
+                          <Clock className="w-3 h-3 text-amber-500" />}
+                          <span className="text-[10px] font-bold uppercase">{po.status}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right font-bold">
+                        Rp. {(po.total_amount || 0).toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-text-muted">
+                <ShoppingCart className="w-10 h-10 mb-3 opacity-20" />
+                <p className="text-sm">Belum ada PO yang dibuat.</p>
+              </div>
+            )}
           </div>
-          <div className="p-4 space-y-4">
-            {recentLogs && recentLogs.length > 0 ? (
-              recentLogs.map((log: any, idx) => (
-                <div key={idx} className="relative pl-6 pb-4 border-l-2 border-border last:pb-0">
-                  <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-surface flex items-center justify-center ${log.mutation_type === 'INBOUND' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                    {log.mutation_type === 'INBOUND' ? <ArrowUpRight className="w-2 h-2 text-white" /> : <ArrowDownRight className="w-2 h-2 text-white" />}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-start">
-                      <p className="text-sm font-bold truncate max-w-md">{(log as any).items?.name}</p>
-                      <span className="text-[10px] text-text-muted">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+
+          {/* Aktivitas Terbaru */}
+          <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
+              <History className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-semibold">Aktivitas Terakhir</h2>
+            </div>
+            <div className="p-4 space-y-4">
+              {recentLogs && recentLogs.length > 0 ? (
+                recentLogs.map((log: any, idx) => (
+                  <div key={idx} className="relative pl-6 pb-4 border-l-2 border-border last:pb-0">
+                    <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-surface flex items-center justify-center ${log.mutation_type === 'INBOUND' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                      {log.mutation_type === 'INBOUND' ? <ArrowUpRight className="w-2 h-2 text-white" /> : <ArrowDownRight className="w-2 h-2 text-white" />}
                     </div>
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      {log.mutation_type === 'INBOUND' ? 'Masuk' : 'Keluar'} <span className="font-bold text-foreground">{log.quantity} Unit</span>
-                    </p>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-bold truncate max-w-md">{(log as any).items?.name}</p>
+                        <span className="text-[10px] text-text-muted">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        {log.mutation_type === 'INBOUND' ? 'Masuk' : 'Keluar'} <span className="font-bold text-foreground">{log.quantity} Unit</span>
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <Activity className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-20" />
+                  <p className="text-xs text-text-muted">Belum ada aktivitas.</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-10">
-                <Activity className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-20" />
-                <p className="text-xs text-text-muted">Belum ada aktivitas.</p>
-              </div>
-            )}
-          </div>
-        </div>
-        </div>
-
-      {/* Right Column: Sidebar */}
-      <div className="space-y-6">
-        {/* Quick Shortcuts */}
-        <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-            <PlusCircle className="w-4 h-4 text-primary" />
-            Akses Cepat
-          </h2>
-          <div className="grid grid-cols-1 gap-3">
-            {[
-              { label: "Tambah Barang", sub: "Input aset IT baru", href: "/items/new", icon: PackagePlus, color: "bg-blue-500/10 text-blue-600", border: "hover:border-blue-500/50" },
-              { label: "Buat PO Baru", sub: "Proses pengadaan", href: "/po/new", icon: ShoppingCart, color: "bg-amber-500/10 text-amber-600", border: "hover:border-amber-500/50" },
-              { label: "Mutasi Barang", sub: "Stok Masuk/Keluar", href: "/transfers/new-mutation", icon: Activity, color: "bg-emerald-500/10 text-emerald-600", border: "hover:border-emerald-500/50" },
-              { label: "Transfer Stok", sub: "Pindah antar gudang", href: "/transfers/new-transfer", icon: ArrowLeftRight, color: "bg-violet-500/10 text-violet-600", border: "hover:border-violet-500/50" },
-              { label: "Tambah Kategori", sub: "Klasifikasi aset", href: "/categories/new", icon: Tags, color: "bg-rose-500/10 text-rose-600", border: "hover:border-rose-500/50" },
-            ].map((link, idx) => (
-              <Link
-                key={idx}
-                href={link.href}
-                className={`flex items-center gap-4 p-3.5 rounded-xl border border-border bg-background/50 transition-all group ${link.border} hover:shadow-md hover:-translate-y-0.5 hover:bg-surface`}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${link.color}`}>
-                  <link.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground leading-tight">{link.label}</p>
-                  <p className="text-[10px] text-text-muted font-medium mt-0.5">{link.sub}</p>
-                </div>
-                <ArrowRight className="w-3 h-3 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-              </Link>
-            ))}
-          </div>
-          
-          <div className="mt-6 pt-6 border-t border-border">
-            <h3 className="text-xs font-bold text-text-muted mb-4 uppercase tracking-widest">Status Data Master</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">Kategori Terdaftar</span>
-                <span className={totalCategories === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
-                  {totalCategories === 0 ? "⚠️ Kosong" : `${totalCategories}`}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">Supplier Aktif</span>
-                <span className={totalSuppliers === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
-                  {totalSuppliers === 0 ? "⚠️ Kosong" : `${totalSuppliers}`}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">Total Jenis Barang</span>
-                <span className={totalItems === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
-                  {totalItems === 0 ? "⚠️ Kosong" : `${totalItems}`}
-                </span>
-              </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Stok Menipis */}
-        <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden lg:col-span-1">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-rose-500/5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500" />
-              <h2 className="text-base font-semibold text-rose-700 dark:text-rose-400">Stok Menipis</h2>
-            </div>
-            <span className="text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Critical</span>
-          </div>
-          <div className="p-4 space-y-3">
-            {lowStockItems && lowStockItems.length > 0 ? (
-              lowStockItems.map((stock: any, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-rose-500/50 transition-all">
+        {/* Right Column: Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Shortcuts */}
+          <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
+            <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
+              <PlusCircle className="w-4 h-4 text-primary" />
+              Akses Cepat
+            </h2>
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { label: "Tambah Barang", sub: "Input aset IT baru", href: "/items/new", icon: PackagePlus, color: "bg-blue-500/10 text-blue-600", border: "hover:border-blue-500/50" },
+                { label: "Buat PO Baru", sub: "Proses pengadaan", href: "/po/new", icon: ShoppingCart, color: "bg-amber-500/10 text-amber-600", border: "hover:border-amber-500/50" },
+                { label: "Mutasi Barang", sub: "Stok Masuk/Keluar", href: "/transfers/new-mutation", icon: Activity, color: "bg-emerald-500/10 text-emerald-600", border: "hover:border-emerald-500/50" },
+                { label: "Transfer Stok", sub: "Pindah antar gudang", href: "/transfers/new-transfer", icon: ArrowLeftRight, color: "bg-violet-500/10 text-violet-600", border: "hover:border-violet-500/50" },
+                { label: "Tambah Kategori", sub: "Klasifikasi aset", href: "/categories/new", icon: Tags, color: "bg-rose-500/10 text-rose-600", border: "hover:border-rose-500/50" },
+              ].map((link, idx) => (
+                <Link
+                  key={idx}
+                  href={link.href}
+                  className={`flex items-center gap-4 p-3.5 rounded-xl border border-border bg-background/50 transition-all group ${link.border} hover:shadow-md hover:-translate-y-0.5 hover:bg-surface`}
+                >
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110 ${link.color}`}>
+                    <link.icon className="w-5 h-5" />
+                  </div>
                   <div>
-                    <p className="text-sm font-bold">{(stock as any).items?.name}</p>
-                    <p className="text-[10px] text-text-muted font-mono uppercase">{(stock as any).items?.sku}</p>
+                    <p className="text-sm font-bold text-foreground leading-tight">{link.label}</p>
+                    <p className="text-[10px] text-text-muted font-medium mt-0.5">{link.sub}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-black text-rose-500">{stock.quantity}</p>
-                    <p className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">Sisa</p>
-                  </div>
+                  <ArrowRight className="w-3 h-3 ml-auto text-text-muted opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                </Link>
+              ))}
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-xs font-bold text-text-muted mb-4 uppercase tracking-widest">Status Data Master</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-text-muted">Kategori Terdaftar</span>
+                  <span className={totalCategories === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
+                    {totalCategories === 0 ? "⚠️ Kosong" : `${totalCategories}`}
+                  </span>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-6">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-20" />
-                <p className="text-xs text-text-muted">Stok aman.</p>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-text-muted">Supplier Aktif</span>
+                  <span className={totalSuppliers === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
+                    {totalSuppliers === 0 ? "⚠️ Kosong" : `${totalSuppliers}`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-text-muted">Total Jenis Barang</span>
+                  <span className={totalItems === 0 ? "text-amber-500 font-bold" : "text-emerald-500 font-bold"}>
+                    {totalItems === 0 ? "⚠️ Kosong" : `${totalItems}`}
+                  </span>
+                </div>
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* Stok Menipis */}
+          <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-rose-500/5">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+                <h2 className="text-base font-semibold text-rose-700 dark:text-rose-400">Stok Menipis</h2>
+              </div>
+              <span className="text-[9px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">Critical</span>
+            </div>
+            <div className="p-4 space-y-3">
+              {lowStockItems && lowStockItems.length > 0 ? (
+                lowStockItems.map((stock: any, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border hover:border-rose-500/50 transition-all">
+                    <div>
+                      <p className="text-sm font-bold">{(stock as any).items?.name}</p>
+                      <p className="text-[10px] text-text-muted font-mono uppercase">{(stock as any).items?.sku}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-rose-500">{stock.quantity}</p>
+                      <p className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">Sisa</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-20" />
+                  <p className="text-xs text-text-muted">Stok aman.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
