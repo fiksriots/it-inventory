@@ -34,39 +34,59 @@ export default async function Dashboard() {
   // Calculate Asset Value and Conditions
   const totalValue = allStocks?.reduce((acc, curr) => acc + (curr.quantity * (curr.items as any)?.price || 0), 0) || 0;
   const conditionStats = allStocks?.reduce((acc: any, curr) => {
-    acc[curr.condition] = (acc[curr.condition] || 0) + curr.quantity;
+    const cond = curr.condition || "Normal";
+    // Group all variations of 'Rusak' into one bucket
+    if (cond.includes("Rusak")) {
+      acc.Rusak = (acc.Rusak || 0) + curr.quantity;
+    } else {
+      acc[cond] = (acc[cond] || 0) + curr.quantity;
+    }
     return acc;
   }, { Normal: 0, Baru: 0, Rusak: 0 });
 
   const stats = [
     { label: "Total Aset", value: `Rp. ${totalValue.toLocaleString("id-ID")}`, icon: Package, color: "text-blue-500", bg: "bg-blue-500/10", href: "/items" },
     { label: "Total PO", value: totalPO ?? 0, icon: ShoppingCart, color: "text-amber-500", bg: "bg-amber-500/10", href: "/po" },
-    { label: "Stok Normal", value: conditionStats.Normal, icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", href: "/items" },
-    { label: "Unit Rusak", value: conditionStats.Rusak, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10", href: "/items" },
+    { label: "Stok Normal", value: (conditionStats.Normal || 0) + (conditionStats.Baru || 0), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", href: "/items" },
+    { label: "Unit Rusak", value: conditionStats.Rusak || 0, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10", href: "/items" },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
-        <p className="text-text-muted mt-1">Ringkasan status inventaris IT Anda secara real-time.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-text-muted mt-1">Ringkasan status inventaris IT Anda secara real-time.</p>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, idx) => (
-          <Link key={idx} href={stat.href} className="bg-surface border border-border p-6 rounded-xl shadow-sm hover:border-primary/30 transition-colors group">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-text-muted">{stat.label}</p>
-                <h3 className="text-3xl font-bold mt-2">{stat.value.toLocaleString("id-ID")}</h3>
+      {/* Stats Grid - Enhanced Responsiveness with Dynamic Font Sizing */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+        {stats.map((stat, idx) => {
+          const valueStr = stat.value.toString();
+          // Dynamic font size - more aggressive to prevent truncation
+          const getFontSize = (str: string) => {
+            if (str.length > 15) return "text-base md:text-lg lg:text-xl";
+            if (str.length > 12) return "text-lg md:text-xl lg:text-2xl";
+            return "text-2xl md:text-3xl lg:text-3xl";
+          };
+
+          return (
+            <Link key={idx} href={stat.href} className="bg-surface border border-border p-5 md:p-6 rounded-2xl shadow-sm hover:border-primary/50 transition-all hover:shadow-md group active:scale-95">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] md:text-xs font-black text-text-muted uppercase tracking-widest truncate">{stat.label}</p>
+                  <h3 className={`${getFontSize(valueStr)} font-black mt-1 md:mt-2 text-foreground tracking-tighter transition-all leading-tight whitespace-nowrap`}>
+                    {stat.value.toLocaleString("id-ID")}
+                  </h3>
+                </div>
+                <div className={`shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bg}`}>
+                  <stat.icon className={`w-5 h-5 md:w-6 md:h-6 ${stat.color}`} />
+                </div>
               </div>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${stat.bg}`}>
-                <stat.icon className={`w-6 h-6 ${stat.color}`} />
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Content Sections */}

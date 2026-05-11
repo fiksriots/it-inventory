@@ -1,18 +1,32 @@
 "use client";
 
-import { Bell, Search, Menu, LogOut, User } from "lucide-react";
+import { Bell, Menu, LogOut, User, Plus, PackagePlus, ShoppingCart, Activity, ArrowLeftRight, Tags, Calendar, Settings, ChevronDown, PanelLeftOpen, PanelLeftClose, AlertCircle } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { logout } from "@/app/login/actions";
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import Link from "next/link";
 
 interface NavbarProps {
   onMenuClick?: () => void;
   user?: SupabaseUser | null;
+  userProfile?: any;
+  lowStockCount?: number;
+  lowStockItems?: any[];
+  isSidebarOpen?: boolean;
 }
 
-export default function Navbar({ onMenuClick, user }: NavbarProps) {
+export default function Navbar({ onMenuClick, user, userProfile, lowStockCount = 0, lowStockItems = [], isSidebarOpen }: NavbarProps) {
   const [isPending, startTransition] = useTransition();
+  const [time, setTime] = useState(new Date());
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -21,62 +35,221 @@ export default function Navbar({ onMenuClick, user }: NavbarProps) {
   };
 
   return (
-    <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
+    <header className={`h-16 bg-surface border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 transition-all duration-300 ${
+      isSidebarOpen ? "lg:pl-72" : "pl-4"
+    }`}>
       <div className="flex items-center flex-1 gap-4">
-        {/* Mobile Menu Button */}
+        {/* Sidebar Toggle Button */}
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
             if (onMenuClick) onMenuClick();
           }}
-          className="lg:hidden p-2 text-text-muted hover:text-foreground hover:bg-background rounded-lg transition-colors cursor-pointer"
+          className="p-2 text-text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 active:scale-95"
+          title={isSidebarOpen ? "Tutup Sidebar" : "Buka Sidebar"}
         >
-          <Menu className="w-6 h-6" />
+          {isSidebarOpen ? <PanelLeftClose className="w-6 h-6" /> : <PanelLeftOpen className="w-6 h-6" />}
         </button>
 
-        {/* Search */}
-        <div className="flex-1 max-w-xl hidden sm:block">
-          <div className="relative group">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Cari barang, PO, atau supplier..."
-              className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
+        {/* Elegant Clock Widget - Larger Version */}
+        <div className="hidden lg:flex items-center gap-4">
+          <div className="flex items-center gap-4 px-5 py-2 bg-background/50 backdrop-blur-md border border-border/50 rounded-2xl shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300 group">
+            {/* Time Part */}
+            <div className="flex items-center gap-2 border-r border-border/50 pr-4">
+              <div className="relative">
+                <span className="text-3xl font-black tabular-nums tracking-tighter bg-gradient-to-br from-primary via-primary to-primary-hover bg-clip-text text-transparent">
+                  {time.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="absolute -right-2 top-0 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                </span>
+              </div>
+              <span className="text-xs font-bold text-text-muted mt-2 uppercase">
+                {time.toLocaleTimeString("id-ID", { second: '2-digit' })}
+              </span>
+            </div>
+
+            {/* Date Part */}
+            <div className="flex flex-col justify-center">
+              <span className="text-[11px] font-black text-foreground uppercase tracking-widest leading-none">
+                {time.toLocaleDateString("id-ID", { weekday: 'long' })}
+              </span>
+              <span className="text-sm font-bold text-text-muted mt-1 whitespace-nowrap">
+                {time.toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2 md:gap-3 ml-4">
-        <ThemeToggle />
-        <button className="relative p-2 text-text-muted hover:text-foreground hover:bg-background rounded-full transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-surface"></span>
-        </button>
+      <div className="flex items-center gap-2 md:gap-4 ml-4">
+        {/* Quick Add Button */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
+            className="flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-xs font-bold hidden sm:inline">Tambah Cepat</span>
+          </button>
 
-        {/* User Info + Logout */}
-        {user && (
-          <div className="flex items-center gap-2 pl-3 border-l border-border">
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-xs font-medium leading-tight">{user.email?.split("@")[0]}</span>
-              <span className="text-xs text-text-muted leading-tight">Admin</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="w-4 h-4 text-primary" />
-            </div>
-            <button
-              onClick={handleLogout}
-              disabled={isPending}
-              title="Keluar"
-              className="p-2 text-text-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-50"
+          {isQuickAddOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsQuickAddOpen(false)} />
+              <div className="absolute right-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-xl z-50 py-2 animate-in fade-in zoom-in duration-200">
+                {[
+                  { label: "Barang Baru", href: "/items/new", icon: PackagePlus, color: "text-blue-500" },
+                  { label: "Buat PO", href: "/po/new", icon: ShoppingCart, color: "text-amber-500" },
+                  { label: "Mutasi Stok", href: "/transfers/new-mutation", icon: Activity, color: "text-emerald-500" },
+                  { label: "Transfer Barang", href: "/transfers/new-transfer", icon: ArrowLeftRight, color: "text-violet-500" },
+                  { label: "Kategori Baru", href: "/categories/new", icon: Tags, color: "text-rose-500" },
+                ].map((item, idx) => (
+                  <Link
+                    key={idx}
+                    href={item.href}
+                    onClick={() => setIsQuickAddOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-background transition-colors group"
+                  >
+                    <item.icon className={`w-4 h-4 ${item.color} group-hover:scale-110 transition-transform`} />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-3">
+          <ThemeToggle />
+          
+          {/* Notifications Dropdown */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="relative p-2 text-text-muted hover:text-foreground hover:bg-background rounded-full transition-colors group"
             >
-              <LogOut className="w-4 h-4" />
+              <Bell className="w-5 h-5 group-hover:shake" />
+              {lowStockCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white border-2 border-surface animate-bounce-subtle">
+                  {lowStockCount > 99 ? "99+" : lowStockCount}
+                </span>
+              )}
             </button>
+
+            {isNotificationsOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsNotificationsOpen(false)} />
+                <div className="absolute right-0 mt-2 w-80 bg-surface border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-3 border-b border-border bg-rose-500/5 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-rose-600 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Peringatan Stok Kritis
+                    </h3>
+                    <span className="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-black">
+                      {lowStockCount} BARANG
+                    </span>
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto">
+                    {lowStockItems.length > 0 ? (
+                      lowStockItems.map((item, idx) => (
+                        <Link
+                          key={idx}
+                          href={`/items/${item.id}`}
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="flex items-center justify-between px-4 py-3 hover:bg-background border-b border-border last:border-0 transition-colors group"
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-bold group-hover:text-primary transition-colors">{item.name}</span>
+                            <span className="text-[10px] text-text-muted font-mono uppercase">{item.sku}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-black text-rose-500">{item.quantity}</span>
+                            <p className="text-[9px] text-text-muted font-bold uppercase tracking-tighter">Sisa Unit</p>
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm text-text-muted">Semua stok aman terkendali.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Link
+                    href="/items"
+                    onClick={() => setIsNotificationsOpen(false)}
+                    className="block w-full py-3 text-center text-xs font-bold bg-background hover:bg-muted transition-colors border-t border-border text-primary"
+                  >
+                    Lihat Semua Inventaris
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
-        )}
+
+          {/* User Profile Dropdown */}
+          {user && (
+            <div className="relative flex items-center pl-3 border-l border-border">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 p-1 rounded-lg hover:bg-background transition-all group"
+              >
+                <div className="hidden lg:flex flex-col items-end mr-1">
+                  <span className="text-xs font-bold leading-tight">{userProfile?.full_name || user.email?.split("@")[0]}</span>
+                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">Administrator</span>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:border-primary/40 transition-colors overflow-hidden">
+                  {userProfile?.avatar_url ? (
+                    <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <ChevronDown className={`w-3 h-3 text-text-muted transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isUserMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border rounded-xl shadow-xl z-50 py-2 animate-in fade-in zoom-in duration-200">
+                    <div className="px-4 py-3 border-b border-border mb-2">
+                      <p className="text-xs text-text-muted font-medium mb-1 text-right">Logged in as</p>
+                      <p className="text-sm font-bold text-foreground truncate text-right">{userProfile?.full_name || user.email}</p>
+                    </div>
+                    
+                    <Link
+                      href="/settings"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-background transition-colors group"
+                    >
+                      <Settings className="w-4 h-4 text-text-muted group-hover:text-primary transition-colors" />
+                      <span className="font-medium">Pengaturan Akun</span>
+                    </Link>
+                    
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        handleLogout();
+                      }}
+                      disabled={isPending}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-500 hover:bg-rose-500/10 transition-colors disabled:opacity-50 group"
+                    >
+                      <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <span className="font-bold">Keluar Sistem</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
 }
+import { CheckCircle2 } from "lucide-react";

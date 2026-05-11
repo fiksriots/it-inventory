@@ -252,10 +252,17 @@ export async function uploadPOInvoice(poId: string, formData: FormData) {
   
   try {
     // 1. Prepare File Path
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'invoices');
     const fileExt = file.name.split('.').pop();
     const fileName = `invoice-${poId}-${Date.now()}.${fileExt}`;
     const publicPath = `/uploads/invoices/${fileName}`;
-    const fullPath = path.join(process.cwd(), 'public', 'uploads', 'invoices', fileName);
+    const fullPath = path.join(uploadDir, fileName);
+    
+    // Create directory if it doesn't exist
+    const fs = require('fs');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
     
     // 2. Save File to Local Disk
     const bytes = await file.arrayBuffer();
