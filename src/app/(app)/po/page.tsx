@@ -56,7 +56,7 @@ export default async function PurchaseOrdersPage({
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Purchase Orders</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
           <p className="text-text-muted mt-1">Kelola dokumen pembelian barang ke supplier.</p>
         </div>
         <Link href="/po/new" className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg shadow-primary/20">
@@ -129,7 +129,7 @@ export default async function PurchaseOrdersPage({
                 pos.map((po: any) => (
                   <tr key={po.id} className="hover:bg-background/50 transition-all group">
                     <td className="px-6 py-4">
-                      <span className="font-bold text-white group-hover:text-primary transition-colors">{po.po_number}</span>
+                      <span className="font-bold group-hover:text-primary transition-colors">{po.po_number}</span>
                     </td>
                     <td className="px-6 py-4 text-text-muted">
                       <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default async function PurchaseOrdersPage({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-white">{po.supplier_name || "-"}</p>
+                      <p className="font-medium">{po.supplier_name || "-"}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-text-muted">
@@ -146,7 +146,7 @@ export default async function PurchaseOrdersPage({
                         <span className="text-xs">{po.department || "-"}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-bold text-white text-right">{formatCurrency(po.total_amount)}</td>
+                    <td className="px-6 py-4 font-bold text-right">{formatCurrency(po.total_amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-tighter ${
                         po.status === 'Draft' ? 'bg-surface text-text-muted border-border' :
@@ -174,7 +174,7 @@ export default async function PurchaseOrdersPage({
                   <td colSpan={7} className="px-6 py-20 text-center text-text-muted bg-background/20">
                     <div className="flex flex-col items-center justify-center">
                       <ShoppingCart className="w-16 h-16 mb-4 opacity-10 text-primary" />
-                      <p className="text-lg font-medium text-white/50">Tidak ada data ditemukan</p>
+                      <p className="text-lg font-medium text-foreground/50">Tidak ada data ditemukan</p>
                       <p className="text-sm opacity-50 mt-1">Coba ubah kata kunci atau filter Anda.</p>
                       {error && <p className="text-rose-500 text-xs mt-4 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">{error.message}</p>}
                     </div>

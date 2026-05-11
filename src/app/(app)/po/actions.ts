@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { writeFile } from "fs/promises";
+import path from "path";
 
 export async function createPurchaseOrder(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -240,4 +242,38 @@ export async function deletePO(id: string) {
 
   revalidatePath("/po");
   return { success: true };
+}
+
+export async function uploadPOInvoice(poId: string, formData: FormData) {
+  const supabase = await createClient();
+  const file = formData.get("invoice") as File;
+  
+  if (!file || file.size === 0) return { error: "Pilih file terlebih dahulu." };
+  
+  try {
+    // 1. Prepare File Path
+    const fileExt = file.name.split('.').pop();
+    const fileName = `invoice-${poId}-${Date.now()}.${fileExt}`;
+    const publicPath = `/uploads/invoices/${fileName}`;
+    const fullPath = path.join(process.cwd(), 'public', 'uploads', 'invoices', fileName);
+    
+    // 2. Save File to Local Disk
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await writeFile(fullPath, buffer);
+    
+    // 3. Update PO in Database
+    const { error: updateError } = await supabase
+      .from("purchase_orders")
+      .update({ invoice_url: publicPath })
+      .eq("id", poId);
+      
+    if (updateError) return { error: `Gagal memperbarui data PO: ${updateError.message}` };
+    
+    revalidatePath(`/po/${poId}`);
+    return { success: true, url: publicPath };
+  } catch (error: any) {
+    console.error("Upload Error:", error);
+    return { error: `Gagal mengunggah file ke server lokal: ${error.message}` };
+  }
 }

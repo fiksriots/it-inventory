@@ -2,7 +2,8 @@ import { Plus, MapPin, PackageX, Edit, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import DeleteButton from "@/components/ui/DeleteButton";
-import { deleteLocation } from "./actions";
+import { deleteLocation, getLocationItems } from "./actions";
+import LocationItemsModal from "./location-items-modal";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 
@@ -18,7 +19,7 @@ export default async function LocationsPage({
 
   let query = supabase
     .from("locations")
-    .select("*", { count: "exact" })
+    .select("*, item_stocks(quantity)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (q) {
@@ -37,8 +38,8 @@ export default async function LocationsPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Departemen & Lokasi</h1>
-          <p className="text-text-muted mt-1">Kelola daftar departemen atau lokasi penempatan barang.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Departemen & Lokasi</h1>
+          <p className="text-text-muted mt-1">Kelola daftar departemen dan lokasi penyimpanan barang.</p>
         </div>
         <Link href="/locations/new" className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg shadow-primary/20">
           <Plus className="w-5 h-5" />
@@ -61,6 +62,7 @@ export default async function LocationsPage({
               <tr>
                 <th className="px-6 py-4 font-bold w-1/3">Nama Departemen / Lokasi</th>
                 <th className="px-6 py-4 font-bold">Alamat / Detail</th>
+                <th className="px-6 py-4 font-bold text-center">Total Barang</th>
                 <th className="px-6 py-4 font-bold text-right w-24">Aksi</th>
               </tr>
             </thead>
@@ -70,13 +72,20 @@ export default async function LocationsPage({
                   <tr key={location.id} className="hover:bg-background/50 transition-all group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary group-hover:text-white transition-all">
-                          <MapPin className="w-5 h-5 text-primary group-hover:text-white transition-colors" />
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary transition-all">
+                          <MapPin className="w-5 h-5 text-primary transition-colors" />
                         </div>
-                        <span className="font-bold text-white transition-colors">{location.name}</span>
+                        <span className="font-bold transition-colors">{location.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-text-muted font-medium">{location.address || "-"}</td>
+                    <td className="px-6 py-4 text-center">
+                      <LocationItemsModal 
+                        locationId={location.id} 
+                        locationName={location.name}
+                        totalItems={location.item_stocks?.reduce((acc: number, curr: any) => acc + curr.quantity, 0) || 0}
+                      />
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link 
@@ -96,7 +105,7 @@ export default async function LocationsPage({
                   <td colSpan={3} className="px-6 py-20 text-center text-text-muted bg-background/20">
                     <div className="flex flex-col items-center justify-center">
                       <ShoppingCart className="w-16 h-16 mb-4 opacity-10 text-primary" />
-                      <p className="text-lg font-medium text-white/50">Tidak ada data ditemukan</p>
+                      <p className="text-lg font-medium text-foreground/50">Tidak ada data ditemukan</p>
                       <p className="text-sm opacity-50 mt-1">Coba ubah kata kunci pencarian Anda.</p>
                     </div>
                   </td>
@@ -108,7 +117,7 @@ export default async function LocationsPage({
         
         {/* Footer info */}
         <div className="p-4 border-t border-border flex items-center justify-between text-[10px] font-bold text-text-muted bg-surface/50 uppercase tracking-widest">
-          <p>Total <span className="text-white">{count || 0}</span> lokasi ditemukan</p>
+          <p>Total <span className="text-primary font-bold">{count || 0}</span> lokasi ditemukan</p>
         </div>
       </div>
     </div>

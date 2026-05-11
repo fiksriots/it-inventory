@@ -33,24 +33,24 @@ export default function ItemForm({ categories, locations }: { categories: any[];
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Nama Barang <span className="text-rose-500">*</span></label>
+          <label className="text-sm font-medium">Nama Barang <span className="text-rose-500">*</span></label>
           <input 
             type="text" 
             name="name"
             required
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" 
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
             placeholder="Contoh: Laptop Lenovo ThinkPad" 
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Kategori <span className="text-rose-500">*</span></label>
+          <label className="text-sm font-medium">Kategori <span className="text-rose-500">*</span></label>
           <select 
             name="category_id"
             required
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none text-white"
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none"
           >
             <option value="">Pilih Kategori...</option>
             {categories.map((cat) => (
@@ -60,7 +60,7 @@ export default function ItemForm({ categories, locations }: { categories: any[];
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white flex justify-between items-center">
+          <label className="text-sm font-medium flex justify-between items-center">
             SKU / Kode Barang (Otomatis)
             {sku && <span className="text-[10px] text-emerald-500 flex items-center gap-1 font-bold uppercase"><Sparkles className="w-3 h-3" /> Terkunci</span>}
           </label>
@@ -76,10 +76,10 @@ export default function ItemForm({ categories, locations }: { categories: any[];
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Kondisi Barang</label>
+          <label className="text-sm font-medium">Kondisi Barang</label>
           <select 
             name="condition"
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none text-white"
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none"
           >
             <option value="Baru">Baru (Segel)</option>
             <option value="Normal">Normal (Bekas Bagus)</option>
@@ -90,30 +90,44 @@ export default function ItemForm({ categories, locations }: { categories: any[];
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Harga (Rp)</label>
-          <input 
-            type="number" 
-            name="price"
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" 
-            placeholder="0" 
-          />
+          <label className="text-sm font-medium">Harga (Rp)</label>
+          <div className="relative group">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors">Rp</span>
+            <input 
+              type="text" 
+              placeholder="0"
+              className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-primary"
+              onChange={(e) => {
+                // Remove non-digits
+                const rawValue = e.target.value.replace(/\D/g, "");
+                // Format with thousand separators
+                const formattedValue = rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                e.target.value = formattedValue;
+                
+                // Update hidden input
+                const hiddenInput = document.getElementById("price_raw") as HTMLInputElement;
+                if (hiddenInput) hiddenInput.value = rawValue;
+              }}
+            />
+            <input type="hidden" name="price" id="price_raw" value="0" />
+          </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Stok Awal</label>
+          <label className="text-sm font-medium">Stok Awal</label>
           <input 
             type="number" 
             name="initial_stock"
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" 
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
             placeholder="0" 
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-white">Lokasi Penempatan (Jika ada stok)</label>
+          <label className="text-sm font-medium">Lokasi Penempatan (Jika ada stok)</label>
           <select 
             name="location_id"
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none text-white"
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none"
           >
             <option value="">Pilih Lokasi...</option>
             {locations.map((loc) => (
@@ -124,11 +138,11 @@ export default function ItemForm({ categories, locations }: { categories: any[];
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-white">Deskripsi Spesifikasi</label>
+        <label className="text-sm font-medium">Deskripsi Spesifikasi</label>
         <textarea 
           name="description"
           rows={4} 
-          className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" 
+          className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
           placeholder="Detail spesifikasi barang..."
         ></textarea>
       </div>

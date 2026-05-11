@@ -63,3 +63,28 @@ export async function deleteLocation(id: string) {
   revalidatePath("/locations");
   return {};
 }
+
+export async function getLocationItems(locationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("item_stocks")
+    .select(`
+      quantity,
+      condition,
+      items (
+        id,
+        name,
+        sku
+      )
+    `)
+    .eq("location_id", locationId)
+    .gt("quantity", 0)
+    .order("quantity", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching location items:", error);
+    return { error: error.message };
+  }
+
+  return { data };
+}

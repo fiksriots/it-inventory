@@ -123,7 +123,7 @@ export default function NewPurchaseOrderPage() {
                     <button 
                       type="button"
                       onClick={() => setSupplierType("Offline")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-medium transition-all ${supplierType === "Offline" ? 'bg-surface text-primary shadow-sm' : 'text-text-muted hover:text-white'}`}
+                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-medium transition-all ${supplierType === "Offline" ? 'bg-surface text-primary shadow-sm' : 'text-text-muted hover:text-primary'}`}
                     >
                       <Store className="w-3.5 h-3.5" />
                       Offline
@@ -131,7 +131,7 @@ export default function NewPurchaseOrderPage() {
                     <button 
                       type="button"
                       onClick={() => setSupplierType("Online")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-medium transition-all ${supplierType === "Online" ? 'bg-surface text-primary shadow-sm' : 'text-text-muted hover:text-white'}`}
+                      className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-medium transition-all ${supplierType === "Online" ? 'bg-surface text-primary shadow-sm' : 'text-text-muted hover:text-primary'}`}
                     >
                       <Globe className="w-3.5 h-3.5" />
                       Online
@@ -386,14 +386,21 @@ export default function NewPurchaseOrderPage() {
                       />
                     </td>
                     <td className="px-4 py-4 align-top">
-                      <input 
-                        type="number"
-                        value={row.unit_price}
-                        onChange={(e) => updateRow(idx, 'unit_price', parseInt(e.target.value) || 0)}
-                        className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none text-right font-medium"
-                      />
+                      <div className="relative group">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors">Rp</span>
+                        <input 
+                          type="text"
+                          value={row.unit_price === 0 ? "" : row.unit_price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, "");
+                            updateRow(idx, 'unit_price', parseInt(raw) || 0);
+                          }}
+                          placeholder="0"
+                          className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none text-right font-medium text-primary text-xs"
+                        />
+                      </div>
                     </td>
-                    <td className="px-4 py-4 align-top text-right font-bold text-white">
+                    <td className="px-4 py-4 align-top text-right font-bold">
                       {(row.quantity * row.unit_price).toLocaleString("id-ID")}
                     </td>
                     <td className="px-4 py-4 align-top">
@@ -420,7 +427,7 @@ export default function NewPurchaseOrderPage() {
         )}
 
         <div className="flex justify-end gap-3 pt-6">
-          <Link href="/po" className="px-8 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-background transition-colors text-text-muted hover:text-white">
+          <Link href="/po" className="px-8 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-background transition-colors text-text-muted">
             Batal
           </Link>
           <button 

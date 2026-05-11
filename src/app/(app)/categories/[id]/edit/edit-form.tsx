@@ -27,8 +27,14 @@ export default function EditCategoryForm({ category }: { category: any }) {
               <input type="text" name="name" required defaultValue={category.name} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Kode <span className="text-rose-500">*</span></label>
-              <input type="text" name="code" required defaultValue={category.code} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none uppercase" placeholder="Contoh: ELK" />
+              <label className="text-sm font-medium text-white">Kode Kategori (Terkunci)</label>
+              <input 
+                type="text" 
+                name="code" 
+                readOnly 
+                defaultValue={category.code} 
+                className="w-full bg-background/50 border border-border rounded-lg px-4 py-2 focus:outline-none font-mono text-primary font-bold cursor-not-allowed" 
+              />
             </div>
           </div>
           <div className="space-y-2">

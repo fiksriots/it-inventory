@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Printer, Save, Loader2, Globe, FileText } from "lucide-react";
-import { updatePONotes } from "../actions";
+import { Printer, Save, Loader2, Globe, FileText, UploadCloud, FileCheck, Eye, X, Download } from "lucide-react";
+import { updatePONotes, uploadPOInvoice } from "../actions";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -14,6 +14,9 @@ interface POClientViewProps {
 export default function POClientView({ po, items }: POClientViewProps) {
   const [notes, setNotes] = useState(po.notes || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const handleSaveNotes = async () => {
     setIsSaving(true);
@@ -21,7 +24,25 @@ export default function POClientView({ po, items }: POClientViewProps) {
     setIsSaving(false);
   };
 
-  const generatePDF = () => {
+  const handleUploadInvoice = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError(null);
+    
+    const formData = new FormData();
+    formData.append("invoice", file);
+    
+    const result = await uploadPOInvoice(po.id, formData);
+    
+    if (result.error) {
+      setUploadError(result.error);
+    }
+    setIsUploading(false);
+  };
+
+  const createPODocument = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
@@ -55,14 +76,19 @@ export default function POClientView({ po, items }: POClientViewProps) {
     doc.text(po.suppliers?.name || "-", rightColX + 30, 37);
 
     // Table Data
-    const tableData = items.map((item, index) => [
-      index + 1,
-      item.item_id ? item.items?.name : item.custom_item_name,
-      item.unit || "PCS",
-      item.quantity,
-      `Rp. ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(item.unit_price)}`,
-      `Rp. ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(item.quantity * item.unit_price)}`,
-    ]);
+    const tableData = items.map((item, index) => {
+      const name = item.item_id ? item.items?.name : item.custom_item_name;
+      const desc = item.item_id ? item.items?.description : "";
+      
+      return [
+        index + 1,
+        desc ? `${name}\n(${desc})` : name,
+        item.unit || "PCS",
+        item.quantity,
+        `Rp. ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(item.unit_price)}`,
+        `Rp. ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(item.quantity * item.unit_price)}`,
+      ];
+    });
 
     // Draw Main Table
     autoTable(doc, {
@@ -115,7 +141,7 @@ export default function POClientView({ po, items }: POClientViewProps) {
 
     finalY += 21;
 
-    // Catatan Section (Label removed, direct content, height matched to rows above)
+    // Catatan Section
     doc.rect(14, finalY, pageWidth - 28, 7);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -133,7 +159,33 @@ export default function POClientView({ po, items }: POClientViewProps) {
     doc.text("Cheked By :", getSigX(2), sigY, { align: 'center' });
     doc.text("Approve By :", getSigX(3), sigY, { align: 'center' });
 
+    return doc;
+  };
+
+  const handleDownloadPDF = () => {
+    const doc = createPODocument();
     doc.save(`PO-${po.po_number}.pdf`);
+  };
+
+  const handleDirectPrint = () => {
+    const doc = createPODocument();
+    doc.autoPrint();
+    const blobUrl = doc.output('bloburl');
+    
+    // Create hidden iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = blobUrl;
+    document.body.appendChild(iframe);
+    
+    iframe.onload = () => {
+      iframe.contentWindow?.print();
+      // Clean up after a delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+    };
   };
 
   return (
@@ -150,13 +202,73 @@ export default function POClientView({ po, items }: POClientViewProps) {
               <p className="text-xs text-text-muted">Gunakan format PDF untuk proses persetujuan fisik.</p>
             </div>
           </div>
-          <button 
-            onClick={generatePDF}
-            className="bg-primary hover:bg-primary-hover text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-primary/20"
-          >
-            <Printer className="w-4 h-4" />
-            Cetak PDF (Format PO)
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={handleDirectPrint}
+              className="bg-white hover:bg-background text-primary border border-primary/30 px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Printer className="w-4 h-4" />
+              Cetak Langsung
+            </button>
+            <button 
+              onClick={handleDownloadPDF}
+              className="bg-primary hover:bg-primary-hover text-white px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-primary/20"
+            >
+              <FileText className="w-4 h-4" />
+              Simpan PDF
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Section - Only if Completed or already has invoice */}
+      {(po.status === "Selesai" || po.invoice_url) && (
+        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6 relative">
+          <div className="flex items-center gap-4">
+            <div className="bg-emerald-500/20 p-3 rounded-xl">
+              {po.invoice_url ? <FileCheck className="w-6 h-6 text-emerald-500" /> : <UploadCloud className="w-6 h-6 text-emerald-500" />}
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Lampiran Faktur / Invoice</h3>
+              <p className="text-xs text-emerald-600/70 dark:text-emerald-500/50">
+                {po.invoice_url ? "Faktur digital telah diunggah dan tersimpan." : "Unggah bukti faktur atau tanda terima barang."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {po.invoice_url && (
+              <button 
+                onClick={() => setShowInvoiceModal(true)}
+                className="bg-white dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-50 transition-all shadow-sm"
+              >
+                <Eye className="w-4 h-4" />
+                Lihat Faktur
+              </button>
+            )}
+
+            <div className="relative">
+              <input 
+                type="file" 
+                id="invoice-upload" 
+                className="hidden" 
+                accept="image/*,.pdf"
+                onChange={handleUploadInvoice}
+                disabled={isUploading}
+              />
+              <label 
+                htmlFor="invoice-upload"
+                className={`cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                {po.invoice_url ? "Ganti Faktur" : "Unggah Faktur"}
+              </label>
+            </div>
+          </div>
+
+          {uploadError && (
+            <p className="absolute -bottom-6 left-0 text-[10px] text-rose-500 font-medium">{uploadError}</p>
+          )}
         </div>
       )}
 
@@ -218,6 +330,58 @@ export default function POClientView({ po, items }: POClientViewProps) {
                 </a>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && po.invoice_url && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative max-w-5xl w-full max-h-[90vh] bg-surface rounded-2xl overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-border flex justify-between items-center bg-background/50">
+              <div className="flex items-center gap-3">
+                <div className="bg-emerald-500/10 p-2 rounded-lg">
+                  <FileText className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Faktur / Tanda Terima</p>
+                  <p className="text-[10px] text-text-muted">{po.po_number}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={po.invoice_url} 
+                  download={`Invoice-${po.po_number}`}
+                  className="p-2 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg transition-all"
+                  title="Download File"
+                >
+                  <Download className="w-5 h-5" />
+                </a>
+                <button 
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="p-2 hover:bg-rose-500/10 text-text-muted hover:text-rose-500 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="flex-1 overflow-auto p-6 bg-background/20 flex items-center justify-center">
+              {po.invoice_url.toLowerCase().endsWith('.pdf') ? (
+                <iframe 
+                  src={po.invoice_url} 
+                  className="w-full h-full min-h-[600px] rounded-lg border border-border"
+                />
+              ) : (
+                <img 
+                  src={po.invoice_url} 
+                  alt="Invoice" 
+                  className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -17,7 +17,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
           <ArrowLeft className="w-5 h-5 text-text-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Edit Barang</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Edit Barang</h1>
           <p className="text-text-muted mt-1">Perbarui informasi barang inventaris.</p>
         </div>
       </div>
@@ -29,23 +29,23 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
               {state?.error && <div className="p-3 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-sm font-medium">{state.error}</div>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Nama Barang <span className="text-rose-500">*</span></label>
-                  <input type="text" name="name" required defaultValue={item.name} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" />
+                  <label className="text-sm font-medium">Nama Barang <span className="text-rose-500">*</span></label>
+                  <input type="text" name="name" required defaultValue={item.name} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">SKU <span className="text-rose-500">*</span></label>
-                  <input type="text" name="sku" required defaultValue={item.sku} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white font-mono text-primary font-bold" />
+                  <label className="text-sm font-medium">SKU <span className="text-rose-500">*</span></label>
+                  <input type="text" name="sku" required defaultValue={item.sku} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-mono text-primary font-bold" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Kategori</label>
-                  <select name="category_id" defaultValue={item.category_id || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none text-white">
+                  <label className="text-sm font-medium">Kategori</label>
+                  <select name="category_id" defaultValue={item.category_id || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none">
                     <option value="">Pilih Kategori...</option>
                     {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Kondisi Barang</label>
-                  <select name="condition" defaultValue={item.condition || "Baru"} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none text-white">
+                  <label className="text-sm font-medium">Kondisi Barang</label>
+                  <select name="condition" defaultValue={item.condition || "Baru"} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none">
                     <option value="Baru">Baru (Segel)</option>
                     <option value="Normal">Normal (Bekas Bagus)</option>
                     <option value="Rusak (Bisa Diperbaiki)">Rusak (Bisa Diperbaiki)</option>
@@ -54,14 +54,30 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-white">Harga (Rp)</label>
-                  <input type="number" name="price" defaultValue={item.price || 0} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white" />
+                  <label className="text-sm font-medium">Harga (Rp)</label>
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors">Rp</span>
+                    <input 
+                      type="text" 
+                      placeholder="0"
+                      defaultValue={(item.price || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-primary"
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, "");
+                        const formattedValue = rawValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                        e.target.value = formattedValue;
+                        const hiddenInput = document.getElementById("price_raw") as HTMLInputElement;
+                        if (hiddenInput) hiddenInput.value = rawValue;
+                      }}
+                    />
+                    <input type="hidden" name="price" id="price_raw" defaultValue={item.price || 0} />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-white">Deskripsi Spesifikasi</label>
-                <textarea name="description" rows={4} defaultValue={item.description || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-white"></textarea>
+                <label className="text-sm font-medium">Deskripsi Spesifikasi</label>
+                <textarea name="description" rows={4} defaultValue={item.description || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"></textarea>
               </div>
 
               {/* Quick Adjustment hidden fields for the form */}
@@ -84,7 +100,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
         <div className="space-y-6">
           <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-border bg-background/50">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-white flex items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
                 <Package className="w-4 h-4 text-primary" />
                 Info Stok
               </h2>
@@ -92,7 +108,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
             <div className="p-6 space-y-6">
               <div>
                 <p className="text-xs text-text-muted uppercase font-bold tracking-tighter mb-1">Total Stok</p>
-                <p className="text-4xl font-bold text-white">{totalStock}</p>
+                <p className="text-4xl font-bold text-primary">{totalStock}</p>
               </div>
 
               <div className="space-y-3">
@@ -104,7 +120,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
                             <MapPin className="w-3.5 h-3.5 text-primary" />
-                            <span className="text-sm font-bold text-white">{s.locations?.name}</span>
+                            <span className="text-sm font-bold">{s.locations?.name}</span>
                           </div>
                           <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded w-fit ${
                             s.condition === 'Baru' ? 'text-emerald-500 bg-emerald-500/10' :
@@ -167,7 +183,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                 <div className="space-y-3">
                   <select 
                     id="quick_in_loc"
-                    className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none appearance-none text-white"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
                   >
                     <option value="">Pilih Lokasi...</option>
                     {locations.map((loc: any) => (
@@ -177,7 +193,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                   
                   <select 
                     id="quick_in_cond"
-                    className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none appearance-none text-white"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
                   >
                     <option value="Baru">Baru (Segel)</option>
                     <option value="Normal">Normal (Bekas Bagus)</option>
@@ -191,7 +207,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                       type="number" 
                       id="quick_in_qty"
                       placeholder="Qty"
-                      className="w-20 bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none text-white font-bold" 
+                      className="w-20 bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none font-bold" 
                     />
                     <button 
                       type="button"

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { updatePOStatus } from "../actions";
 import POClientView from "./po-client-view";
+import DeletePOButton from "./delete-button";
 
 export default async function PODetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,7 +35,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
   // Fetch PO Items
   const { data: items } = await supabase
     .from("po_items")
-    .select("*, items(name, sku)")
+    .select("*, items(name, sku, description)")
     .eq("po_id", id);
 
   const formatCurrency = (amount: number) => {
@@ -58,7 +59,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
             <ArrowLeft className="w-5 h-5 text-text-muted" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Detail Purchase Order</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Detail Purchase Order</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-text-muted">{po.po_number}</span>
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status]}`}>
@@ -99,6 +100,9 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
               </button>
             </form>
           )}
+
+          {/* Delete Button (Always show) */}
+          <DeletePOButton id={po.id} status={po.status} />
         </div>
       </div>
 
@@ -116,11 +120,11 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
               </div>
               <div className="flex justify-between text-xs pt-2 border-t border-border/50">
                 <span className="text-text-muted">Subtotal Items:</span>
-                <span className="font-medium text-white">{formatCurrency(po.subtotal)}</span>
+                <span className="font-medium">{formatCurrency(po.subtotal)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-text-muted">Pajak/Biaya/Layanan:</span>
-                <span className="font-medium text-white">{formatCurrency(po.admin_fee + po.shipping_fee)}</span>
+                <span className="font-medium">{formatCurrency(po.admin_fee + po.shipping_fee)}</span>
               </div>
               <div className="flex justify-between text-xs text-rose-500">
                 <span>Diskon:</span>
@@ -135,7 +139,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Tanggal Buat</p>
-                  <p className="text-sm font-medium text-white">{new Date(po.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-sm font-medium">{new Date(po.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -144,7 +148,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Pemohon</p>
-                  <p className="text-sm font-medium text-white">{po.requested_by || "Tidak dicatat"}</p>
+                  <p className="text-sm font-medium">{po.requested_by || "Tidak dicatat"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -153,7 +157,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Departemen</p>
-                  <p className="text-sm font-medium text-white">{po.department || "Tidak dicatat"}</p>
+                  <p className="text-sm font-medium">{po.department || "Tidak dicatat"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -162,7 +166,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Lokasi Tujuan Akhir</p>
-                  <p className="text-sm font-medium text-white">{po.locations?.name || "Tidak dicatat"}</p>
+                  <p className="text-sm font-medium">{po.locations?.name || "Tidak dicatat"}</p>
                 </div>
               </div>
             </div>
@@ -187,11 +191,11 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Kontak</p>
-                  <p className="text-sm text-white">{po.suppliers?.contact_person || "-"}</p>
+                  <p className="text-sm">{po.suppliers?.contact_person || "-"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold mb-1">Telepon</p>
-                  <p className="text-sm text-white">{po.suppliers?.phone || "-"}</p>
+                  <p className="text-sm">{po.suppliers?.phone || "-"}</p>
                 </div>
               </div>
             </div>
@@ -223,7 +227,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                   {items?.map((item: any) => (
                     <tr key={item.id} className="hover:bg-background/30 transition-colors">
                       <td className="px-6 py-4">
-                        <p className="font-bold text-white">{item.item_id ? item.items?.name : item.custom_item_name}</p>
+                        <p className="font-bold">{item.item_id ? item.items?.name : item.custom_item_name}</p>
                         <p className="text-[10px] text-text-muted flex items-center gap-1">
                           {item.item_id ? (
                             <span className="bg-surface border border-border px-1.5 py-0.5 rounded tracking-tighter">{item.items?.sku}</span>
@@ -237,9 +241,9 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                           {item.unit || "PCS"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center font-bold text-white">{item.quantity}</td>
+                      <td className="px-6 py-4 text-center font-bold">{item.quantity}</td>
                       <td className="px-6 py-4 text-text-muted">{formatCurrency(item.unit_price)}</td>
-                      <td className="px-6 py-4 text-right font-bold text-white">
+                      <td className="px-6 py-4 text-right font-bold">
                         {formatCurrency(item.quantity * item.unit_price)}
                       </td>
                     </tr>

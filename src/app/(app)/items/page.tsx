@@ -41,7 +41,7 @@ export default async function ItemsPage({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Master Barang</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Master Barang</h1>
           <p className="text-text-muted mt-1">Kelola data seluruh barang inventaris IT Anda.</p>
         </div>
         <Link href="/items/new" className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg shadow-primary/20">
@@ -83,18 +83,18 @@ export default async function ItemsPage({
                     <tr key={item.id} className="hover:bg-background/50 transition-all group">
                       <td className="px-6 py-4 font-bold text-primary">{item.sku}</td>
                       <td className="px-6 py-4">
-                        <Link href={`/items/${item.id}`} className="hover:text-primary transition-colors font-bold text-white">
+                        <Link href={`/items/${item.id}`} className="hover:text-primary transition-colors font-bold">
                           {item.name}
                         </Link>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 bg-background border border-border rounded-md text-[10px] font-bold uppercase text-text-muted group-hover:text-white transition-colors">
+                        <span className="px-2.5 py-1 bg-background border border-border rounded-md text-[10px] font-bold uppercase text-text-muted transition-colors">
                           {item.categories?.name || "No Category"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5">
-                          <p className="font-bold text-white leading-none">{totalStock} <span className="text-[10px] text-text-muted uppercase tracking-tighter">Total Unit</span></p>
+                          <p className="font-bold leading-none">{totalStock} <span className="text-[10px] text-text-muted uppercase tracking-tighter">Total Unit</span></p>
                           <div className="flex flex-wrap gap-1">
                             {stocks.map((s: any, idx: number) => (
                               <div key={idx} className="flex items-center bg-background border border-border rounded overflow-hidden">
