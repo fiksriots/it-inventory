@@ -170,7 +170,7 @@ export default function POClientView({ po, items }: POClientViewProps) {
   const handleDirectPrint = () => {
     const doc = createPODocument();
     doc.autoPrint();
-    const blobUrl = doc.output('bloburl') as string;
+    const blobUrl = doc.output('bloburl') as unknown as string;
     
     // Create hidden iframe for printing
     const iframe = document.createElement('iframe');
