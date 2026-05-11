@@ -21,9 +21,15 @@ export default function EditCategoryForm({ category }: { category: any }) {
       <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
         <form action={formAction} className="space-y-6">
           {state?.error && <div className="p-3 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-sm">{state.error}</div>}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Nama Kategori <span className="text-rose-500">*</span></label>
-            <input type="text" name="name" required defaultValue={category.name} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nama Kategori <span className="text-rose-500">*</span></label>
+              <input type="text" name="name" required defaultValue={category.name} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Kode <span className="text-rose-500">*</span></label>
+              <input type="text" name="code" required defaultValue={category.code} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none uppercase" placeholder="Contoh: ELK" />
+            </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Deskripsi</label>

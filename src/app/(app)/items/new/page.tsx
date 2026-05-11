@@ -5,7 +5,8 @@ import ItemForm from "./item-form";
 
 export default async function NewItemPage() {
   const supabase = await createClient();
-  const { data: categories } = await supabase.from("categories").select("id, name").order("name");
+  const { data: categories } = await supabase.from("categories").select("id, name, code").order("name");
+  const { data: locations } = await supabase.from("locations").select("id, name").order("name");
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -22,7 +23,7 @@ export default async function NewItemPage() {
 
       {/* Form Card */}
       <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
-        <ItemForm categories={categories || []} />
+        <ItemForm categories={categories || []} locations={locations || []} />
       </div>
     </div>
   );

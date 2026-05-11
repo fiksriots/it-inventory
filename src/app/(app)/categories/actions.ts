@@ -6,17 +6,18 @@ import { redirect } from "next/navigation";
 
 export async function createCategory(prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
+  const code = formData.get("code") as string;
   const description = formData.get("description") as string;
 
-  if (!name) {
-    return { error: "Nama kategori wajib diisi." };
+  if (!name || !code) {
+    return { error: "Nama kategori dan Kode wajib diisi." };
   }
 
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("categories")
-    .insert([{ name, description }]);
+    .insert([{ name, code: code.toUpperCase(), description }]);
 
   if (error) {
     console.error("Error inserting category:", error);

@@ -14,6 +14,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
     { icon: Tags, label: "Kategori Barang", href: "/categories" },
     { icon: ArrowRightLeft, label: "Mutasi & Transfer", href: "/transfers" },
     { icon: ShoppingCart, label: "Purchase Orders", href: "/po" },
+    { icon: Users, label: "Departemen & Lokasi", href: "/locations" },
     { icon: Users, label: "Supplier", href: "/suppliers" },
     { icon: Settings, label: "Pengaturan", href: "/settings" },
   ];
