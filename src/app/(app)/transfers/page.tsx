@@ -19,16 +19,18 @@ export default async function TransfersPage() {
     .order("transfer_date", { ascending: false })
     .limit(50);
 
-  // Combine and sort
+  // Combine and sort with unified shape for TypeScript
   const allActivities = [
     ...(logs || []).map(l => ({
       id: l.id,
-      type: l.mutation_type,
+      type: l.mutation_type as string,
       date: new Date(l.created_at),
-      itemName: l.items?.name,
-      itemSku: l.items?.sku,
+      itemName: l.items?.name as string | undefined,
+      itemSku: l.items?.sku as string | undefined,
       quantity: l.quantity,
-      location: l.locations?.name,
+      location: l.locations?.name as string | undefined,
+      from: undefined as string | undefined,
+      to: undefined as string | undefined,
       notes: l.notes,
       isTransfer: false
     })),
@@ -36,11 +38,12 @@ export default async function TransfersPage() {
       id: t.id,
       type: 'TRANSFER',
       date: new Date(t.transfer_date),
-      itemName: t.items?.name,
-      itemSku: t.items?.sku,
+      itemName: t.items?.name as string | undefined,
+      itemSku: t.items?.sku as string | undefined,
       quantity: t.quantity,
-      from: (t.from as any)?.name,
-      to: (t.to as any)?.name,
+      location: undefined as string | undefined,
+      from: (t.from as any)?.name as string | undefined,
+      to: (t.to as any)?.name as string | undefined,
       notes: t.notes,
       isTransfer: true
     }))
