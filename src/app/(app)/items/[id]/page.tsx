@@ -45,14 +45,16 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
     .eq("item_id", id)
     .order("transfer_date", { ascending: false });
 
-  // Combine and sort history
+  // Combine and sort history with a unified type to satisfy TypeScript
   const history = [
     ...(logs || []).map(l => ({
       id: l.id,
-      type: l.mutation_type, // 'INBOUND' or 'OUTBOUND'
+      type: l.mutation_type as string, // 'INBOUND' or 'OUTBOUND'
       date: new Date(l.created_at),
       quantity: l.quantity,
-      location: l.locations?.name,
+      location: l.locations?.name as string | undefined,
+      from: undefined as string | undefined,
+      to: undefined as string | undefined,
       notes: l.notes,
       isTransfer: false
     })),
@@ -61,8 +63,9 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
       type: 'TRANSFER',
       date: new Date(t.transfer_date),
       quantity: t.quantity,
-      from: (t.from as any)?.name,
-      to: (t.to as any)?.name,
+      location: undefined as string | undefined,
+      from: (t.from as any)?.name as string | undefined,
+      to: (t.to as any)?.name as string | undefined,
       notes: t.notes,
       isTransfer: true
     }))
