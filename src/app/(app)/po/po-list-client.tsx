@@ -28,14 +28,13 @@ export default function POListClient({
   error
 }: POListClientProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isPrintPreview, setIsPrintPreview] = useState(false);
 
   const toggleSelect = (id: string) => {
     if (selectedIds.includes(id)) {
       setSelectedIds(selectedIds.filter(item => item !== id));
     } else {
       if (selectedIds.length >= 3) {
-        alert("Maksimal pencetakan dalam 1 lembar kertas adalah 3 Purchase Order.");
+        alert("Maksimal pencetakan dalam 1 lembar kertas adalah 3 dokumen form PO.");
         return;
       }
       setSelectedIds([...selectedIds, id]);
@@ -45,12 +44,12 @@ export default function POListClient({
   const selectedPOs = pos.filter(p => selectedIds.includes(p.id));
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount || 0);
+    return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(amount || 0);
   };
 
   const handlePrint = () => {
     if (selectedPOs.length === 0) {
-      alert("Silakan centang minimal 1 PO terlebih dahulu (maksimal 3 PO).");
+      alert("Silakan centang minimal 1 form PO terlebih dahulu (maksimal 3 PO).");
       return;
     }
     window.print();
@@ -58,7 +57,7 @@ export default function POListClient({
 
   return (
     <div className="space-y-6">
-      {/* Embedded Print Styling */}
+      {/* Embedded CSS Print Styling Khusus Dokumen Form Lengkap (Maks 3 per Halaman) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
@@ -80,22 +79,25 @@ export default function POListClient({
           .no-print {
             display: none !important;
           }
-          .po-print-card {
+          .po-full-form-print {
             height: 31.5vh !important;
             max-height: 32vh !important;
             box-sizing: border-box;
             page-break-inside: avoid;
-            border-bottom: 2px dashed #888 !important;
-            padding: 12px 0 !important;
-            margin-bottom: 8px !important;
+            border-bottom: 2px dashed #000 !important;
+            padding: 6px 0 !important;
+            margin-bottom: 4px !important;
             overflow: hidden;
+            font-family: Arial, Helvetica, sans-serif !important;
+            color: #000 !important;
+            line-height: 1.15 !important;
           }
-          .po-print-card:last-child {
+          .po-full-form-print:last-child {
             border-bottom: none !important;
           }
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm;
           }
         }
       `}} />
@@ -117,10 +119,10 @@ export default function POListClient({
                 ? "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-95" 
                 : "bg-surface border border-border text-text-muted cursor-not-allowed opacity-50"
             }`}
-            title="Cetak hingga 3 PO sekaligus dalam 1 lembar kertas"
+            title="Cetak formulir lengkap hingga 3 PO sekaligus dalam 1 lembar kertas"
           >
             <Printer className="w-5 h-5" />
-            <span>Cetak PO Terpilih ({selectedPOs.length}/3)</span>
+            <span>Cetak Form PO Terpilih ({selectedPOs.length}/3)</span>
           </button>
 
           <Link 
@@ -148,7 +150,7 @@ export default function POListClient({
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between animate-in fade-in duration-200 no-print">
           <div className="flex items-center gap-2.5 text-amber-500 text-xs font-bold">
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>Anda telah memilih {selectedIds.length} PO untuk dicetak bersamaan (Maksimal 3 PO per halaman kertas fisik).</span>
+            <span>Terpilih: {selectedIds.length} Form PO. Dokumen asli akan dicetak bersusun (Maksimal 3 form per halaman kertas fisik).</span>
           </div>
           <button 
             onClick={() => setSelectedIds([])}
@@ -249,7 +251,7 @@ export default function POListClient({
                           <span className="text-xs">{po.department || "-"}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-right">{formatCurrency(po.total_amount)}</td>
+                      <td className="px-6 py-4 font-bold text-right">Rp. {formatCurrency(po.total_amount)}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-tighter ${
                           po.status === 'Draft' ? 'bg-surface text-text-muted border-border' :
@@ -290,91 +292,143 @@ export default function POListClient({
         </div>
       </div>
 
-      {/* Wadah Pencetakan Tersembunyi (Hanya Muncul Saat Mode Print) */}
+      {/* Wadah Render Form Dokumen PO Asli / Lengkap (Hanya Muncul Saat Mode Pencetakan Fisik) */}
       <div id="printable-multi-po" className="hidden">
-        {selectedPOs.map((po, index) => (
-          <div key={po.id} className="po-print-card text-black font-sans">
-            {/* Header Ringkas PO */}
-            <div className="flex justify-between items-start border-b border-gray-300 pb-2 mb-2">
-              <div>
-                <h2 className="text-base font-extrabold uppercase tracking-tight m-0 leading-none">PURCHASE ORDER</h2>
-                <p className="text-[10px] text-gray-500 m-0 mt-0.5 font-mono">Formulir Pesanan Barang Resmi</p>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-black text-black block leading-none">{po.po_number}</span>
-                <span className="text-[9px] text-gray-600 block mt-0.5">Tgl: {new Date(po.created_at).toLocaleDateString("id-ID")}</span>
-              </div>
-            </div>
+        {selectedPOs.map((po) => {
+          const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
+          const discountTotal = po.discount_amount || 0;
 
-            {/* Informasi Supplier & Departemen */}
-            <div className="grid grid-cols-2 gap-2 text-[10px] mb-2 bg-gray-50 p-1.5 rounded">
-              <div>
-                <span className="text-[9px] text-gray-500 block uppercase font-bold">Kepada Supplier:</span>
-                <strong className="text-black text-xs block truncate">{po.supplier_name || "Vendor Internal"}</strong>
+          return (
+            <div key={po.id} className="po-full-form-print">
+              {/* JUDUL HEADER IDENTIK DENGAN PDF */}
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h2 className="text-xs font-bold tracking-tight m-0 leading-none">PURCHASING ORDER</h2>
+                </div>
+                <div className="text-right">
+                  {/* Kosong agar sejajar identik */}
+                </div>
               </div>
-              <div>
-                <span className="text-[9px] text-gray-500 block uppercase font-bold">Departemen Pemohon:</span>
-                <strong className="text-black text-xs block truncate">{po.department || "Logistik & Sarana"}</strong>
-              </div>
-            </div>
 
-            {/* Ringkasan Item Pesanan */}
-            <div className="mb-2">
-              <table className="w-full text-[9px] text-left border-collapse">
+              {/* BARIS METADATA REQUEST BY, DEPT, DATE, SUPPLIER */}
+              <div className="grid grid-cols-2 gap-4 text-[7.5px] mb-1.5">
+                {/* Sisi Kiri */}
+                <div className="space-y-0.5">
+                  <div className="flex">
+                    <span className="w-16 inline-block">Request by</span>
+                    <span className="w-2">:</span>
+                    <span className="font-bold">{po.requested_by || "-"}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-16 inline-block">Departement</span>
+                    <span className="w-2">:</span>
+                    <span className="font-bold">{po.department || "-"}</span>
+                  </div>
+                </div>
+
+                {/* Sisi Kanan */}
+                <div className="space-y-0.5">
+                  <div className="flex">
+                    <span className="w-16 inline-block">Date Number</span>
+                    <span className="w-2">:</span>
+                    <span className="font-bold">
+                      {new Date(po.created_at).toLocaleDateString("id-ID")} - <span className="underline">{po.po_number}</span>
+                    </span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-16 inline-block">Supplier</span>
+                    <span className="w-2">:</span>
+                    <span className="font-bold">{po.supplier_name || po.suppliers?.name || "-"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MAIN TABLE IDENTIK GRID THEME */}
+              <table className="w-full text-[7.5px] border border-black border-collapse mb-1">
                 <thead>
-                  <tr className="border-b border-gray-300 text-gray-600">
-                    <th className="py-0.5 font-bold">Deskripsi Barang</th>
-                    <th className="py-0.5 text-center w-12 font-bold">Jumlah</th>
-                    <th className="py-0.5 text-right font-bold">Harga</th>
+                  <tr className="border-b border-black text-black font-bold text-left">
+                    <th className="p-1 border-r border-black w-6 text-center">No.</th>
+                    <th className="p-1 border-r border-black">Description</th>
+                    <th className="p-1 border-r border-black w-10 text-center">Unit</th>
+                    <th className="p-1 border-r border-black w-8 text-center">Qty</th>
+                    <th className="p-1 border-r border-black w-20 text-left">Unit Price</th>
+                    <th className="p-1 w-20 text-left">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-black">
                   {po.items && po.items.length > 0 ? (
-                    po.items.slice(0, 2).map((it: any, itIdx: number) => (
-                      <tr key={itIdx}>
-                        <td className="py-0.5 truncate max-w-[150px] font-medium">{it.items?.name || "Material Item"}</td>
-                        <td className="py-0.5 text-center">{it.quantity} {it.unit || "Unit"}</td>
-                        <td className="py-0.5 text-right font-mono">{formatCurrency(it.unit_price)}</td>
-                      </tr>
-                    ))
+                    po.items.map((it: any, idx: number) => {
+                      const name = it.item_id ? it.items?.name : it.custom_item_name;
+                      const desc = it.item_id ? it.items?.description : "";
+                      const fullDesc = desc ? `${name} (${desc})` : name;
+                      const amt = it.quantity * it.unit_price;
+
+                      return (
+                        <tr key={idx} className="border-b border-black">
+                          <td className="p-1 border-r border-black text-center font-bold">{idx + 1}</td>
+                          <td className="p-1 border-r border-black font-medium truncate max-w-[140px]">{fullDesc || "-"}</td>
+                          <td className="p-1 border-r border-black text-center">{it.unit || "PCS"}</td>
+                          <td className="p-1 border-r border-black text-center font-bold">{it.quantity}</td>
+                          <td className="p-1 border-r border-black">Rp. {formatCurrency(it.unit_price)}</td>
+                          <td className="p-1 font-bold">Rp. {formatCurrency(amt)}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
-                    <tr>
-                      <td className="py-0.5 italic text-gray-500">Paket inventaris sarana fisik</td>
-                      <td className="py-0.5 text-center">-</td>
-                      <td className="py-0.5 text-right font-mono">{formatCurrency(po.total_amount)}</td>
+                    <tr className="border-b border-black">
+                      <td className="p-1 border-r border-black text-center">1</td>
+                      <td className="p-1 border-r border-black italic">Paket Pembelian Dokumen Internal</td>
+                      <td className="p-1 border-r border-black text-center">PCS</td>
+                      <td className="p-1 border-r border-black text-center">1</td>
+                      <td className="p-1 border-r border-black">Rp. {formatCurrency(po.total_amount)}</td>
+                      <td className="p-1 font-bold">Rp. {formatCurrency(po.total_amount)}</td>
                     </tr>
                   )}
-                  {po.items && po.items.length > 2 && (
-                    <tr>
-                      <td colSpan={3} className="py-0.5 text-[8px] italic text-gray-500 text-center">
-                        + {po.items.length - 2} item lainnya tercantum dalam lampiran terpisah.
-                      </td>
-                    </tr>
-                  )}
+
+                  {/* KOTAK FOOTER ROWS (Voucher, Admin, Total) */}
+                  <tr className="border-t border-black">
+                    <td colSpan={4} rowSpan={3} className="p-1 border-r border-black align-top border-b border-black">
+                      <div className="text-[7px]">
+                        <span className="underline block font-bold mb-0.5">Catatan / Notes:</span>
+                        <p className="m-0 italic line-clamp-2">{po.notes || "-"}</p>
+                      </div>
+                    </td>
+                    <td className="p-1 border-r border-black border-b border-black text-right font-medium">Voucher :</td>
+                    <td className="p-1 border-b border-black">- Rp. {formatCurrency(discountTotal)}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-1 border-r border-black border-b border-black text-right font-medium">Biaya Admin :</td>
+                    <td className="p-1 border-b border-black">Rp. {formatCurrency(adminFeeTotal)}</td>
+                  </tr>
+                  <tr className="bg-gray-100 font-bold border-b border-black">
+                    <td className="p-1 border-r border-black text-right font-bold">Total :</td>
+                    <td className="p-1 font-bold">Rp. {formatCurrency(po.total_amount)}</td>
+                  </tr>
                 </tbody>
               </table>
+
+              {/* KOLOM TANDA TANGAN (SIGNATURES) IDENTIK DENGAN KETENTUAN 4 PIHAK */}
+              <div className="grid grid-cols-4 text-center text-[7.5px] pt-1 mt-auto">
+                <div>
+                  <span className="block mb-5">Request By :</span>
+                  <span className="border-t border-black px-2 block w-16 mx-auto font-bold">{po.requested_by || "Pemohon"}</span>
+                </div>
+                <div>
+                  <span className="block mb-5">Created By :</span>
+                  <span className="border-t border-black px-2 block w-16 mx-auto font-bold">Staf Logistik</span>
+                </div>
+                <div>
+                  <span className="block mb-5">Checked By :</span>
+                  <span className="border-t border-black px-2 block w-16 mx-auto font-bold">Supervisor</span>
+                </div>
+                <div>
+                  <span className="block mb-5">Approve By :</span>
+                  <span className="border-t border-black px-2 block w-16 mx-auto font-bold">Manajemen</span>
+                </div>
+              </div>
             </div>
-
-            {/* Total Pembayaran & Kolom Tanda Tangan */}
-            <div className="flex justify-between items-end border-t border-gray-300 pt-2 mt-auto">
-              <div>
-                <span className="text-[8px] text-gray-500 block uppercase font-bold">Status Dokumen:</span>
-                <span className="text-[9px] font-bold uppercase text-black block">{po.status}</span>
-              </div>
-
-              <div className="text-center px-4">
-                <span className="text-[8px] text-gray-400 block mb-3">Mengetahui / Menyetujui</span>
-                <div className="border-b border-gray-400 w-24 mx-auto"></div>
-                <span className="text-[7px] text-gray-500 block mt-0.5">Authorized Signature</span>
-              </div>
-
-              <div className="text-right">
-                <span className="text-[8px] text-gray-500 block uppercase font-bold">Total Tagihan:</span>
-                <strong className="text-xs font-extrabold text-black block font-mono">{formatCurrency(po.total_amount)}</strong>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
