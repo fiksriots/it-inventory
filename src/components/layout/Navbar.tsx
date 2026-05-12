@@ -20,16 +20,10 @@ interface NavbarProps {
 
 export default function Navbar({ onMenuClick, user, userProfile, lowStockCount = 0, lowStockItems = [], maintenanceCount = 0, maintenanceAlerts = [], isSidebarOpen }: NavbarProps) {
   const [isPending, startTransition] = useTransition();
-  const [time, setTime] = useState(new Date());
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -55,36 +49,7 @@ export default function Navbar({ onMenuClick, user, userProfile, lowStockCount =
           {isSidebarOpen ? <PanelLeftClose className="w-6 h-6" /> : <PanelLeftOpen className="w-6 h-6" />}
         </button>
 
-        {/* Elegant Clock Widget - Larger Version */}
-        <div className="hidden lg:flex items-center gap-4">
-          <div className="flex items-center gap-4 px-5 py-2 bg-background/50 backdrop-blur-md border border-border/50 rounded-2xl shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-300 group">
-            {/* Time Part */}
-            <div className="flex items-center gap-2 border-r border-border/50 pr-4">
-              <div className="relative">
-                <span className="text-3xl font-black tabular-nums tracking-tighter bg-gradient-to-br from-primary via-primary to-primary-hover bg-clip-text text-transparent">
-                  {time.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                <span className="absolute -right-2 top-0 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-                </span>
-              </div>
-              <span className="text-xs font-bold text-text-muted mt-2 uppercase">
-                {time.toLocaleTimeString("id-ID", { second: '2-digit' })}
-              </span>
-            </div>
 
-            {/* Date Part */}
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-black text-foreground uppercase tracking-widest leading-none">
-                {time.toLocaleDateString("id-ID", { weekday: 'long' })}
-              </span>
-              <span className="text-sm font-bold text-text-muted mt-1 whitespace-nowrap">
-                {time.toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Right Actions */}

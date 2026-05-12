@@ -38,7 +38,7 @@ export default async function ReportsPage() {
   const safePos = posRaw || [];
   const poIds = safePos.map(p => p.id);
   let poItems: any[] = [];
-  
+
   if (poIds.length > 0) {
     const { data } = await supabase
       .from("po_items")
@@ -54,7 +54,7 @@ export default async function ReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto pb-10">
-      <ReportsClient 
+      <ReportsClient
         items={items || []}
         infrastructureAssets={infrastructureAssets || []}
         computers={computers || []}

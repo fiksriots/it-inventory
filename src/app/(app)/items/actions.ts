@@ -18,6 +18,9 @@ export async function createItem(prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
+  // Mulai proses fetch user secara paralel dengan insert item untuk menghemat waktu round-trip jaringan
+  const userPromise = supabase.auth.getUser();
+
   const { data: item, error: itemError } = await supabase
     .from("items")
     .insert([{ 
@@ -45,24 +48,24 @@ export async function createItem(prevState: any, formData: FormData) {
   const stockQty = parseInt(initialStock);
 
   if (!isNaN(stockQty) && stockQty > 0 && locationId) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await userPromise;
     
-    // 1. Insert Stock
-    await supabase.from("item_stocks").insert([{
-      item_id: item.id,
-      location_id: locationId,
-      quantity: stockQty
-    }]);
-
-    // 2. Log Inbound
-    await supabase.from("inventory_logs").insert([{
-      item_id: item.id,
-      location_id: locationId,
-      user_id: user?.id,
-      mutation_type: 'INBOUND',
-      quantity: stockQty,
-      notes: 'Stok awal saat pendaftaran barang.'
-    }]);
+    // Jalankan operasi insert stock dan log secara paralel menggunakan Promise.all
+    await Promise.all([
+      supabase.from("item_stocks").insert([{
+        item_id: item.id,
+        location_id: locationId,
+        quantity: stockQty
+      }]),
+      supabase.from("inventory_logs").insert([{
+        item_id: item.id,
+        location_id: locationId,
+        user_id: user?.id,
+        mutation_type: 'INBOUND',
+        quantity: stockQty,
+        notes: 'Stok awal saat pendaftaran barang.'
+      }])
+    ]);
   }
 
   revalidatePath("/items");

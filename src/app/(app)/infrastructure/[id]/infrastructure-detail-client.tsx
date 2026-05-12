@@ -71,7 +71,7 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
 
     try {
       const formData = new FormData(e.currentTarget);
-      await updateInfrastructure(asset.id, formData);
+      await updateInfrastructure(asset.id, formDa
 
       toast("Identitas fasilitas berhasil diperbarui!", "success");
       setIsEditing(false);
@@ -86,7 +86,7 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
   // Handle hapus fasilitas
   const handleDelete = async () => {
     if (!window.confirm(`Apakah Anda yakin ingin menghapus data fasilitas ${asset.name}? Tindakan ini tidak dapat dibatalkan.`)) return;
-    
+
     setDeleteLoading(true);
     try {
       await deleteInfrastructure(asset.id);
@@ -114,12 +114,11 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
               <span className="font-mono text-xs font-bold text-primary px-2 py-0.5 rounded bg-primary/10 border border-primary/20">
                 {asset.asset_number}
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black inline-flex items-center gap-1 ${
-                asset.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-500' :
-                asset.status === 'Maintenance' ? 'bg-amber-500/10 text-amber-500 animate-pulse' :
-                asset.status === 'Rusak' ? 'bg-rose-500/10 text-rose-500' :
-                'bg-background text-text-muted'
-              }`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black inline-flex items-center gap-1 ${asset.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-500' :
+                  asset.status === 'Maintenance' ? 'bg-amber-500/10 text-amber-500 animate-pulse' :
+                    asset.status === 'Rusak' ? 'bg-rose-500/10 text-rose-500' :
+                      'bg-background text-text-muted'
+                }`}>
                 {asset.status}
               </span>
             </div>
@@ -130,14 +129,13 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${
-              isEditing ? "bg-amber-500 text-white" : "bg-background border border-border text-foreground hover:bg-surface"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${isEditing ? "bg-amber-500 text-white" : "bg-background border border-border text-foreground hover:bg-surface"
+              }`}
           >
             <Edit3 className="w-4 h-4" />
             {isEditing ? "Batal Edit" : "Edit Spesifikasi"}
           </button>
-          
+
           <button
             onClick={handleDelete}
             disabled={deleteLoading}
@@ -162,8 +160,8 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0 mt-0.5">
                   {asset.category === 'CCTV' ? <Cctv className="w-4 h-4" /> :
-                   asset.category === 'DVR' ? <Video className="w-4 h-4" /> :
-                   <Wrench className="w-4 h-4" />}
+                    asset.category === 'DVR' ? <Video className="w-4 h-4" /> :
+                      <Wrench className="w-4 h-4" />}
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Kategori Fasilitas</p>
