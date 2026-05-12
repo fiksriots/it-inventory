@@ -83,16 +83,16 @@ export default function POListClient({
             display: none !important;
           }
           .compact-po-form {
-            height: 31.5vh !important;
-            max-height: 32vh !important;
+            height: 32.8vh !important;
+            max-height: 33vh !important;
             box-sizing: border-box;
             page-break-inside: avoid;
-            padding: 4px 0 !important;
-            margin-bottom: 6px !important;
+            padding: 2px 0 !important;
+            margin-bottom: 2px !important;
             overflow: hidden;
             font-family: Arial, Helvetica, sans-serif !important;
             color: #000 !important;
-            line-height: 1.15 !important;
+            line-height: 1.25 !important;
           }
           @page {
             size: A4 portrait;
@@ -299,7 +299,7 @@ export default function POListClient({
       </div>
 
       {/* WADAH CETAK SUSUNAN HEMAT KERTAS (REPLIKA IDENTIK SCREENSHOT) */}
-      <div id="printable-multi-po" className="hidden">
+      <div id="printable-multi-po" className="hidden print:block">
         {selectedPOs.map((po) => {
           const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
           const discountTotal = po.discount_amount || 0;
@@ -313,109 +313,111 @@ export default function POListClient({
           });
 
           return (
-            <div key={po.id} className="compact-po-form">
-              {/* JUDUL IDENTIK */}
-              <div className="text-[12px] font-black text-black mb-2 tracking-wide">PURCHASING ORDER</div>
+            <div key={po.id} className="compact-po-form flex flex-col justify-between">
+              <div>
+                {/* JUDUL IDENTIK */}
+                <div className="text-[14px] font-black text-black mb-1.5 tracking-wide">PURCHASING ORDER</div>
 
-              {/* KOP METADATA TANPA BORDER BAWAH */}
-              <div className="flex justify-between text-[8px] text-black mb-2">
-                {/* Bagian Kiri */}
-                <div className="w-[45%] space-y-1">
-                  <div className="flex">
-                    <span className="w-16 inline-block font-normal">Request by</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{reqBy}</span>
+                {/* KOP METADATA TANPA BORDER BAWAH */}
+                <div className="flex justify-between text-[10px] text-black mb-1.5">
+                  {/* Bagian Kiri */}
+                  <div className="w-[45%] space-y-0.5">
+                    <div className="flex">
+                      <span className="w-20 inline-block font-normal">Request by</span>
+                      <span className="w-3">:</span>
+                      <span className="flex-1 font-medium">{reqBy}</span>
+                    </div>
+                    <div className="flex">
+                      <span className="w-20 inline-block font-normal">Departement</span>
+                      <span className="w-3">:</span>
+                      <span className="flex-1 font-medium">{dept}</span>
+                    </div>
                   </div>
-                  <div className="flex">
-                    <span className="w-16 inline-block font-normal">Departement</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{dept}</span>
+
+                  {/* Bagian Kanan */}
+                  <div className="w-[45%] space-y-0.5">
+                    <div className="flex">
+                      <span className="w-20 inline-block font-normal">Date Number</span>
+                      <span className="w-3">:</span>
+                      <span className="flex-1 font-medium">{dateStr}</span>
+                    </div>
+                    <div className="flex">
+                      <span className="w-20 inline-block font-normal">Supplier</span>
+                      <span className="w-3">:</span>
+                      <span className="flex-1 font-medium">{supplierName}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Bagian Kanan */}
-                <div className="w-[45%] space-y-1">
-                  <div className="flex">
-                    <span className="w-16 inline-block font-normal">Date Number</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{dateStr}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-16 inline-block font-normal">Supplier</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{supplierName}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* TABEL GRID BERSUSUN HEMAT SPACE */}
-              <table className="w-full text-[8px] text-black border-collapse border border-black mb-1.5">
-                <thead>
-                  <tr className="border-b border-black font-bold text-left bg-white">
-                    <th className="p-1 border-r border-black w-8 text-center font-bold">No.</th>
-                    <th className="p-1 border-r border-black font-bold">Description</th>
-                    <th className="p-1 border-r border-black w-12 text-center font-bold">Unit</th>
-                    <th className="p-1 border-r border-black w-10 text-center font-bold">Qty</th>
-                    <th className="p-1 border-r border-black w-24 text-left font-bold">Unit Price</th>
-                    <th className="p-1 w-24 text-left font-bold">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black font-normal">
-                  {po.items && po.items.length > 0 ? (
-                    po.items.map((it: any, idx: number) => {
-                      const name = it.item_id ? it.items?.name : it.custom_item_name;
-                      const desc = it.item_id ? it.items?.description : "";
-                      const fullDesc = desc ? `${name} (${desc})` : name;
-                      const amt = it.quantity * it.unit_price;
-
-                      return (
-                        <tr key={idx} className="border-b border-black">
-                          <td className="p-1 border-r border-black text-center">{idx + 1}</td>
-                          <td className="p-1 border-r border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
-                          <td className="p-1 border-r border-black text-center">{it.unit || "PCS"}</td>
-                          <td className="p-1 border-r border-black text-center">{it.quantity}</td>
-                          <td className="p-1 border-r border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
-                          <td className="p-1 font-medium">Rp. {formatSimpleCurr(amt)}</td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr className="border-b border-black">
-                      <td className="p-1 border-r border-black text-center">1</td>
-                      <td className="p-1 border-r border-black italic">Paket Inventaris Sarana</td>
-                      <td className="p-1 border-r border-black text-center">PCS</td>
-                      <td className="p-1 border-r border-black text-center">1</td>
-                      <td className="p-1 border-r border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                      <td className="p-1 font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                {/* TABEL GRID BERSUSUN HEMAT SPACE */}
+                <table className="w-full text-[10px] text-black border-collapse border border-black mb-1.5">
+                  <thead>
+                    <tr className="border-b border-black font-bold text-left bg-white">
+                      <th className="p-1 border-r border-black w-8 text-center font-bold">No.</th>
+                      <th className="p-1 border-r border-black font-bold">Description</th>
+                      <th className="p-1 border-r border-black w-12 text-center font-bold">Unit</th>
+                      <th className="p-1 border-r border-black w-10 text-center font-bold">Qty</th>
+                      <th className="p-1 border-r border-black w-24 text-left font-bold">Unit Price</th>
+                      <th className="p-1 w-24 text-left font-bold">Amount</th>
                     </tr>
-                  )}
+                  </thead>
+                  <tbody className="divide-y divide-black font-normal">
+                    {po.items && po.items.length > 0 ? (
+                      po.items.map((it: any, idx: number) => {
+                        const name = it.item_id ? it.items?.name : it.custom_item_name;
+                        const desc = it.item_id ? it.items?.description : "";
+                        const fullDesc = desc ? `${name} (${desc})` : name;
+                        const amt = it.quantity * it.unit_price;
 
-                  {/* KELOMPOK SUBTOTAL SUSUNAN IDENTIK SCREENSHOT */}
-                  <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-1 border border-black text-right font-medium">Voucher :</td>
-                    <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
-                    <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-1 border border-black text-right font-bold">Total :</td>
-                    <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                  </tr>
-                </tbody>
-              </table>
+                        return (
+                          <tr key={idx} className="border-b border-black">
+                            <td className="p-1 border-r border-black text-center">{idx + 1}</td>
+                            <td className="p-1 border-r border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
+                            <td className="p-1 border-r border-black text-center">{it.unit || "PCS"}</td>
+                            <td className="p-1 border-r border-black text-center">{it.quantity}</td>
+                            <td className="p-1 border-r border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
+                            <td className="p-1 font-medium">Rp. {formatSimpleCurr(amt)}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr className="border-b border-black">
+                        <td className="p-1 border-r border-black text-center">1</td>
+                        <td className="p-1 border-r border-black italic">Paket Inventaris Sarana</td>
+                        <td className="p-1 border-r border-black text-center">PCS</td>
+                        <td className="p-1 border-r border-black text-center">1</td>
+                        <td className="p-1 border-r border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                        <td className="p-1 font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                      </tr>
+                    )}
 
-              {/* KOTAK CATATAN (NOTES) FULL BORDER */}
-              <div className="border border-black p-1.5 text-[8px] text-black mb-3 text-left">
-                {po.notes || "buat perbaikan"}
+                    {/* SUBTOTALS */}
+                    <tr>
+                      <td colSpan={4} className="border-none p-0"></td>
+                      <td className="p-1 border border-black text-right font-medium">Voucher :</td>
+                      <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="border-none p-0"></td>
+                      <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
+                      <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="border-none p-0"></td>
+                      <td className="p-1 border border-black text-right font-bold">Total :</td>
+                      <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* KOTAK CATATAN (NOTES) FULL BORDER */}
+                <div className="border border-black p-1.5 text-[10px] text-black mb-1.5 text-left">
+                  {po.notes || "buat perbaikan"}
+                </div>
               </div>
 
-              {/* TANDA TANGAN (SIGNATURES) SEJAJAR TANPA BORDER */}
-              <div className="grid grid-cols-4 text-center text-[8px] text-black pt-1">
+              {/* TANDA TANGAN (SIGNATURES) SEJAJAR TANPA BORDER DI BAWAH WADAH */}
+              <div className="grid grid-cols-4 text-center text-[10px] text-black pt-1 mb-1">
                 <span className="font-medium">Request By :</span>
                 <span className="font-medium">Created By :</span>
                 <span className="font-medium">Cheked By :</span>
