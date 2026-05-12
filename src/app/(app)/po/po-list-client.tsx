@@ -34,7 +34,7 @@ export default function POListClient({
       setSelectedIds(selectedIds.filter(item => item !== id));
     } else {
       if (selectedIds.length >= 3) {
-        alert("Maksimal pencetakan dalam 1 lembar kertas adalah 3 form PO.");
+        alert("Maksimal pencetakan dalam 1 lembar kertas fisik adalah 3 dokumen form PO agar tersusun rapi.");
         return;
       }
       setSelectedIds([...selectedIds, id]);
@@ -43,18 +43,15 @@ export default function POListClient({
 
   const selectedPOs = pos.filter(p => selectedIds.includes(p.id));
 
-  // Format ke standar angka Excel lokal (contoh: 12.600,00)
-  const formatExcelCurr = (amount: number) => {
-    if (!amount) return "0,00";
-    return new Intl.NumberFormat("id-ID", { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    }).format(amount);
+  // Format angka identik dengan screenshot (contoh: 200.000 tanpa desimal)
+  const formatSimpleCurr = (amount: number) => {
+    if (!amount) return "0";
+    return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(amount);
   };
 
   const handlePrint = () => {
     if (selectedPOs.length === 0) {
-      alert("Silakan centang minimal 1 form PO terlebih dahulu (maksimal 3 PO).");
+      alert("Silakan centang minimal 1 form PO pada tabel terlebih dahulu (maksimal 3 PO).");
       return;
     }
     window.print();
@@ -62,7 +59,7 @@ export default function POListClient({
 
   return (
     <div className="space-y-6">
-      {/* Embedded CSS Print Styling Khusus Replika Excel PO (Maks 3 per Halaman) */}
+      {/* Embedded CSS Print Styling Khusus Susunan Hemat Kertas (Maks 3 PO per Halaman Fisik) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
@@ -84,7 +81,7 @@ export default function POListClient({
           .no-print {
             display: none !important;
           }
-          .excel-po-form {
+          .compact-po-form {
             height: 31.5vh !important;
             max-height: 32vh !important;
             box-sizing: border-box;
@@ -92,9 +89,9 @@ export default function POListClient({
             padding: 4px 0 !important;
             margin-bottom: 6px !important;
             overflow: hidden;
-            font-family: "Calibri", Arial, sans-serif !important;
+            font-family: Arial, Helvetica, sans-serif !important;
             color: #000 !important;
-            line-height: 1.1 !important;
+            line-height: 1.15 !important;
           }
           @page {
             size: A4 portrait;
@@ -120,7 +117,7 @@ export default function POListClient({
                 ? "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-95" 
                 : "bg-surface border border-border text-text-muted cursor-not-allowed opacity-50"
             }`}
-            title="Cetak formulir Excel hingga 3 PO sekaligus dalam 1 lembar kertas"
+            title="Cetak susunan hemat kertas hingga 3 PO sekaligus dalam 1 lembar fisik"
           >
             <Printer className="w-5 h-5" />
             <span>Cetak Form PO Terpilih ({selectedPOs.length}/3)</span>
@@ -146,21 +143,28 @@ export default function POListClient({
         ))}
       </div>
 
-      {/* Peringatan & Info Pilihan Cetak */}
-      {selectedIds.length > 0 && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between animate-in fade-in duration-200 no-print">
-          <div className="flex items-center gap-2.5 text-amber-500 text-xs font-bold">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>Terpilih: {selectedIds.length} Form PO. Dokumen asli akan dicetak bersusun dengan layout Spreadsheet Excel (Maksimal 3 form per halaman kertas fisik).</span>
+      {/* Banner Edukasi Hemat Kertas Terintegrasi */}
+      <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200 no-print">
+        <div className="flex items-center gap-3 text-blue-500 text-xs font-bold">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <div>
+            <span>💡 <strong>Hemat Kertas:</strong> Centang hingga 3 dokumen PO pada tabel di bawah untuk mencetaknya bersusun secara padat ke dalam 1 lembar kertas fisik yang sama!</span>
+            {selectedIds.length > 0 && (
+              <span className="block mt-0.5 text-amber-500 font-black">
+                Terpilih saat ini: {selectedIds.length} dari maksimal 3 PO per lembar cetak.
+              </span>
+            )}
           </div>
+        </div>
+        {selectedIds.length > 0 && (
           <button 
             onClick={() => setSelectedIds([])}
-            className="text-[10px] bg-background hover:bg-surface text-text-muted px-2 py-1 rounded border border-border font-bold uppercase tracking-wider"
+            className="text-[10px] bg-background hover:bg-surface text-text-muted px-2.5 py-1.5 rounded border border-border font-bold uppercase tracking-wider shrink-0"
           >
             Reset Pilihan
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Table Container */}
       <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden no-print">
@@ -252,7 +256,7 @@ export default function POListClient({
                           <span className="text-xs">{po.department || "-"}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-right">Rp {formatExcelCurr(po.total_amount)}</td>
+                      <td className="px-6 py-4 font-bold text-right">Rp. {formatSimpleCurr(po.total_amount)}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-tighter ${
                           po.status === 'Draft' ? 'bg-surface text-text-muted border-border' :
@@ -293,186 +297,129 @@ export default function POListClient({
         </div>
       </div>
 
-      {/* WADAH REPLIKA SPREADSHEET EXCEL (HANYA MUNCUL SAAT PENCETAKAN FISIK) */}
+      {/* WADAH CETAK SUSUNAN HEMAT KERTAS (REPLIKA IDENTIK SCREENSHOT) */}
       <div id="printable-multi-po" className="hidden">
-        {selectedPOs.map((po, poIdx) => {
+        {selectedPOs.map((po) => {
           const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
           const discountTotal = po.discount_amount || 0;
-          const reqBy = po.requested_by || "FIKRI";
-          const dept = po.department || "KENPARK";
-          const supplierName = po.supplier_name || po.suppliers?.name || "SHOPEE";
+          const reqBy = po.requested_by || "fikri";
+          const dept = po.department || "bay arena";
+          const supplierName = po.supplier_name || po.suppliers?.name || "TRILOGI";
           const dateStr = new Date(po.created_at).toLocaleDateString("id-ID", {
-            day: '2-digit',
-            month: '2-digit',
+            day: 'numeric',
+            month: 'numeric',
             year: 'numeric'
           });
 
           return (
-            <div key={po.id} className="excel-po-form">
-              {/* JUDUL */}
-              <div className="text-[11px] font-bold text-black mb-1">Purchasing Order</div>
+            <div key={po.id} className="compact-po-form">
+              {/* JUDUL IDENTIK */}
+              <div className="text-[12px] font-black text-black mb-2 tracking-wide">PURCHASING ORDER</div>
 
-              {/* KOP METADATA EXCEL (Baris 2 & 3) */}
-              <div className="flex justify-between text-[7.5px] text-black mb-1.5">
+              {/* KOP METADATA TANPA BORDER BAWAH */}
+              <div className="flex justify-between text-[8px] text-black mb-2">
                 {/* Bagian Kiri */}
-                <div className="w-[45%] space-y-0.5">
-                  <div className="flex items-end">
+                <div className="w-[45%] space-y-1">
+                  <div className="flex">
                     <span className="w-16 inline-block font-normal">Request by</span>
-                    <span className="w-2">:</span>
-                    <span className="flex-1 border-b border-dashed border-black pb-0.5 font-bold tracking-wide">
-                      {reqBy}
-                    </span>
+                    <span className="w-3">:</span>
+                    <span className="flex-1 font-medium">{reqBy}</span>
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex">
                     <span className="w-16 inline-block font-normal">Departement</span>
-                    <span className="w-2">:</span>
-                    <span className="flex-1 border-b border-dashed border-black pb-0.5 font-bold tracking-wide">
-                      {dept}
-                    </span>
+                    <span className="w-3">:</span>
+                    <span className="flex-1 font-medium">{dept}</span>
                   </div>
                 </div>
 
                 {/* Bagian Kanan */}
-                <div className="w-[45%] space-y-0.5">
-                  <div className="flex items-end">
+                <div className="w-[45%] space-y-1">
+                  <div className="flex">
                     <span className="w-16 inline-block font-normal">Date Number</span>
-                    <span className="w-2">:</span>
-                    <span className="flex-1 border-b border-dashed border-black pb-0.5 font-bold font-mono">
-                      {dateStr}
-                    </span>
+                    <span className="w-3">:</span>
+                    <span className="flex-1 font-medium">{dateStr}</span>
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex">
                     <span className="w-16 inline-block font-normal">Supplier</span>
-                    <span className="w-2">:</span>
-                    <span className="flex-1 border-b border-dashed border-black pb-0.5 font-bold tracking-wide">
-                      {supplierName}
-                    </span>
+                    <span className="w-3">:</span>
+                    <span className="flex-1 font-medium">{supplierName}</span>
                   </div>
                 </div>
               </div>
 
-              {/* TABEL GRID ITEM & SUBTOTAL EXCEL */}
-              <table className="w-full text-[7.5px] text-black border-collapse border border-black mb-1">
+              {/* TABEL GRID BERSUSUN HEMAT SPACE */}
+              <table className="w-full text-[8px] text-black border-collapse border border-black mb-1.5">
                 <thead>
                   <tr className="border-b border-black font-bold text-left bg-white">
-                    <th className="p-0.5 border-r border-black w-6 text-center font-bold">No.</th>
-                    <th className="p-0.5 border-r border-black font-bold">Description</th>
-                    <th className="p-0.5 border-r border-black w-10 text-center font-bold">Unit</th>
-                    <th className="p-0.5 border-r border-black w-8 text-center font-bold">Qty</th>
-                    <th className="p-0.5 border-r border-black w-20 text-left font-bold">Unit Price</th>
-                    <th className="p-0.5 w-20 text-left font-bold">Amount</th>
+                    <th className="p-1 border-r border-black w-8 text-center font-bold">No.</th>
+                    <th className="p-1 border-r border-black font-bold">Description</th>
+                    <th className="p-1 border-r border-black w-12 text-center font-bold">Unit</th>
+                    <th className="p-1 border-r border-black w-10 text-center font-bold">Qty</th>
+                    <th className="p-1 border-r border-black w-24 text-left font-bold">Unit Price</th>
+                    <th className="p-1 w-24 text-left font-bold">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black font-normal">
-                  {/* TEPAT 5 BARIS TETAP UNTUK MENJAGA KONSISTENSI GRID EXCEL */}
-                  {[0, 1, 2, 3, 4].map((rIdx) => {
-                    const it = po.items?.[rIdx];
-                    if (it) {
+                  {po.items && po.items.length > 0 ? (
+                    po.items.map((it: any, idx: number) => {
                       const name = it.item_id ? it.items?.name : it.custom_item_name;
                       const desc = it.item_id ? it.items?.description : "";
                       const fullDesc = desc ? `${name} (${desc})` : name;
                       const amt = it.quantity * it.unit_price;
 
                       return (
-                        <tr key={rIdx} className="border-b border-black">
-                          <td className="p-0.5 border-r border-black text-center">{rIdx + 1}</td>
-                          <td className="p-0.5 border-r border-black truncate max-w-[150px]">{fullDesc || "-"}</td>
-                          <td className="p-0.5 border-r border-black text-center">{it.unit || "PCS"}</td>
-                          <td className="p-0.5 border-r border-black text-center">{it.quantity}</td>
-                          <td className="p-0.5 border-r border-black font-mono">
-                            <div className="flex justify-between">
-                              <span>Rp</span>
-                              <span>{formatExcelCurr(it.unit_price)}</span>
-                            </div>
-                          </td>
-                          <td className="p-0.5 font-mono">
-                            <div className="flex justify-between">
-                              <span>Rp</span>
-                              <span>{formatExcelCurr(amt)}</span>
-                            </div>
-                          </td>
+                        <tr key={idx} className="border-b border-black">
+                          <td className="p-1 border-r border-black text-center">{idx + 1}</td>
+                          <td className="p-1 border-r border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
+                          <td className="p-1 border-r border-black text-center">{it.unit || "PCS"}</td>
+                          <td className="p-1 border-r border-black text-center">{it.quantity}</td>
+                          <td className="p-1 border-r border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
+                          <td className="p-1 font-medium">Rp. {formatSimpleCurr(amt)}</td>
                         </tr>
                       );
-                    } else {
-                      // Baris kosong bergaris pembatas persis sel spreadsheet
-                      return (
-                        <tr key={rIdx} className="border-b border-black">
-                          <td className="p-0.5 border-r border-black text-center text-transparent">{rIdx + 1}</td>
-                          <td className="p-0.5 border-r border-black"></td>
-                          <td className="p-0.5 border-r border-black"></td>
-                          <td className="p-0.5 border-r border-black"></td>
-                          <td className="p-0.5 border-r border-black"></td>
-                          <td className="p-0.5"></td>
-                        </tr>
-                      );
-                    }
-                  })}
+                    })
+                  ) : (
+                    <tr className="border-b border-black">
+                      <td className="p-1 border-r border-black text-center">1</td>
+                      <td className="p-1 border-r border-black italic">Paket Inventaris Sarana</td>
+                      <td className="p-1 border-r border-black text-center">PCS</td>
+                      <td className="p-1 border-r border-black text-center">1</td>
+                      <td className="p-1 border-r border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                      <td className="p-1 font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                    </tr>
+                  )}
 
-                  {/* KELOMPOK SUBTOTAL EXCEL (Kolom Kiri Kosong Tanpa Border, Kolom Kanan Bergaris) */}
+                  {/* KELOMPOK SUBTOTAL SUSUNAN IDENTIK SCREENSHOT */}
                   <tr>
                     <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-0.5 border border-black text-right font-bold uppercase">
-                      Potongan Voucher :
-                    </td>
-                    <td className="p-0.5 border border-black font-mono">
-                      <div className="flex justify-between">
-                        <span>Rp</span>
-                        <span>{formatExcelCurr(discountTotal)}</span>
-                      </div>
-                    </td>
+                    <td className="p-1 border border-black text-right font-medium">Voucher :</td>
+                    <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
                   </tr>
                   <tr>
                     <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-0.5 border border-black text-right font-bold uppercase">
-                      Ongkos Kirim :
-                    </td>
-                    <td className="p-0.5 border border-black font-mono">
-                      <div className="flex justify-between">
-                        <span>Rp</span>
-                        <span>{formatExcelCurr(adminFeeTotal)}</span>
-                      </div>
-                    </td>
+                    <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
+                    <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
                   </tr>
                   <tr>
                     <td colSpan={4} className="border-none p-0"></td>
-                    <td className="p-0.5 border border-black text-right font-bold uppercase">
-                      Total :
-                    </td>
-                    <td className="p-0.5 border border-black font-mono font-bold">
-                      <div className="flex justify-between">
-                        <span>Rp</span>
-                        <span>{formatExcelCurr(po.total_amount)}</span>
-                      </div>
-                    </td>
+                    <td className="p-1 border border-black text-right font-bold">Total :</td>
+                    <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* REMARKS BOX PEKAT DENGAN KELILING BORDER */}
-              <div className="border border-black p-1 text-[7.5px] text-black mb-1 text-left line-clamp-1">
-                <span className="font-bold">Remarks : </span>
-                <span className="uppercase">{po.notes || "KEPERLUAN SARANA FIBER OPTIC & PERALATAN INFRASTRUKTUR"}</span>
+              {/* KOTAK CATATAN (NOTES) FULL BORDER */}
+              <div className="border border-black p-1.5 text-[8px] text-black mb-3 text-left">
+                {po.notes || "buat perbaikan"}
               </div>
 
-              {/* TABEL TANDA TANGAN (SIGNATURES) 4 KOLOM BERKOTAK BORDER */}
-              <table className="w-full text-[7px] text-black border-collapse border border-black">
-                <tbody>
-                  <tr>
-                    <td className="border-r border-black p-0.5 text-left align-top w-1/4 h-8">
-                      <span className="font-bold block">Request by :</span>
-                    </td>
-                    <td className="border-r border-black p-0.5 text-left align-top w-1/4 h-8">
-                      <span className="font-bold block">Created by :</span>
-                    </td>
-                    <td className="border-r border-black p-0.5 text-left align-top w-1/4 h-8">
-                      <span className="font-bold block">Cheked by :</span>
-                    </td>
-                    <td className="p-0.5 text-left align-top w-1/4 h-8">
-                      <span className="font-bold block">Approve by :</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              {/* TANDA TANGAN (SIGNATURES) SEJAJAR TANPA BORDER */}
+              <div className="grid grid-cols-4 text-center text-[8px] text-black pt-1">
+                <span className="font-medium">Request By :</span>
+                <span className="font-medium">Created By :</span>
+                <span className="font-medium">Cheked By :</span>
+                <span className="font-medium">Approve By :</span>
+              </div>
             </div>
           );
         })}
