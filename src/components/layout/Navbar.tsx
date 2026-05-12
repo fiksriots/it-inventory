@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, LogOut, User, Plus, PackagePlus, ShoppingCart, Activity, ArrowLeftRight, Tags, Calendar, Settings, ChevronDown, PanelLeftOpen, PanelLeftClose, AlertCircle } from "lucide-react";
+import { Bell, Menu, LogOut, User, Plus, PackagePlus, ShoppingCart, Activity, ArrowLeftRight, Tags, Calendar, Settings, ChevronDown, PanelLeftOpen, PanelLeftClose, AlertCircle, Wrench, Clock, Monitor, Cctv, ShieldAlert } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { logout } from "@/app/login/actions";
 import { useTransition, useState, useEffect } from "react";
@@ -13,15 +13,18 @@ interface NavbarProps {
   userProfile?: any;
   lowStockCount?: number;
   lowStockItems?: any[];
+  maintenanceCount?: number;
+  maintenanceAlerts?: any[];
   isSidebarOpen?: boolean;
 }
 
-export default function Navbar({ onMenuClick, user, userProfile, lowStockCount = 0, lowStockItems = [], isSidebarOpen }: NavbarProps) {
+export default function Navbar({ onMenuClick, user, userProfile, lowStockCount = 0, lowStockItems = [], maintenanceCount = 0, maintenanceAlerts = [], isSidebarOpen }: NavbarProps) {
   const [isPending, startTransition] = useTransition();
   const [time, setTime] = useState(new Date());
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -187,6 +190,110 @@ export default function Navbar({ onMenuClick, user, userProfile, lowStockCount =
                   >
                     Lihat Semua Inventaris
                   </Link>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Maintenance & Warranty Notifications Bell */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsMaintenanceOpen(!isMaintenanceOpen)}
+              className="relative p-2 text-text-muted hover:text-amber-500 hover:bg-background rounded-full transition-colors group"
+              title="Pusat Peringatan Maintenance & Garansi"
+            >
+              <Wrench className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+              {maintenanceCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white border-2 border-surface animate-pulse">
+                  {maintenanceCount > 99 ? "99+" : maintenanceCount}
+                </span>
+              )}
+            </button>
+
+            {isMaintenanceOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsMaintenanceOpen(false)} />
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-surface border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-3 border-b border-border bg-amber-500/5 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-amber-600 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Jadwal Perawatan & Garansi
+                    </h3>
+                    <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-black">
+                      {maintenanceCount} ASET
+                    </span>
+                  </div>
+                  
+                  <div className="max-h-96 overflow-y-auto divide-y divide-border">
+                    {maintenanceAlerts.length > 0 ? (
+                      maintenanceAlerts.map((item, idx) => {
+                        const href = item.type.startsWith("infra") ? `/infrastructure/${item.id}` : `/computers/${item.id}`;
+                        const labelType = item.type.includes("warranty") ? "Kadaluarsa Garansi" : "Tenggat Maintenance";
+                        
+                        return (
+                          <Link
+                            key={idx}
+                            href={href}
+                            onClick={() => setIsMaintenanceOpen(false)}
+                            className="flex items-start justify-between p-3 hover:bg-background transition-colors group"
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                                item.category === 'Komputer' ? 'bg-blue-500/10 text-blue-500' : 'bg-primary/10 text-primary'
+                              }`}>
+                                {item.category === 'Komputer' ? <Monitor className="w-4 h-4" /> : <Cctv className="w-4 h-4" />}
+                              </div>
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                                    {item.name}
+                                  </span>
+                                  <span className="text-[9px] font-mono font-bold bg-background px-1.5 py-0.5 rounded text-text-muted border border-border">
+                                    {item.code}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-text-muted">
+                                  {labelType}: <strong className="text-foreground">{new Date(item.date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {item.isOverdue ? (
+                              <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 text-[9px] font-black uppercase shrink-0 mt-0.5">
+                                Terlewat
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[9px] font-black uppercase shrink-0 mt-0.5">
+                                Mendekati
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })
+                    ) : (
+                      <div className="p-8 text-center">
+                        <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm text-text-muted">Seluruh jadwal perawatan dan garansi aset berstatus aman.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 bg-background border-t border-border text-center text-xs font-bold divide-x divide-border">
+                    <Link
+                      href="/computers"
+                      onClick={() => setIsMaintenanceOpen(false)}
+                      className="py-2.5 text-blue-500 hover:bg-surface transition-colors block"
+                    >
+                      Data Komputer
+                    </Link>
+                    <Link
+                      href="/infrastructure"
+                      onClick={() => setIsMaintenanceOpen(false)}
+                      className="py-2.5 text-primary hover:bg-surface transition-colors block"
+                    >
+                      Infrastruktur & Fasilitas
+                    </Link>
+                  </div>
                 </div>
               </>
             )}

@@ -7,12 +7,14 @@ import type { User } from "@supabase/supabase-js";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { Breadcrumbs } from "./Breadcrumbs";
 
-export function ClientLayout({ children, user, userProfile, lowStockCount = 0, lowStockItems = [] }: { 
+export function ClientLayout({ children, user, userProfile, lowStockCount = 0, lowStockItems = [], maintenanceCount = 0, maintenanceAlerts = [] }: { 
   children: React.ReactNode; 
   user?: User | null, 
   userProfile?: any,
   lowStockCount?: number,
-  lowStockItems?: any[]
+  lowStockItems?: any[],
+  maintenanceCount?: number,
+  maintenanceAlerts?: any[]
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false); // Default closed for desktop as requested
   const [isHovered, setIsHovered] = React.useState(false);
@@ -60,6 +62,8 @@ export function ClientLayout({ children, user, userProfile, lowStockCount = 0, l
             userProfile={userProfile}
             lowStockCount={lowStockCount} 
             lowStockItems={lowStockItems}
+            maintenanceCount={maintenanceCount}
+            maintenanceAlerts={maintenanceAlerts}
             isSidebarOpen={isOpen}
           />
           <main className="flex-1 p-4 sm:p-6 overflow-auto">

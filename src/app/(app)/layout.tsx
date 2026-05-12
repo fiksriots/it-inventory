@@ -29,7 +29,7 @@ export default async function AppLayout({
     userProfile = profile;
   }
 
-  const { lowStockCount, lowStockItems } = await getNavbarStats();
+  const { lowStockCount, lowStockItems, maintenanceCount, maintenanceAlerts } = await getNavbarStats();
 
   // Jika belum login, arahkan ke halaman login
   if (!user) {
@@ -42,6 +42,8 @@ export default async function AppLayout({
       userProfile={userProfile}
       lowStockCount={lowStockCount} 
       lowStockItems={lowStockItems}
+      maintenanceCount={maintenanceCount}
+      maintenanceAlerts={maintenanceAlerts}
     >
       {children}
     </ClientLayout>
