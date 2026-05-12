@@ -40,6 +40,9 @@ export default function ReportsClient({
     locations.length > 0 ? locations[0].id : ""
   );
 
+  // State Filter Perangkat / Jenis Aset (Hanya aktif saat tab Lokasi dipilih)
+  const [deviceFilter, setDeviceFilter] = useState<string>("Semua");
+
   // State Filter Tanggal PO (Default: Awal bulan ini sampai hari ini)
   const todayStr = new Date().toISOString().split('T')[0];
   const firstDayOfMonth = new Date();
@@ -149,42 +152,63 @@ export default function ReportsClient({
     return list;
   }, [items, computers, infrastructureAssets]);
 
-  // 4. DATA BARANG DI LOKASI TERTENTU
+  // 4. DATA BARANG DI LOKASI TERTENTU (DENGAN FILTER JENIS PERANGKAT)
   const locationReportData = useMemo(() => {
-    if (!selectedLocationId) return { items: [], computers: [], infra: [], locName: "" };
+    if (!selectedLocationId) return { items: [], computers: [], infra: [], locName: "", deviceFilter };
     
     const targetLoc = locations.find(l => l.id === selectedLocationId);
     const locName = targetLoc ? targetLoc.name : "";
 
     // Items di lokasi
     const locItems: any[] = [];
-    items.forEach(item => {
-      const stocksInLoc = item.item_stocks?.filter((s: any) => s.location_id === selectedLocationId) || [];
-      const qty = stocksInLoc.reduce((acc: number, curr: any) => acc + curr.quantity, 0);
-      if (qty > 0) {
-        locItems.push({
-          sku: item.sku || "-",
-          name: item.name,
-          category: item.categories?.name || "-",
-          quantity: qty,
-          unit: item.unit || "PCS"
-        });
-      }
-    });
+    if (deviceFilter === "Semua" || deviceFilter === "Barang") {
+      items.forEach(item => {
+        const stocksInLoc = item.item_stocks?.filter((s: any) => s.location_id === selectedLocationId) || [];
+        const qty = stocksInLoc.reduce((acc: number, curr: any) => acc + curr.quantity, 0);
+        if (qty > 0) {
+          locItems.push({
+            sku: item.sku || "-",
+            name: item.name,
+            category: item.categories?.name || "-",
+            quantity: qty,
+            unit: item.unit || "PCS"
+          });
+        }
+      });
+    }
 
     // Komputer di lokasi
-    const locPcs = computers.filter(pc => pc.location_id === selectedLocationId);
+    let locPcs: any[] = [];
+    if (deviceFilter === "Semua" || deviceFilter === "PC") {
+      locPcs = computers.filter(pc => pc.location_id === selectedLocationId);
+    }
     
     // Infra di lokasi
-    const locInfra = infrastructureAssets.filter(inf => inf.location_id === selectedLocationId);
+    let locInfra: any[] = [];
+    if (deviceFilter === "Semua" || !["Semua", "Barang", "PC"].includes(deviceFilter)) {
+      locInfra = infrastructureAssets.filter(inf => inf.location_id === selectedLocationId);
+      
+      if (deviceFilter === "Gate") {
+        locInfra = locInfra.filter(inf => inf.category?.toLowerCase().includes("gate"));
+      } else if (deviceFilter === "CCTV") {
+        locInfra = locInfra.filter(inf => inf.category?.toLowerCase().includes("cctv"));
+      } else if (deviceFilter === "DVR") {
+        locInfra = locInfra.filter(inf => inf.category?.toLowerCase().includes("dvr"));
+      } else if (deviceFilter === "AC") {
+        locInfra = locInfra.filter(inf => inf.category?.toLowerCase().includes("ac") || inf.category?.toLowerCase().includes("pendingin"));
+      } else if (deviceFilter === "Lainnya") {
+        locInfra = locInfra.filter(inf => inf.category?.toLowerCase().includes("lainnya"));
+      }
+    }
 
     return {
       items: locItems,
       computers: locPcs,
       infra: locInfra,
-      locName
+      locName,
+      deviceFilter
     };
-  }, [selectedLocationId, locations, items, computers, infrastructureAssets]);
+  }, [selectedLocationId, deviceFilter, locations, items, computers, infrastructureAssets]);
 
   // 5. DATA MAINTENANCE PC
   const pcReportData = useMemo(() => {
@@ -328,20 +352,43 @@ export default function ReportsClient({
       {/* Kontrol Tambahan Berdasarkan Tab Aktif */}
       <div className="no-print">
         {activeTab === "lokasi" && (
-          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
-              <Building2 className="w-4 h-4" />
-              <span>Pilih Lokasi / Departemen:</span>
+          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col md:flex-row items-start md:items-center gap-4 animate-in fade-in duration-200 justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+                <Building2 className="w-4 h-4" />
+                <span>Lokasi:</span>
+              </div>
+              <select
+                value={selectedLocationId}
+                onChange={(e) => setSelectedLocationId(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium w-full sm:w-56 focus:outline-none focus:border-primary"
+              >
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
             </div>
-            <select
-              value={selectedLocationId}
-              onChange={(e) => setSelectedLocationId(e.target.value)}
-              className="bg-background border border-border rounded-lg px-3 py-2 text-sm font-medium w-full sm:w-72 focus:outline-none focus:border-primary"
-            >
-              {locations.map(loc => (
-                <option key={loc.id} value={loc.id}>{loc.name}</option>
-              ))}
-            </select>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-border">
+              <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+                <Wrench className="w-4 h-4" />
+                <span>Filter Jenis Perangkat:</span>
+              </div>
+              <select
+                value={deviceFilter}
+                onChange={(e) => setDeviceFilter(e.target.value)}
+                className="bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium w-full sm:w-56 focus:outline-none focus:border-primary text-amber-500 font-bold"
+              >
+                <option value="Semua">Semua Aset & Barang</option>
+                <option value="Barang">📦 Stok Barang Gudang</option>
+                <option value="PC">💻 Komputer & PC</option>
+                <option value="Gate">🚧 Portal / Gate</option>
+                <option value="CCTV">📹 Fasilitas CCTV</option>
+                <option value="DVR">📼 Perangkat DVR</option>
+                <option value="AC">❄️ AC / Pendingin</option>
+                <option value="Lainnya">🔧 Fasilitas Lainnya</option>
+              </select>
+            </div>
           </div>
         )}
 
@@ -489,97 +536,103 @@ export default function ReportsClient({
           {activeTab === "lokasi" && (
             <div className="space-y-6">
               {/* Rincian Items */}
-              <div>
-                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
-                  📦 Rincian Stok Barang Gudang
-                </h4>
-                {locationReportData.items.length > 0 ? (
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
-                      <tr>
-                        <th className="p-2">SKU</th>
-                        <th className="p-2">Nama Barang</th>
-                        <th className="p-2">Kategori</th>
-                        <th className="p-2 text-center">Kuantitas</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {locationReportData.items.map((it, i) => (
-                        <tr key={i}>
-                          <td className="p-2 font-mono">{it.sku}</td>
-                          <td className="p-2 font-medium">{it.name}</td>
-                          <td className="p-2 text-text-muted">{it.category}</td>
-                          <td className="p-2 text-center font-bold text-primary">{it.quantity} {it.unit}</td>
+              {(deviceFilter === "Semua" || deviceFilter === "Barang") && (
+                <div>
+                  <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                    📦 Rincian Stok Barang Gudang
+                  </h4>
+                  {locationReportData.items.length > 0 ? (
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                        <tr>
+                          <th className="p-2">SKU</th>
+                          <th className="p-2">Nama Barang</th>
+                          <th className="p-2">Kategori</th>
+                          <th className="p-2 text-center">Kuantitas</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="text-xs text-text-muted italic px-2">Tidak ada barang inventaris di lokasi ini.</p>
-                )}
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {locationReportData.items.map((it, i) => (
+                          <tr key={i}>
+                            <td className="p-2 font-mono">{it.sku}</td>
+                            <td className="p-2 font-medium">{it.name}</td>
+                            <td className="p-2 text-text-muted">{it.category}</td>
+                            <td className="p-2 text-center font-bold text-primary">{it.quantity} {it.unit}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-xs text-text-muted italic px-2">Tidak ada barang inventaris di lokasi ini.</p>
+                  )}
+                </div>
+              )}
 
               {/* Rincian Komputer */}
-              <div>
-                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
-                  💻 Perangkat Komputer & PC
-                </h4>
-                {locationReportData.computers.length > 0 ? (
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
-                      <tr>
-                        <th className="p-2">No. Aset</th>
-                        <th className="p-2">Nama Komputer</th>
-                        <th className="p-2">Pengguna</th>
-                        <th className="p-2">IP Address</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {locationReportData.computers.map((pc, i) => (
-                        <tr key={i}>
-                          <td className="p-2 font-mono">{pc.asset_number}</td>
-                          <td className="p-2 font-medium">{pc.name}</td>
-                          <td className="p-2 text-text-muted">{pc.user_assigned || "-"}</td>
-                          <td className="p-2 font-mono text-text-muted">{pc.ip_address || "-"}</td>
+              {(deviceFilter === "Semua" || deviceFilter === "PC") && (
+                <div>
+                  <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                    💻 Perangkat Komputer & PC
+                  </h4>
+                  {locationReportData.computers.length > 0 ? (
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                        <tr>
+                          <th className="p-2">No. Aset</th>
+                          <th className="p-2">Nama Komputer</th>
+                          <th className="p-2">Pengguna</th>
+                          <th className="p-2">IP Address</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="text-xs text-text-muted italic px-2">Tidak ada unit komputer di lokasi ini.</p>
-                )}
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {locationReportData.computers.map((pc, i) => (
+                          <tr key={i}>
+                            <td className="p-2 font-mono">{pc.asset_number}</td>
+                            <td className="p-2 font-medium">{pc.name}</td>
+                            <td className="p-2 text-text-muted">{pc.user_assigned || "-"}</td>
+                            <td className="p-2 font-mono text-text-muted">{pc.ip_address || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-xs text-text-muted italic px-2">Tidak ada unit komputer di lokasi ini.</p>
+                  )}
+                </div>
+              )}
 
               {/* Rincian Infrastruktur */}
-              <div>
-                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
-                  🔧 Fasilitas Fisik & Infrastruktur
-                </h4>
-                {locationReportData.infra.length > 0 ? (
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
-                      <tr>
-                        <th className="p-2">No. Aset</th>
-                        <th className="p-2">Nama Fasilitas</th>
-                        <th className="p-2">Kategori</th>
-                        <th className="p-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {locationReportData.infra.map((inf, i) => (
-                        <tr key={i}>
-                          <td className="p-2 font-mono">{inf.asset_number}</td>
-                          <td className="p-2 font-medium">{inf.name}</td>
-                          <td className="p-2 text-text-muted">{inf.category}</td>
-                          <td className="p-2 font-bold text-emerald-500">{inf.status}</td>
+              {(deviceFilter === "Semua" || !["Semua", "Barang", "PC"].includes(deviceFilter)) && (
+                <div>
+                  <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                    🔧 Fasilitas Fisik & Infrastruktur
+                  </h4>
+                  {locationReportData.infra.length > 0 ? (
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                        <tr>
+                          <th className="p-2">No. Aset</th>
+                          <th className="p-2">Nama Fasilitas</th>
+                          <th className="p-2">Kategori</th>
+                          <th className="p-2">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="text-xs text-text-muted italic px-2">Tidak ada fasilitas fisik di lokasi ini.</p>
-                )}
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {locationReportData.infra.map((inf, i) => (
+                          <tr key={i}>
+                            <td className="p-2 font-mono">{inf.asset_number}</td>
+                            <td className="p-2 font-medium">{inf.name}</td>
+                            <td className="p-2 text-text-muted">{inf.category}</td>
+                            <td className="p-2 font-bold text-emerald-500">{inf.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-xs text-text-muted italic px-2">Tidak ada fasilitas fisik di lokasi ini.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -688,7 +741,8 @@ export default function ReportsClient({
 
           {activeTab === "lokasi" && (
             <p style={{ fontSize: "11px", marginTop: "4px", fontWeight: "bold" }}>
-              Cakupan Pemetaan: Departemen / Lokasi {locationReportData.locName || "-"}
+              Cakupan Pemetaan: Departemen / Lokasi {locationReportData.locName || "-"} 
+              {deviceFilter !== "Semua" ? ` | Filter Aset: ${deviceFilter}` : ""}
             </p>
           )}
         </div>
@@ -787,106 +841,112 @@ export default function ReportsClient({
         {activeTab === "lokasi" && (
           <div>
             {/* Tabel Items */}
-            <div style={{ marginBottom: "15px" }}>
-              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
-                A. Daftar Barang Inventaris Gudang
-              </div>
-              <table className="report-table" style={{ marginTop: "2px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: "40px" }}>No.</th>
-                    <th style={{ width: "120px" }}>Kode SKU</th>
-                    <th>Nama Barang</th>
-                    <th style={{ width: "140px" }}>Kategori</th>
-                    <th style={{ width: "100px" }}>Kuantitas Fisik</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locationReportData.items.map((it, idx) => (
-                    <tr key={idx}>
-                      <td className="text-center">{idx + 1}</td>
-                      <td style={{ fontFamily: "monospace" }}>{it.sku}</td>
-                      <td>{it.name}</td>
-                      <td>{it.category}</td>
-                      <td className="text-center" style={{ fontWeight: "bold" }}>{it.quantity} {it.unit}</td>
-                    </tr>
-                  ))}
-                  {locationReportData.items.length === 0 && (
+            {(deviceFilter === "Semua" || deviceFilter === "Barang") && (
+              <div style={{ marginBottom: "15px" }}>
+                <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                  A. Daftar Barang Inventaris Gudang
+                </div>
+                <table className="report-table" style={{ marginTop: "2px" }}>
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil barang terdaftar di lokasi ini.</td>
+                      <th style={{ width: "40px" }}>No.</th>
+                      <th style={{ width: "120px" }}>Kode SKU</th>
+                      <th>Nama Barang</th>
+                      <th style={{ width: "140px" }}>Kategori</th>
+                      <th style={{ width: "100px" }}>Kuantitas Fisik</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {locationReportData.items.map((it, idx) => (
+                      <tr key={idx}>
+                        <td className="text-center">{idx + 1}</td>
+                        <td style={{ fontFamily: "monospace" }}>{it.sku}</td>
+                        <td>{it.name}</td>
+                        <td>{it.category}</td>
+                        <td className="text-center" style={{ fontWeight: "bold" }}>{it.quantity} {it.unit}</td>
+                      </tr>
+                    ))}
+                    {locationReportData.items.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil barang terdaftar di lokasi ini.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Tabel Komputer */}
-            <div style={{ marginBottom: "15px" }}>
-              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
-                B. Unit Perangkat Komputer & PC
-              </div>
-              <table className="report-table" style={{ marginTop: "2px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: "40px" }}>No.</th>
-                    <th style={{ width: "130px" }}>Nomor Aset</th>
-                    <th>Hostname Komputer</th>
-                    <th style={{ width: "140px" }}>Penanggung Jawab</th>
-                    <th style={{ width: "120px" }}>Alamat IP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locationReportData.computers.map((pc, idx) => (
-                    <tr key={idx}>
-                      <td className="text-center">{idx + 1}</td>
-                      <td style={{ fontFamily: "monospace" }}>{pc.asset_number}</td>
-                      <td style={{ fontWeight: "bold" }}>{pc.name}</td>
-                      <td>{pc.user_assigned || "-"}</td>
-                      <td style={{ fontFamily: "monospace" }}>{pc.ip_address || "-"}</td>
-                    </tr>
-                  ))}
-                  {locationReportData.computers.length === 0 && (
+            {(deviceFilter === "Semua" || deviceFilter === "PC") && (
+              <div style={{ marginBottom: "15px" }}>
+                <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                  B. Unit Perangkat Komputer & PC
+                </div>
+                <table className="report-table" style={{ marginTop: "2px" }}>
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil perangkat komputer di lokasi ini.</td>
+                      <th style={{ width: "40px" }}>No.</th>
+                      <th style={{ width: "130px" }}>Nomor Aset</th>
+                      <th>Hostname Komputer</th>
+                      <th style={{ width: "140px" }}>Penanggung Jawab</th>
+                      <th style={{ width: "120px" }}>Alamat IP</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {locationReportData.computers.map((pc, idx) => (
+                      <tr key={idx}>
+                        <td className="text-center">{idx + 1}</td>
+                        <td style={{ fontFamily: "monospace" }}>{pc.asset_number}</td>
+                        <td style={{ fontWeight: "bold" }}>{pc.name}</td>
+                        <td>{pc.user_assigned || "-"}</td>
+                        <td style={{ fontFamily: "monospace" }}>{pc.ip_address || "-"}</td>
+                      </tr>
+                    ))}
+                    {locationReportData.computers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil perangkat komputer di lokasi ini.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Tabel Infrastruktur */}
-            <div style={{ marginBottom: "15px" }}>
-              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
-                C. Sarana Infrastruktur & Fasilitas Fisik
-              </div>
-              <table className="report-table" style={{ marginTop: "2px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: "40px" }}>No.</th>
-                    <th style={{ width: "130px" }}>Nomor Aset</th>
-                    <th>Nama Fasilitas</th>
-                    <th style={{ width: "120px" }}>Kategori</th>
-                    <th style={{ width: "100px" }}>Kondisi/Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locationReportData.infra.map((inf, idx) => (
-                    <tr key={idx}>
-                      <td className="text-center">{idx + 1}</td>
-                      <td style={{ fontFamily: "monospace" }}>{inf.asset_number}</td>
-                      <td style={{ fontWeight: "bold" }}>{inf.name}</td>
-                      <td className="text-center">{inf.category}</td>
-                      <td className="text-center">{inf.status}</td>
-                    </tr>
-                  ))}
-                  {locationReportData.infra.length === 0 && (
+            {(deviceFilter === "Semua" || !["Semua", "Barang", "PC"].includes(deviceFilter)) && (
+              <div style={{ marginBottom: "15px" }}>
+                <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                  C. Sarana Infrastruktur & Fasilitas Fisik
+                </div>
+                <table className="report-table" style={{ marginTop: "2px" }}>
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil fasilitas fisik di lokasi ini.</td>
+                      <th style={{ width: "40px" }}>No.</th>
+                      <th style={{ width: "130px" }}>Nomor Aset</th>
+                      <th>Nama Fasilitas</th>
+                      <th style={{ width: "120px" }}>Kategori</th>
+                      <th style={{ width: "100px" }}>Kondisi/Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {locationReportData.infra.map((inf, idx) => (
+                      <tr key={idx}>
+                        <td className="text-center">{idx + 1}</td>
+                        <td style={{ fontFamily: "monospace" }}>{inf.asset_number}</td>
+                        <td style={{ fontWeight: "bold" }}>{inf.name}</td>
+                        <td className="text-center">{inf.category}</td>
+                        <td className="text-center">{inf.status}</td>
+                      </tr>
+                    ))}
+                    {locationReportData.infra.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil fasilitas fisik di lokasi ini.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
