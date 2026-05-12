@@ -197,3 +197,130 @@ export async function updateNotificationSettings(formData: FormData) {
   return { success: true };
 }
 
+export async function addUserAccount(prevState: any, formData: FormData) {
+  const email = formData.get("email") as string;
+  const fullName = formData.get("full_name") as string;
+  const role = formData.get("role") as string || "Staff";
+  const password = formData.get("password") as string;
+
+  if (!email || !password || !fullName) {
+    return { error: "Email, nama lengkap, dan password wajib diisi." };
+  }
+
+  if (password.length < 6) {
+    return { error: "Password minimal harus 6 karakter." };
+  }
+
+  try {
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+    
+    let userId: string | undefined = undefined;
+
+    if (serviceRoleKey) {
+      // 1. Menggunakan Admin API jika Service Role Key tersedia (Melewati rate-limiting & verifikasi email)
+      console.log("DEBUG: Mendaftarkan user via Supabase Admin API...");
+      const adminClient = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+        serviceRoleKey, 
+        { auth: { persistSession: false, autoRefreshToken: false } }
+      );
+
+      const { data: adminData, error: adminError } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName },
+      });
+
+      if (adminError) {
+        console.error("Admin CreateUser Error:", adminError);
+        return { error: `Gagal mendaftarkan user (Admin API): ${adminError.message}` };
+      }
+      userId = adminData?.user?.id;
+    } else {
+      // 2. Fallback menggunakan Ephemeral Anon Client reguler
+      console.log("DEBUG: Mendaftarkan user via Ephemeral Anon Client...");
+      const ephemeralClient = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+      );
+
+      const { data: authData, error: signUpError } = await ephemeralClient.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } },
+      });
+
+      if (signUpError) {
+        console.error("SignUp Error:", signUpError);
+        return { error: `Gagal mendaftarkan user: ${signUpError.message} (Saran: Tambahkan SUPABASE_SERVICE_ROLE_KEY di .env.local untuk melewati limitasi Supabase)` };
+      }
+      userId = authData?.user?.id;
+    }
+
+    const supabase = await createClient();
+
+    if (userId) {
+      // Pastikan data tersimpan secara mutlak di tabel profiles dengan melakukan UPSERT eksplisit
+      console.log("DEBUG: Melakukan UPSERT ke tabel profiles untuk userId:", userId);
+      const { error: upsertError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          email,
+          full_name: fullName,
+          role,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (upsertError) {
+        console.error("CRITICAL UPSERT PROFILE ERROR:", upsertError);
+        await supabase.from("profiles").update({ role, full_name: fullName }).eq("email", email);
+      }
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await supabase.from("profiles").update({ role, full_name: fullName }).eq("email", email);
+    }
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Add user exception:", err);
+    return { error: `Terjadi kesalahan sistem: ${err.message}` };
+  }
+}
+
+export async function updateUserRole(userId: string, role: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role })
+    .eq("id", userId);
+
+  if (error) {
+    return { error: `Gagal mengubah hak akses: ${error.message}` };
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+export async function deleteUserAccount(userId: string) {
+  const supabase = await createClient();
+  // Coba hapus dari tabel profiles, atau set role menjadi 'Nonaktif' jika terhalang FK logs
+  const { error } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", userId);
+
+  if (error) {
+    // Jika gagal hapus karena referensi log, ubah status/role menjadi Nonaktif
+    await supabase.from("profiles").update({ role: "Nonaktif" }).eq("id", userId);
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+

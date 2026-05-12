@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags } from "lucide-react";
+import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv } from "lucide-react";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -14,6 +14,9 @@ export default function Sidebar({ onClose }: SidebarProps) {
     { icon: Tags, label: "Kategori Barang", href: "/categories" },
     { icon: ArrowRightLeft, label: "Mutasi & Transfer", href: "/transfers" },
     { icon: ShoppingCart, label: "Purchase Orders", href: "/po" },
+    { icon: Wrench, label: "Service Barang", href: "/services" },
+    { icon: Monitor, label: "Data Komputer", href: "/computers" },
+    { icon: Cctv, label: "Infrastruktur & Fasilitas", href: "/infrastructure" },
     { icon: Users, label: "Departemen & Lokasi", href: "/locations" },
     { icon: Users, label: "Supplier", href: "/suppliers" },
     { icon: Settings, label: "Pengaturan", href: "/settings" },

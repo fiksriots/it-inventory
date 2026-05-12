@@ -1,22 +1,74 @@
 "use client";
 
 import { useState } from "react";
-import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings } from "./actions";
+import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff, Users, UserPlus, Trash2 } from "lucide-react";
+import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useRouter } from "next/navigation";
 
 interface SettingsClientProps {
   user: any;
   userProfile?: any;
   company: any;
   logs?: any[];
+  usersList?: any[];
 }
 
-export default function SettingsClient({ user, userProfile, company, logs = [] }: SettingsClientProps) {
+export default function SettingsClient({ user, userProfile, company, logs = [], usersList = [] }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState("profile"); // Switched default to profile since we are working on it
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+
+  const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const result = await addUserAccount(null, formData);
+      if (result?.error) {
+        toast(result.error, "error");
+      } else {
+        toast("Pengguna berhasil didaftarkan!", "success");
+        (e.target as HTMLFormElement).reset();
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast(err.message || "Gagal mendaftarkan pengguna", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      const result = await updateUserRole(userId, newRole);
+      if (result?.error) {
+        toast(result.error, "error");
+      } else {
+        toast("Hak akses berhasil diperbarui!", "success");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast("Gagal memperbarui hak akses", "error");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menonaktifkan/menghapus akses pengguna ${userName}?`)) return;
+    try {
+      const result = await deleteUserAccount(userId);
+      if (result?.error) {
+        toast(result.error, "error");
+      } else {
+        toast("Akses pengguna berhasil diperbarui/dihapus.", "success");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast("Gagal menghapus pengguna", "error");
+    }
+  };
 
   const handleCompanyUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -112,6 +164,7 @@ export default function SettingsClient({ user, userProfile, company, logs = [] }
   const tabs = [
     { id: "profile", label: "Profil Akun", icon: User },
     { id: "company", label: "Informasi Perusahaan", icon: Building2 },
+    { id: "users", label: "Manajemen Pengguna", icon: Users },
     { id: "notifications", label: "Notifikasi", icon: Bell },
     { id: "security", label: "Keamanan", icon: Shield },
   ];
@@ -582,6 +635,154 @@ export default function SettingsClient({ user, userProfile, company, logs = [] }
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "users" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+              <div className="px-8 py-6 border-b border-border flex items-center justify-between bg-gradient-to-r from-primary/5 to-transparent">
+                <div>
+                  <h2 className="text-xl font-black text-foreground">Manajemen Akun & Hak Akses</h2>
+                  <p className="text-sm text-text-muted mt-1">Daftarkan akun staf baru dan kelola tingkatan akses tim inventaris.</p>
+                </div>
+                <div className="p-3 bg-primary/10 rounded-xl text-primary hidden sm:block shadow-inner">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+
+              {/* Form Tambah Pengguna */}
+              <div className="p-8 border-b border-border bg-background/30">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  Registrasi Pengguna Baru
+                </h3>
+
+                <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase">Nama Lengkap</label>
+                    <input 
+                      type="text" 
+                      name="full_name" 
+                      required 
+                      placeholder="Nama lengkap staf..."
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase">Alamat Email</label>
+                    <input 
+                      type="email" 
+                      name="email" 
+                      required 
+                      placeholder="email@perusahaan.com"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase">Tingkat Hak Akses (Role)</label>
+                    <select 
+                      name="role"
+                      defaultValue="Staff"
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none font-bold text-primary"
+                    >
+                      <option value="Administrator">Administrator (Akses Penuh)</option>
+                      <option value="Staff">Staff (Transaksi & Master Data)</option>
+                      <option value="Viewer">Viewer (Hanya Lihat Data)</option>
+                      <option value="Nonaktif">Nonaktif (Akses Diblokir)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-muted uppercase">Password Awal</label>
+                    <input 
+                      type="password" 
+                      name="password" 
+                      required 
+                      placeholder="Minimal 6 karakter..."
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 flex justify-end pt-2">
+                    <button 
+                      type="submit"
+                      disabled={loading}
+                      className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                      Daftarkan Akun
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Daftar Pengguna Aktif */}
+              <div className="p-8">
+                <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest mb-4 flex items-center justify-between">
+                  <span>Daftar Tim Terdaftar ({usersList.length})</span>
+                </h3>
+
+                <div className="border border-border rounded-xl overflow-hidden bg-surface">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-background/80 text-[10px] font-black uppercase tracking-widest text-text-muted border-b border-border">
+                      <tr>
+                        <th className="px-4 py-3">Pengguna</th>
+                        <th className="px-4 py-3 w-48">Hak Akses</th>
+                        <th className="px-4 py-3 w-20 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {usersList.map((usr) => (
+                        <tr key={usr.id} className="hover:bg-background/40 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs overflow-hidden shrink-0">
+                                {usr.avatar_url ? (
+                                  <img src={usr.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  usr.full_name?.charAt(0).toUpperCase() || usr.email?.charAt(0).toUpperCase() || "?"
+                                )}
+                              </div>
+                              <div className="truncate">
+                                <p className="font-bold text-foreground truncate">{usr.full_name || "Tanpa Nama"}</p>
+                                <p className="text-xs text-text-muted truncate">{usr.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select 
+                              value={usr.role || "Staff"}
+                              onChange={(e) => handleRoleChange(usr.id, e.target.value)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border outline-none transition-all cursor-pointer ${
+                                usr.role === 'Administrator' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                usr.role === 'Viewer' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                usr.role === 'Nonaktif' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                'bg-primary/10 text-primary border-primary/20'
+                              }`}
+                            >
+                              <option value="Administrator" className="bg-surface text-foreground">Administrator</option>
+                              <option value="Staff" className="bg-surface text-foreground">Staff</option>
+                              <option value="Viewer" className="bg-surface text-foreground">Viewer</option>
+                              <option value="Nonaktif" className="bg-surface text-rose-500">Nonaktif</option>
+                            </select>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button 
+                              onClick={() => handleDeleteUser(usr.id, usr.full_name || usr.email)}
+                              className="p-1.5 text-text-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
+                              title="Hapus / Nonaktifkan"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

@@ -39,8 +39,15 @@ export default async function SettingsPage() {
     .order("created_at", { ascending: false })
     .limit(10);
 
+  // Ambil daftar seluruh pengguna dari tabel profiles
+  const { data: usersList } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("updated_at", { ascending: false });
+
   // Jika query gagal (misal karena migrasi belum dijalankan), gunakan array kosong
   const safeLogs = logs || [];
+  const safeUsers = usersList || [];
 
   return (
     <div className="space-y-6">
@@ -49,7 +56,7 @@ export default async function SettingsPage() {
         <p className="text-text-muted mt-1">Kelola profil Anda dan konfigurasi sistem inventaris.</p>
       </div>
 
-      <SettingsClient user={user} userProfile={userProfile} company={company} logs={safeLogs} />
+      <SettingsClient user={user} userProfile={userProfile} company={company} logs={safeLogs} usersList={safeUsers} />
     </div>
   );
 }
