@@ -77,6 +77,7 @@ export default function POListClient({
             padding: 0;
             background: white;
             color: black;
+            display: block !important; /* FIX: Paksa tampil menimpa class hidden */
           }
           .no-print {
             display: none !important;
