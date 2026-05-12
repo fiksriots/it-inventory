@@ -292,7 +292,7 @@ export async function addUserAccount(prevState: any, formData: FormData) {
   }
 }
 
-export async function updateUserRole(userId: string, role: string) {
+export async function updateUserRole(userId: string, role: string): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
@@ -307,7 +307,7 @@ export async function updateUserRole(userId: string, role: string) {
   return { success: true };
 }
 
-export async function deleteUserAccount(userId: string) {
+export async function deleteUserAccount(userId: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
   // Coba hapus dari tabel profiles, atau set role menjadi 'Nonaktif' jika terhalang FK logs
   const { error } = await supabase
@@ -317,7 +317,10 @@ export async function deleteUserAccount(userId: string) {
 
   if (error) {
     // Jika gagal hapus karena referensi log, ubah status/role menjadi Nonaktif
-    await supabase.from("profiles").update({ role: "Nonaktif" }).eq("id", userId);
+    const { error: updateError } = await supabase.from("profiles").update({ role: "Nonaktif" }).eq("id", userId);
+    if (updateError) {
+      return { success: false, error: `Gagal menonaktifkan pengguna: ${updateError.message}` };
+    }
   }
 
   revalidatePath("/settings");
