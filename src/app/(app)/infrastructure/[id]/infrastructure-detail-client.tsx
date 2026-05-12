@@ -71,7 +71,7 @@ export default function InfrastructureDetailClient({ asset, locations }: Infrast
 
     try {
       const formData = new FormData(e.currentTarget);
-      await updateInfrastructure(asset.id, formDa
+      await updateInfrastructure(asset.id, formData);
 
       toast("Identitas fasilitas berhasil diperbarui!", "success");
       setIsEditing(false);
