@@ -1,0 +1,997 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { 
+  Printer, 
+  Package, 
+  Wrench, 
+  AlertTriangle, 
+  MapPin, 
+  Monitor, 
+  Calendar, 
+  Search, 
+  FileText,
+  Building2,
+  CheckCircle2,
+  XCircle,
+  Clock
+} from "lucide-react";
+
+interface ReportsClientProps {
+  items: any[];
+  infrastructureAssets: any[];
+  computers: any[];
+  locations: any[];
+  pos: any[];
+}
+
+export default function ReportsClient({
+  items,
+  infrastructureAssets,
+  computers,
+  locations,
+  pos
+}: ReportsClientProps) {
+  // Tab aktif: 'stok' | 'maintenance_infra' | 'rusak' | 'lokasi' | 'pc' | 'po'
+  const [activeTab, setActiveTab] = useState<string>("stok");
+
+  // State Filter Lokasi
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(
+    locations.length > 0 ? locations[0].id : ""
+  );
+
+  // State Filter Tanggal PO (Default: Awal bulan ini sampai hari ini)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const firstDayOfMonth = new Date();
+  firstDayOfMonth.setDate(1);
+  const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
+
+  const [startDate, setStartDate] = useState<string>(firstDayStr);
+  const [endDate, setEndDate] = useState<string>(todayStr);
+
+  // Format Angka Rupiah / Kuantitas
+  const formatNum = (num: number) => {
+    if (!num) return "0";
+    return new Intl.NumberFormat("id-ID").format(num);
+  };
+
+  const formatCurr = (amount: number) => {
+    if (!amount) return "Rp 0";
+    return `Rp ${new Intl.NumberFormat("id-ID").format(amount)}`;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  };
+
+  // 1. DATA STOK BARANG
+  const stockReportData = useMemo(() => {
+    const list: any[] = [];
+    items.forEach(item => {
+      const totalQty = item.item_stocks?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+      const locNames = Array.from(new Set(item.item_stocks?.map((s: any) => s.locations?.name).filter(Boolean))).join(", ");
+      list.push({
+        sku: item.sku || "-",
+        name: item.name,
+        category: item.categories?.name || "-",
+        quantity: totalQty,
+        unit: item.unit || "PCS",
+        locations: locNames || "Gudang Utama"
+      });
+    });
+    return list;
+  }, [items]);
+
+  // 2. DATA MAINTENANCE INFRASTRUKTUR
+  const infraReportData = useMemo(() => {
+    return infrastructureAssets.map(asset => ({
+      asset_number: asset.asset_number,
+      name: asset.name,
+      category: asset.category,
+      location: asset.locations?.name || "-",
+      status: asset.status,
+      last_maintenance: asset.last_maintenance_date,
+      next_maintenance: asset.next_maintenance_date,
+      vendor: asset.vendor_name || "-"
+    }));
+  }, [infrastructureAssets]);
+
+  // 3. DATA BARANG & ASET RUSAK
+  const damagedReportData = useMemo(() => {
+    const list: any[] = [];
+
+    // Dari Item Stocks
+    items.forEach(item => {
+      item.item_stocks?.forEach((st: any) => {
+        if (st.condition?.toLowerCase().includes("rusak")) {
+          list.push({
+            type: "Barang Inventaris",
+            code: item.sku || "-",
+            name: item.name,
+            location: st.locations?.name || "-",
+            detail: `Kondisi: ${st.condition} (${st.quantity} ${item.unit || "PCS"})`
+          });
+        }
+      });
+    });
+
+    // Dari Komputer
+    computers.forEach(pc => {
+      if (pc.status?.toLowerCase().includes("rusak")) {
+        list.push({
+          type: "Unit Komputer",
+          code: pc.asset_number || "-",
+          name: pc.name,
+          location: pc.locations?.name || "-",
+          detail: `Pengguna: ${pc.user_assigned || "-"} | Catatan: ${pc.notes || "Perangkat Rusak"}`
+        });
+      }
+    });
+
+    // Dari Infrastruktur
+    infrastructureAssets.forEach(infra => {
+      if (infra.status?.toLowerCase().includes("rusak")) {
+        list.push({
+          type: "Fasilitas Fisik",
+          code: infra.asset_number || "-",
+          name: infra.name,
+          location: infra.locations?.name || "-",
+          detail: `Kategori: ${infra.category} | Vendor: ${infra.vendor_name || "-"}`
+        });
+      }
+    });
+
+    return list;
+  }, [items, computers, infrastructureAssets]);
+
+  // 4. DATA BARANG DI LOKASI TERTENTU
+  const locationReportData = useMemo(() => {
+    if (!selectedLocationId) return { items: [], computers: [], infra: [], locName: "" };
+    
+    const targetLoc = locations.find(l => l.id === selectedLocationId);
+    const locName = targetLoc ? targetLoc.name : "";
+
+    // Items di lokasi
+    const locItems: any[] = [];
+    items.forEach(item => {
+      const stocksInLoc = item.item_stocks?.filter((s: any) => s.location_id === selectedLocationId) || [];
+      const qty = stocksInLoc.reduce((acc: number, curr: any) => acc + curr.quantity, 0);
+      if (qty > 0) {
+        locItems.push({
+          sku: item.sku || "-",
+          name: item.name,
+          category: item.categories?.name || "-",
+          quantity: qty,
+          unit: item.unit || "PCS"
+        });
+      }
+    });
+
+    // Komputer di lokasi
+    const locPcs = computers.filter(pc => pc.location_id === selectedLocationId);
+    
+    // Infra di lokasi
+    const locInfra = infrastructureAssets.filter(inf => inf.location_id === selectedLocationId);
+
+    return {
+      items: locItems,
+      computers: locPcs,
+      infra: locInfra,
+      locName
+    };
+  }, [selectedLocationId, locations, items, computers, infrastructureAssets]);
+
+  // 5. DATA MAINTENANCE PC
+  const pcReportData = useMemo(() => {
+    return computers.map(pc => ({
+      asset_number: pc.asset_number,
+      name: pc.name,
+      user_assigned: pc.user_assigned || "-",
+      location: pc.locations?.name || "-",
+      ip_address: pc.ip_address || "-",
+      status: pc.status || "Aktif",
+      last_maintenance: pc.last_maintenance_date,
+      next_maintenance: pc.next_maintenance_date
+    }));
+  }, [computers]);
+
+  // 6. DATA PO RENTANG TANGGAL
+  const poReportData = useMemo(() => {
+    return pos.filter(po => {
+      if (!po.created_at) return false;
+      const poDate = po.created_at.split('T')[0];
+      const startOk = startDate ? poDate >= startDate : true;
+      const endOk = endDate ? poDate <= endDate : true;
+      return startOk && endOk;
+    });
+  }, [pos, startDate, endDate]);
+
+  // Memicu Print
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Judul Laporan Dinamis
+  const getReportTitle = () => {
+    switch(activeTab) {
+      case "stok": return "Laporan Daftar Stok Barang Inventaris";
+      case "maintenance_infra": return "Laporan Jadwal Pemeliharaan Infrastruktur & Fasilitas";
+      case "rusak": return "Laporan Rincian Barang & Aset Rusak";
+      case "lokasi": return `Laporan Inventaris Aset Lokasi: ${locationReportData.locName || "-"}`;
+      case "pc": return "Laporan Jadwal Pemeliharaan Unit Komputer & PC";
+      case "po": return "Rekapitulasi Transaksi Purchase Orders (PO)";
+      default: return "Laporan Sistem IT Inventory";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* CSS KHUSUS PENCETAKAN LAPORAN FORMAL (PIXEL PERFECT) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #report-printable-area, #report-printable-area * {
+            visibility: visible;
+          }
+          #report-printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: white;
+            color: black;
+            display: block !important;
+            font-family: "Times New Roman", Times, serif, Arial !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 20px;
+            font-size: 11px !important;
+          }
+          .report-table th, .report-table td {
+            border: 1px solid black !important;
+            padding: 6px 8px !important;
+            text-align: left;
+          }
+          .report-table th {
+            background-color: #f2f2f2 !important;
+            font-weight: bold !important;
+            text-align: center;
+          }
+          .text-center { text-align: center !important; }
+          .text-right { text-align: right !important; }
+          @page {
+            size: A4 portrait;
+            margin: 15mm 12mm;
+          }
+        }
+      `}} />
+
+      {/* Header Dashboard Laporan */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Pusat Laporan & Cetak</h1>
+          <p className="text-text-muted mt-1">Hasilkan rekapitulasi data operasional siap cetak untuk manajemen.</p>
+        </div>
+
+        <button
+          onClick={handlePrint}
+          className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95 shrink-0"
+        >
+          <Printer className="w-5 h-5" />
+          <span>Cetak Laporan Resmi</span>
+        </button>
+      </div>
+
+      {/* Tab Navigasi Pilihan Laporan */}
+      <div className="bg-surface border border-border p-2 rounded-xl flex flex-wrap gap-1.5 no-print">
+        {[
+          { id: "stok", label: "Stok Barang", icon: Package },
+          { id: "maintenance_infra", label: "Maintenance Fasilitas", icon: Wrench },
+          { id: "rusak", label: "Barang Rusak", icon: AlertTriangle },
+          { id: "lokasi", label: "Filter Lokasi", icon: MapPin },
+          { id: "pc", label: "Maintenance PC", icon: Monitor },
+          { id: "po", label: "Rekap Data PO", icon: Calendar }
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs transition-all ${
+                isActive 
+                  ? "bg-primary text-white shadow" 
+                  : "text-text-muted hover:text-foreground hover:bg-background/50"
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Kontrol Tambahan Berdasarkan Tab Aktif */}
+      <div className="no-print">
+        {activeTab === "lokasi" && (
+          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+              <Building2 className="w-4 h-4" />
+              <span>Pilih Lokasi / Departemen:</span>
+            </div>
+            <select
+              value={selectedLocationId}
+              onChange={(e) => setSelectedLocationId(e.target.value)}
+              className="bg-background border border-border rounded-lg px-3 py-2 text-sm font-medium w-full sm:w-72 focus:outline-none focus:border-primary"
+            >
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {activeTab === "po" && (
+          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-in fade-in duration-200 justify-between">
+            <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+              <Calendar className="w-4 h-4" />
+              <span>Filter Rentang Tanggal PO:</span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted">Mulai:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted">Sampai:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pratinjau Langsung (Live Preview) di Layar Monitor */}
+      <div className="bg-surface border border-border rounded-xl p-6 no-print space-y-4">
+        <div className="border-b border-border pb-3 flex justify-between items-center">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-primary">
+            📋 Pratinjau Tampilan Laporan
+          </h3>
+          <span className="text-xs text-text-muted italic">Format kertas A4 Portrait</span>
+        </div>
+
+        {/* Tabel Layar (Screen Table) */}
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+          {activeTab === "stok" && (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
+                <tr>
+                  <th className="p-3">SKU</th>
+                  <th className="p-3">Nama Barang</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3 text-center">Total Stok</th>
+                  <th className="p-3">Lokasi / Distribusi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {stockReportData.map((row, i) => (
+                  <tr key={i} className="hover:bg-background/30">
+                    <td className="p-3 font-mono">{row.sku}</td>
+                    <td className="p-3 font-bold">{row.name}</td>
+                    <td className="p-3 text-text-muted">{row.category}</td>
+                    <td className="p-3 text-center font-bold text-primary">{formatNum(row.quantity)} {row.unit}</td>
+                    <td className="p-3 text-text-muted">{row.locations}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === "maintenance_infra" && (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
+                <tr>
+                  <th className="p-3">No. Aset</th>
+                  <th className="p-3">Nama Fasilitas</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3">Lokasi</th>
+                  <th className="p-3">Jadwal Perawatan</th>
+                  <th className="p-3">Vendor / Penanggung Jawab</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {infraReportData.map((row, i) => (
+                  <tr key={i} className="hover:bg-background/30">
+                    <td className="p-3 font-mono">{row.asset_number}</td>
+                    <td className="p-3 font-bold">{row.name}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-surface border border-border font-medium">
+                        {row.category}
+                      </span>
+                    </td>
+                    <td className="p-3 text-text-muted">{row.location}</td>
+                    <td className="p-3 font-medium text-amber-500">
+                      {formatDate(row.next_maintenance)}
+                    </td>
+                    <td className="p-3 text-text-muted">{row.vendor}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === "rusak" && (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
+                <tr>
+                  <th className="p-3">Kelompok</th>
+                  <th className="p-3">Kode / Referensi</th>
+                  <th className="p-3">Nama Perangkat / Aset</th>
+                  <th className="p-3">Lokasi</th>
+                  <th className="p-3">Keterangan Kerusakan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {damagedReportData.length > 0 ? (
+                  damagedReportData.map((row, i) => (
+                    <tr key={i} className="hover:bg-background/30">
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          row.type === 'Barang Inventaris' ? 'bg-blue-500/10 text-blue-500' :
+                          row.type === 'Unit Komputer' ? 'bg-purple-500/10 text-purple-500' :
+                          'bg-amber-500/10 text-amber-500'
+                        }`}>
+                          {row.type}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono">{row.code}</td>
+                      <td className="p-3 font-bold text-rose-500">{row.name}</td>
+                      <td className="p-3 text-text-muted">{row.location}</td>
+                      <td className="p-3 italic text-text-muted">{row.detail}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-text-muted">
+                      🎉 Luar biasa! Tidak ada catatan barang atau aset fisik yang berstatus rusak saat ini.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === "lokasi" && (
+            <div className="space-y-6">
+              {/* Rincian Items */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                  📦 Rincian Stok Barang Gudang
+                </h4>
+                {locationReportData.items.length > 0 ? (
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                      <tr>
+                        <th className="p-2">SKU</th>
+                        <th className="p-2">Nama Barang</th>
+                        <th className="p-2">Kategori</th>
+                        <th className="p-2 text-center">Kuantitas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {locationReportData.items.map((it, i) => (
+                        <tr key={i}>
+                          <td className="p-2 font-mono">{it.sku}</td>
+                          <td className="p-2 font-medium">{it.name}</td>
+                          <td className="p-2 text-text-muted">{it.category}</td>
+                          <td className="p-2 text-center font-bold text-primary">{it.quantity} {it.unit}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-xs text-text-muted italic px-2">Tidak ada barang inventaris di lokasi ini.</p>
+                )}
+              </div>
+
+              {/* Rincian Komputer */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                  💻 Perangkat Komputer & PC
+                </h4>
+                {locationReportData.computers.length > 0 ? (
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                      <tr>
+                        <th className="p-2">No. Aset</th>
+                        <th className="p-2">Nama Komputer</th>
+                        <th className="p-2">Pengguna</th>
+                        <th className="p-2">IP Address</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {locationReportData.computers.map((pc, i) => (
+                        <tr key={i}>
+                          <td className="p-2 font-mono">{pc.asset_number}</td>
+                          <td className="p-2 font-medium">{pc.name}</td>
+                          <td className="p-2 text-text-muted">{pc.user_assigned || "-"}</td>
+                          <td className="p-2 font-mono text-text-muted">{pc.ip_address || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-xs text-text-muted italic px-2">Tidak ada unit komputer di lokasi ini.</p>
+                )}
+              </div>
+
+              {/* Rincian Infrastruktur */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wide text-text-muted mb-2 bg-background/50 p-2 rounded">
+                  🔧 Fasilitas Fisik & Infrastruktur
+                </h4>
+                {locationReportData.infra.length > 0 ? (
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="border-b border-border text-[10px] text-text-muted font-bold">
+                      <tr>
+                        <th className="p-2">No. Aset</th>
+                        <th className="p-2">Nama Fasilitas</th>
+                        <th className="p-2">Kategori</th>
+                        <th className="p-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {locationReportData.infra.map((inf, i) => (
+                        <tr key={i}>
+                          <td className="p-2 font-mono">{inf.asset_number}</td>
+                          <td className="p-2 font-medium">{inf.name}</td>
+                          <td className="p-2 text-text-muted">{inf.category}</td>
+                          <td className="p-2 font-bold text-emerald-500">{inf.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-xs text-text-muted italic px-2">Tidak ada fasilitas fisik di lokasi ini.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "pc" && (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
+                <tr>
+                  <th className="p-3">No. Aset</th>
+                  <th className="p-3">Nama Hostname</th>
+                  <th className="p-3">Penanggung Jawab</th>
+                  <th className="p-3">Lokasi</th>
+                  <th className="p-3 text-center">Jadwal Perawatan</th>
+                  <th className="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {pcReportData.map((row, i) => (
+                  <tr key={i} className="hover:bg-background/30">
+                    <td className="p-3 font-mono">{row.asset_number}</td>
+                    <td className="p-3 font-bold">{row.name}</td>
+                    <td className="p-3 text-text-muted">{row.user_assigned}</td>
+                    <td className="p-3 text-text-muted">{row.location}</td>
+                    <td className="p-3 text-center font-medium text-amber-500">
+                      {formatDate(row.next_maintenance)}
+                    </td>
+                    <td className="p-3">
+                      <span className="text-emerald-500 font-bold">{row.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {activeTab === "po" && (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
+                <tr>
+                  <th className="p-3">Nomor PO</th>
+                  <th className="p-3">Tanggal</th>
+                  <th className="p-3">Supplier</th>
+                  <th className="p-3">Departemen</th>
+                  <th className="p-3 text-right">Total Transaksi</th>
+                  <th className="p-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {poReportData.length > 0 ? (
+                  poReportData.map((row, i) => (
+                    <tr key={i} className="hover:bg-background/30">
+                      <td className="p-3 font-bold text-primary">{row.po_number}</td>
+                      <td className="p-3 text-text-muted">{formatDate(row.created_at)}</td>
+                      <td className="p-3 font-medium">{row.supplier_name || "-"}</td>
+                      <td className="p-3 text-text-muted">{row.department || "-"}</td>
+                      <td className="p-3 text-right font-mono font-bold">{formatCurr(row.total_amount)}</td>
+                      <td className="p-3 text-center">
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-surface border border-border font-bold">
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-text-muted">
+                      Tidak ada dokumen Purchase Order dalam rentang tanggal yang dipilih.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+
+      {/* ========================================================================= */}
+      {/* AREA CETAK RESMI (HANYA TERLIHAT SAAT PRINTER BEKERJA) */}
+      {/* ========================================================================= */}
+      <div id="report-printable-area" className="hidden print:block">
+        {/* KOP SURAT RESMI */}
+        <div style={{ borderBottom: "2px solid black", paddingBottom: "10px", marginBottom: "15px", textAlign: "center" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>
+            PT. INVENTARIS TEKNOLOGI UTAMA
+          </h2>
+          <p style={{ fontSize: "11px", margin: "3px 0 0 0" }}>
+            Pusat Pengelolaan Manajemen Aset, Sarana Infrastruktur & Fasilitas Komputer
+          </p>
+          <p style={{ fontSize: "10px", fontStyle: "italic", margin: "2px 0 0 0" }}>
+            Dicetak otomatis oleh Sistem IT Inventory pada: {formatDate(new Date().toISOString())}
+          </p>
+        </div>
+
+        {/* JUDUL LAPORAN */}
+        <div style={{ textAlign: "center", marginBottom: "15px" }}>
+          <h3 style={{ fontSize: "14px", fontWeight: "bold", textTransform: "uppercase", margin: 0, textDecoration: "underline" }}>
+            {getReportTitle()}
+          </h3>
+
+          {/* Subtitle Parameter Laporan */}
+          {activeTab === "po" && (
+            <p style={{ fontSize: "11px", marginTop: "4px", fontWeight: "bold" }}>
+              Periode Rentang Tanggal: {formatDate(startDate)} s/d {formatDate(endDate)}
+            </p>
+          )}
+
+          {activeTab === "lokasi" && (
+            <p style={{ fontSize: "11px", marginTop: "4px", fontWeight: "bold" }}>
+              Cakupan Pemetaan: Departemen / Lokasi {locationReportData.locName || "-"}
+            </p>
+          )}
+        </div>
+
+        {/* TABEL DATA FISIK CETAK */}
+        {activeTab === "stok" && (
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th style={{ width: "40px" }}>No.</th>
+                <th style={{ width: "100px" }}>Kode SKU</th>
+                <th>Nama Barang Inventaris</th>
+                <th style={{ width: "120px" }}>Kategori</th>
+                <th style={{ width: "80px" }}>Total Stok</th>
+                <th style={{ width: "140px" }}>Distribusi Lokasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stockReportData.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td style={{ fontFamily: "monospace" }}>{row.sku}</td>
+                  <td style={{ fontWeight: "bold" }}>{row.name}</td>
+                  <td>{row.category}</td>
+                  <td className="text-center" style={{ fontWeight: "bold" }}>{formatNum(row.quantity)} {row.unit}</td>
+                  <td>{row.locations}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === "maintenance_infra" && (
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th style={{ width: "40px" }}>No.</th>
+                <th style={{ width: "110px" }}>Nomor Aset</th>
+                <th>Nama Fasilitas Fisik</th>
+                <th style={{ width: "90px" }}>Kategori</th>
+                <th style={{ width: "110px" }}>Lokasi</th>
+                <th style={{ width: "100px" }}>Jadwal Perawatan</th>
+                <th style={{ width: "120px" }}>Vendor Servis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {infraReportData.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td style={{ fontFamily: "monospace" }}>{row.asset_number}</td>
+                  <td style={{ fontWeight: "bold" }}>{row.name}</td>
+                  <td className="text-center">{row.category}</td>
+                  <td>{row.location}</td>
+                  <td className="text-center" style={{ fontWeight: "bold" }}>{formatDate(row.next_maintenance)}</td>
+                  <td>{row.vendor}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === "rusak" && (
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th style={{ width: "40px" }}>No.</th>
+                <th style={{ width: "120px" }}>Kelompok Aset</th>
+                <th style={{ width: "110px" }}>Kode Referensi</th>
+                <th>Nama Perangkat / Fasilitas Rusak</th>
+                <th style={{ width: "120px" }}>Lokasi Terakhir</th>
+                <th style={{ width: "180px" }}>Keterangan & Indikasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {damagedReportData.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td style={{ fontWeight: "bold" }}>{row.type}</td>
+                  <td style={{ fontFamily: "monospace" }}>{row.code}</td>
+                  <td style={{ fontWeight: "bold" }}>{row.name}</td>
+                  <td>{row.location}</td>
+                  <td style={{ fontStyle: "italic" }}>{row.detail}</td>
+                </tr>
+              ))}
+              {damagedReportData.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center" style={{ padding: "15px !important", fontStyle: "italic" }}>
+                    - Nihil Catatan Kerusakan Sarana maupun Perangkat Komputer -
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === "lokasi" && (
+          <div>
+            {/* Tabel Items */}
+            <div style={{ marginBottom: "15px" }}>
+              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                A. Daftar Barang Inventaris Gudang
+              </div>
+              <table className="report-table" style={{ marginTop: "2px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "40px" }}>No.</th>
+                    <th style={{ width: "120px" }}>Kode SKU</th>
+                    <th>Nama Barang</th>
+                    <th style={{ width: "140px" }}>Kategori</th>
+                    <th style={{ width: "100px" }}>Kuantitas Fisik</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationReportData.items.map((it, idx) => (
+                    <tr key={idx}>
+                      <td className="text-center">{idx + 1}</td>
+                      <td style={{ fontFamily: "monospace" }}>{it.sku}</td>
+                      <td>{it.name}</td>
+                      <td>{it.category}</td>
+                      <td className="text-center" style={{ fontWeight: "bold" }}>{it.quantity} {it.unit}</td>
+                    </tr>
+                  ))}
+                  {locationReportData.items.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil barang terdaftar di lokasi ini.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tabel Komputer */}
+            <div style={{ marginBottom: "15px" }}>
+              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                B. Unit Perangkat Komputer & PC
+              </div>
+              <table className="report-table" style={{ marginTop: "2px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "40px" }}>No.</th>
+                    <th style={{ width: "130px" }}>Nomor Aset</th>
+                    <th>Hostname Komputer</th>
+                    <th style={{ width: "140px" }}>Penanggung Jawab</th>
+                    <th style={{ width: "120px" }}>Alamat IP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationReportData.computers.map((pc, idx) => (
+                    <tr key={idx}>
+                      <td className="text-center">{idx + 1}</td>
+                      <td style={{ fontFamily: "monospace" }}>{pc.asset_number}</td>
+                      <td style={{ fontWeight: "bold" }}>{pc.name}</td>
+                      <td>{pc.user_assigned || "-"}</td>
+                      <td style={{ fontFamily: "monospace" }}>{pc.ip_address || "-"}</td>
+                    </tr>
+                  ))}
+                  {locationReportData.computers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil perangkat komputer di lokasi ini.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Tabel Infrastruktur */}
+            <div style={{ marginBottom: "15px" }}>
+              <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "4px" }}>
+                C. Sarana Infrastruktur & Fasilitas Fisik
+              </div>
+              <table className="report-table" style={{ marginTop: "2px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "40px" }}>No.</th>
+                    <th style={{ width: "130px" }}>Nomor Aset</th>
+                    <th>Nama Fasilitas</th>
+                    <th style={{ width: "120px" }}>Kategori</th>
+                    <th style={{ width: "100px" }}>Kondisi/Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationReportData.infra.map((inf, idx) => (
+                    <tr key={idx}>
+                      <td className="text-center">{idx + 1}</td>
+                      <td style={{ fontFamily: "monospace" }}>{inf.asset_number}</td>
+                      <td style={{ fontWeight: "bold" }}>{inf.name}</td>
+                      <td className="text-center">{inf.category}</td>
+                      <td className="text-center">{inf.status}</td>
+                    </tr>
+                  ))}
+                  {locationReportData.infra.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center" style={{ fontStyle: "italic" }}>Nihil fasilitas fisik di lokasi ini.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "pc" && (
+          <table className="report-table">
+            <thead>
+              <tr>
+                <th style={{ width: "40px" }}>No.</th>
+                <th style={{ width: "120px" }}>Nomor Aset PC</th>
+                <th>Nama Hostname</th>
+                <th style={{ width: "130px" }}>Penanggung Jawab</th>
+                <th style={{ width: "120px" }}>Alamat IP</th>
+                <th style={{ width: "110px" }}>Jadwal Perawatan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pcReportData.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td style={{ fontFamily: "monospace" }}>{row.asset_number}</td>
+                  <td style={{ fontWeight: "bold" }}>{row.name}</td>
+                  <td>{row.user_assigned}</td>
+                  <td style={{ fontFamily: "monospace" }} className="text-center">{row.ip_address}</td>
+                  <td className="text-center" style={{ fontWeight: "bold" }}>{formatDate(row.next_maintenance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {activeTab === "po" && (
+          <div>
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "40px" }}>No.</th>
+                  <th style={{ width: "130px" }}>Nomor PO</th>
+                  <th style={{ width: "90px" }}>Tanggal</th>
+                  <th>Pemasok / Supplier</th>
+                  <th style={{ width: "120px" }}>Departemen</th>
+                  <th style={{ width: "110px" }}>Total Nilai</th>
+                </tr>
+              </thead>
+              <tbody>
+                {poReportData.map((row, idx) => (
+                  <tr key={idx}>
+                    <td className="text-center">{idx + 1}</td>
+                    <td style={{ fontWeight: "bold" }}>{row.po_number}</td>
+                    <td className="text-center">{formatDate(row.created_at)}</td>
+                    <td>{row.supplier_name || "-"}</td>
+                    <td>{row.department || "-"}</td>
+                    <td className="text-right" style={{ fontFamily: "monospace", fontWeight: "bold" }}>
+                      {formatCurr(row.total_amount)}
+                    </td>
+                  </tr>
+                ))}
+                {poReportData.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center" style={{ fontStyle: "italic" }}>
+                      Nihil transaksi Purchase Order pada periode tanggal yang dipilih.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {/* Total Rangkuman Akuntansi PO */}
+            {poReportData.length > 0 && (
+              <div style={{ marginTop: "10px", textAlign: "right", fontSize: "11px" }}>
+                <span>Total Rangkuman Transaksi: </span>
+                <span style={{ fontWeight: "bold", fontFamily: "monospace", borderBottom: "1px solid black", paddingBottom: "2px" }}>
+                  {formatCurr(poReportData.reduce((sum, curr) => sum + (curr.total_amount || 0), 0))}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BLOK TANDA TANGAN PENGESAHAN RESMI (SIGNATURES) */}
+        <div style={{ marginTop: "40px", pageBreakInside: "avoid" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "center", fontSize: "11px" }}>
+            <tbody>
+              <tr>
+                <td style={{ width: "33%", paddingBottom: "50px" }}>Disiapkan Oleh,</td>
+                <td style={{ width: "33%", paddingBottom: "50px" }}>Diperiksa Oleh,</td>
+                <td style={{ width: "34%", paddingBottom: "50px" }}>Disetujui Oleh,</td>
+              </tr>
+              <tr>
+                <td>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Admin Operasional</span>
+                  <span style={{ fontSize: "10px" }}>Staf IT Inventory</span>
+                </td>
+                <td>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Kepala Bagian IT</span>
+                  <span style={{ fontSize: "10px" }}>Manager Infrastruktur</span>
+                </td>
+                <td>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Direktur Keuangan</span>
+                  <span style={{ fontSize: "10px" }}>Eksekutif Manajemen</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
