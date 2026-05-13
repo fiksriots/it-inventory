@@ -11,6 +11,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "IT Inventory System",
   description: "Modern IT Inventory Management System",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" }
+    ]
+  }
 };
 
 export default function RootLayout({

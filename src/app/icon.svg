@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <rect width="256" height="256" rx="56" fill="#0f172a"/>
+  <!-- Top Server Unit -->
+  <rect x="32" y="48" width="192" height="44" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="8"/>
+  <circle cx="64" cy="70" r="8" fill="#3b82f6"/>
+  <circle cx="92" cy="70" r="8" fill="#10b981"/>
+  <!-- Middle Server Unit -->
+  <rect x="32" y="106" width="192" height="44" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="8"/>
+  <circle cx="64" cy="128" r="8" fill="#3b82f6"/>
+  <circle cx="92" cy="128" r="8" fill="#10b981"/>
+  <!-- Bottom Server Unit -->
+  <rect x="32" y="164" width="192" height="44" rx="12" fill="#1e293b" stroke="#3b82f6" stroke-width="8"/>
+  <circle cx="64" cy="186" r="8" fill="#3b82f6"/>
+  <circle cx="92" cy="186" r="8" fill="#10b981"/>
+  <!-- Connection Lines -->
+  <path d="M160 70h30m-30 58h30m-30 58h30" stroke="#3b82f6" stroke-width="8" stroke-linecap="round"/>
+</svg>
