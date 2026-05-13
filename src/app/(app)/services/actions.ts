@@ -7,9 +7,24 @@ import { writeFile } from "fs/promises";
 import path from "path";
 import fs from "fs";
 
+async function getActionClient() {
+  const normalClient = await createClient();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (serviceRoleKey) {
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+    const adminClient = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    return { supabase: adminClient as any, normalClient };
+  }
+  
+  return { supabase: normalClient, normalClient };
+}
+
 export async function createService(prevState: any, formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, normalClient } = await getActionClient();
+  const { data: { user } } = await normalClient.auth.getUser();
 
   const itemId = formData.get("item_id") as string;
   const locationId = formData.get("location_id") as string;
@@ -123,7 +138,7 @@ export async function createService(prevState: any, formData: FormData) {
 }
 
 export async function completeService(id: string, formData: FormData) {
-  const supabase = await createClient();
+  const { supabase } = await getActionClient();
   
   const finalCondition = formData.get("final_condition") as string || "Normal";
   const costStr = formData.get("cost") as string;
@@ -203,7 +218,7 @@ export async function completeService(id: string, formData: FormData) {
 }
 
 export async function updateServiceStatus(id: string, status: string) {
-  const supabase = await createClient();
+  const { supabase } = await getActionClient();
   const { error } = await supabase
     .from("item_services")
     .update({ status })
@@ -219,7 +234,7 @@ export async function updateServiceStatus(id: string, status: string) {
 }
 
 export async function deleteService(id: string) {
-  const supabase = await createClient();
+  const { supabase } = await getActionClient();
   const { error } = await supabase
     .from("item_services")
     .delete()
