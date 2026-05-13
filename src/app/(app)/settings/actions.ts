@@ -44,21 +44,36 @@ export async function uploadCompanyLogo(formData: FormData) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = join(process.cwd(), "public", "uploads", "settings");
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
+    let publicPath = "";
+    const isVercel = process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+
+    if (isVercel) {
+      console.log("DEBUG: Vercel environment detected. Converting logo to Base64 Data URL...");
+      const base64String = buffer.toString("base64");
+      const mimeType = file.type || "image/jpeg";
+      publicPath = `data:${mimeType};base64,${base64String}`;
+    } else {
+      try {
+        const uploadDir = join(process.cwd(), "public", "uploads", "settings");
+        if (!existsSync(uploadDir)) {
+          await mkdir(uploadDir, { recursive: true });
+        }
+
+        const fileExt = file.name.split(".").pop();
+        const fileName = `logo-${Date.now()}.${fileExt}`;
+        const path = join(uploadDir, fileName);
+        publicPath = `/uploads/settings/${fileName}`;
+
+        await writeFile(path, buffer);
+      } catch (fsErr) {
+        console.warn("DEBUG: Local write failed. Falling back to Base64 Data URL for logo:", fsErr);
+        const base64String = buffer.toString("base64");
+        const mimeType = file.type || "image/jpeg";
+        publicPath = `data:${mimeType};base64,${base64String}`;
+      }
     }
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `logo-${Date.now()}.${fileExt}`;
-    const path = join(uploadDir, fileName);
-    const publicPath = `/uploads/settings/${fileName}`;
-
-    // Write file to local disk
-    await writeFile(path, buffer);
-
-    // Upsert database with local path
+    // Upsert database with local path or data URL
     const { error: updateError } = await supabase
       .from("company_profile")
       .upsert({ id: 1, logo_url: publicPath });
@@ -117,28 +132,45 @@ export async function uploadProfilePhoto(formData: FormData) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadDir = join(process.cwd(), "public", "uploads", "profiles");
-    if (!existsSync(uploadDir)) {
-      console.log("DEBUG: Creating local directory:", uploadDir);
-      await mkdir(uploadDir, { recursive: true });
+    let publicPath = "";
+    const isVercel = process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+
+    if (isVercel) {
+      console.log("DEBUG: Vercel environment detected. Converting avatar to Base64 Data URL...");
+      const base64String = buffer.toString("base64");
+      const mimeType = file.type || "image/jpeg";
+      publicPath = `data:${mimeType};base64,${base64String}`;
+    } else {
+      try {
+        const uploadDir = join(process.cwd(), "public", "uploads", "profiles");
+        if (!existsSync(uploadDir)) {
+          console.log("DEBUG: Creating local directory:", uploadDir);
+          await mkdir(uploadDir, { recursive: true });
+        }
+
+        const fileExt = file.name.split(".").pop();
+        const fileName = `avatar-${user.id}-${Date.now()}.${fileExt}`;
+        const path = join(uploadDir, fileName);
+        publicPath = `/uploads/profiles/${fileName}`;
+
+        console.log("DEBUG: Writing file to disk:", path);
+        await writeFile(path, buffer);
+      } catch (fsErr) {
+        console.warn("DEBUG: Local write failed. Falling back to Base64 Data URL for avatar:", fsErr);
+        const base64String = buffer.toString("base64");
+        const mimeType = file.type || "image/jpeg";
+        publicPath = `data:${mimeType};base64,${base64String}`;
+      }
     }
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `avatar-${user.id}-${Date.now()}.${fileExt}`;
-    const path = join(uploadDir, fileName);
-    const publicPath = `/uploads/profiles/${fileName}`;
-
-    console.log("DEBUG: Writing file to disk:", path);
-    await writeFile(path, buffer);
-
-    console.log("DEBUG: Attempting UPSERT to profiles table for path:", publicPath);
+    console.log("DEBUG: Attempting UPSERT to profiles table for path:", publicPath.substring(0, 50) + "...");
     const { error: updateError } = await supabase
       .from("profiles")
       .upsert({ id: user.id, avatar_url: publicPath, email: user.email });
 
     if (updateError) {
       console.error("DEBUG: DATABASE ERROR (profiles):", updateError);
-      throw new Error(`Database error: ${updateError.message} (Hint: Cek apakah tabel 'profiles' sudah ada di Supabase)`);
+      throw new Error(`Database error: ${updateError.message}`);
     }
 
     console.log("DEBUG: Profile photo updated successfully!");

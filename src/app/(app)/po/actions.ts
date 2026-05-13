@@ -252,23 +252,38 @@ export async function uploadPOInvoice(poId: string, formData: FormData) {
   if (!file || file.size === 0) return { error: "Pilih file terlebih dahulu." };
   
   try {
-    // 1. Prepare File Path
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'invoices');
-    const fileExt = file.name.split('.').pop();
-    const fileName = `invoice-${poId}-${Date.now()}.${fileExt}`;
-    const publicPath = `/uploads/invoices/${fileName}`;
-    const fullPath = path.join(uploadDir, fileName);
-    
-    // Create directory if it doesn't exist
-    const fs = require('fs');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    
-    // 2. Save File to Local Disk
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(fullPath, buffer);
+
+    let publicPath = "";
+    const isVercel = process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+
+    if (isVercel) {
+      console.log("DEBUG: Vercel detected. Converting invoice to Base64 Data URL...");
+      const base64String = buffer.toString("base64");
+      const mimeType = file.type || "image/jpeg";
+      publicPath = `data:${mimeType};base64,${base64String}`;
+    } else {
+      try {
+        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'invoices');
+        const fileExt = file.name.split('.').pop();
+        const fileName = `invoice-${poId}-${Date.now()}.${fileExt}`;
+        const fullPath = path.join(uploadDir, fileName);
+        publicPath = `/uploads/invoices/${fileName}`;
+        
+        const fs = require('fs');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        await writeFile(fullPath, buffer);
+      } catch (fsErr) {
+        console.warn("DEBUG: Local file write failed. Falling back to Base64 Data URL for PO invoice:", fsErr);
+        const base64String = buffer.toString("base64");
+        const mimeType = file.type || "image/jpeg";
+        publicPath = `data:${mimeType};base64,${base64String}`;
+      }
+    }
     
     // 3. Update PO in Database
     const { error: updateError } = await supabase
@@ -282,6 +297,6 @@ export async function uploadPOInvoice(poId: string, formData: FormData) {
     return { success: true, url: publicPath };
   } catch (error: any) {
     console.error("Upload Error:", error);
-    return { error: `Gagal mengunggah file ke server lokal: ${error.message}` };
+    return { error: `Gagal mengunggah file: ${error.message}` };
   }
 }

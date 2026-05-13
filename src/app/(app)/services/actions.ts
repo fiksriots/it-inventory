@@ -51,23 +51,39 @@ export async function createService(prevState: any, formData: FormData) {
   
   if (file && file.size > 0) {
     try {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'services');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `doc-${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
-      const publicPath = `/uploads/services/${fileName}`;
-      const fullPath = path.join(uploadDir, fileName);
-
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      await writeFile(fullPath, buffer);
-      serviceDocUrl = publicPath;
+
+      const isVercel = process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+
+      if (isVercel) {
+        console.log("DEBUG: Vercel detected. Converting service_doc to Base64 Data URL...");
+        const base64String = buffer.toString("base64");
+        const mimeType = file.type || "application/pdf";
+        serviceDocUrl = `data:${mimeType};base64,${base64String}`;
+      } else {
+        try {
+          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'services');
+          const fileExt = file.name.split('.').pop();
+          const fileName = `doc-${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`;
+          const fullPath = path.join(uploadDir, fileName);
+          serviceDocUrl = `/uploads/services/${fileName}`;
+
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+
+          await writeFile(fullPath, buffer);
+        } catch (uploadErr: any) {
+          console.warn("DEBUG: Local file write failed. Falling back to Base64 Data URL for service_doc:", uploadErr);
+          const base64String = buffer.toString("base64");
+          const mimeType = file.type || "application/pdf";
+          serviceDocUrl = `data:${mimeType};base64,${base64String}`;
+        }
+      }
     } catch (uploadErr: any) {
-      console.error("Gagal mengunggah dokumen service:", uploadErr);
-      // Tetap lanjutkan penyimpanan record meskipun gagal upload dokumen fisik
+      console.error("Gagal memproses dokumen service:", uploadErr);
+      // Tetap lanjutkan penyimpanan record meskipun gagal upload
     }
   }
 
@@ -121,23 +137,39 @@ export async function completeService(id: string, formData: FormData) {
 
   if (file && file.size > 0) {
     try {
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'invoices');
-      const fileExt = file.name.split('.').pop();
-      const fileName = `srv-invoice-${id}-${Date.now()}.${fileExt}`;
-      const publicPath = `/uploads/invoices/${fileName}`;
-      const fullPath = path.join(uploadDir, fileName);
-
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      await writeFile(fullPath, buffer);
-      invoiceUrl = publicPath;
+
+      const isVercel = process.env.VERCEL === "1" || process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL;
+
+      if (isVercel) {
+        console.log("DEBUG: Vercel detected. Converting invoice to Base64 Data URL...");
+        const base64String = buffer.toString("base64");
+        const mimeType = file.type || "image/jpeg";
+        invoiceUrl = `data:${mimeType};base64,${base64String}`;
+      } else {
+        try {
+          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'invoices');
+          const fileExt = file.name.split('.').pop();
+          const fileName = `srv-invoice-${id}-${Date.now()}.${fileExt}`;
+          const fullPath = path.join(uploadDir, fileName);
+          invoiceUrl = `/uploads/invoices/${fileName}`;
+
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+
+          await writeFile(fullPath, buffer);
+        } catch (err) {
+          console.warn("DEBUG: Local file write failed. Falling back to Base64 Data URL for service invoice:", err);
+          const base64String = buffer.toString("base64");
+          const mimeType = file.type || "image/jpeg";
+          invoiceUrl = `data:${mimeType};base64,${base64String}`;
+        }
+      }
     } catch (err) {
-      console.error("Gagal mengunggah faktur:", err);
-      return { error: "Gagal menyimpan file faktur/invoice ke server." };
+      console.error("Gagal memproses faktur:", err);
+      return { error: "Gagal memproses file faktur/invoice." };
     }
   }
 
