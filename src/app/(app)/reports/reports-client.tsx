@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Printer, 
   Package, 
@@ -14,7 +14,11 @@ import {
   Building2,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw
 } from "lucide-react";
 
 interface ReportsClientProps {
@@ -34,6 +38,66 @@ export default function ReportsClient({
 }: ReportsClientProps) {
   // Tab aktif: 'stok' | 'maintenance_infra' | 'rusak' | 'lokasi' | 'pc' | 'po'
   const [activeTab, setActiveTab] = useState<string>("stok");
+
+  // State Kustomisasi Cetak Laporan (Tersimpan di localStorage)
+  const [companyName, setCompanyName] = useState<string>("PT. INVENTARIS TEKNOLOGI UTAMA");
+  const [companySlogan, setCompanySlogan] = useState<string>("Pusat Pengelolaan Manajemen Aset, Sarana Infrastruktur & Fasilitas Komputer");
+
+  const [signer1Name, setSigner1Name] = useState<string>("Admin Operasional");
+  const [signer1Role, setSigner1Role] = useState<string>("Staf IT Inventory");
+
+  const [signer2Name, setSigner2Name] = useState<string>("Kepala Bagian IT");
+  const [signer2Role, setSigner2Role] = useState<string>("Manager Infrastruktur");
+
+  const [signer3Name, setSigner3Name] = useState<string>("Direktur Keuangan");
+  const [signer3Role, setSigner3Role] = useState<string>("Eksekutif Manajemen");
+
+  const [showCustomizer, setShowCustomizer] = useState<boolean>(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("report_print_settings");
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (p.companyName) setCompanyName(p.companyName);
+        if (p.companySlogan) setCompanySlogan(p.companySlogan);
+        if (p.signer1Name) setSigner1Name(p.signer1Name);
+        if (p.signer1Role) setSigner1Role(p.signer1Role);
+        if (p.signer2Name) setSigner2Name(p.signer2Name);
+        if (p.signer2Role) setSigner2Role(p.signer2Role);
+        if (p.signer3Name) setSigner3Name(p.signer3Name);
+        if (p.signer3Role) setSigner3Role(p.signer3Role);
+      } catch (e) {
+        console.error("Gagal membaca pengaturan kop surat:", e);
+      }
+    }
+  }, []);
+
+  const saveConfig = (updated: any) => {
+    localStorage.setItem("report_print_settings", JSON.stringify(updated));
+  };
+
+  const resetConfig = () => {
+    const defaults = {
+      companyName: "PT. INVENTARIS TEKNOLOGI UTAMA",
+      companySlogan: "Pusat Pengelolaan Manajemen Aset, Sarana Infrastruktur & Fasilitas Komputer",
+      signer1Name: "Admin Operasional",
+      signer1Role: "Staf IT Inventory",
+      signer2Name: "Kepala Bagian IT",
+      signer2Role: "Manager Infrastruktur",
+      signer3Name: "Direktur Keuangan",
+      signer3Role: "Eksekutif Manajemen"
+    };
+    setCompanyName(defaults.companyName);
+    setCompanySlogan(defaults.companySlogan);
+    setSigner1Name(defaults.signer1Name);
+    setSigner1Role(defaults.signer1Role);
+    setSigner2Name(defaults.signer2Name);
+    setSigner2Role(defaults.signer2Role);
+    setSigner3Name(defaults.signer3Name);
+    setSigner3Role(defaults.signer3Role);
+    localStorage.setItem("report_print_settings", JSON.stringify(defaults));
+  };
 
   // State Filter Lokasi
   const [selectedLocationId, setSelectedLocationId] = useState<string>(
@@ -270,7 +334,8 @@ export default function ReportsClient({
             top: 0;
             width: 100%;
             margin: 0;
-            padding: 0;
+            padding: 15mm 15mm !important;
+            box-sizing: border-box;
             background: white;
             color: black;
             display: block !important;
@@ -300,7 +365,7 @@ export default function ReportsClient({
           .text-right { text-align: right !important; }
           @page {
             size: A4 portrait;
-            margin: 15mm 12mm;
+            margin: 0mm !important; /* Menghapus tanggal, URL, dan nomor halaman bawaan header/footer peramban secara mutlak */
           }
         }
       `}} />
@@ -312,13 +377,29 @@ export default function ReportsClient({
           <p className="text-text-muted mt-1">Hasilkan rekapitulasi data operasional siap cetak untuk manajemen.</p>
         </div>
 
-        <button
-          onClick={handlePrint}
-          className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95 shrink-0"
-        >
-          <Printer className="w-5 h-5" />
-          <span>Cetak Laporan Resmi</span>
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => setShowCustomizer(!showCustomizer)}
+            className={`px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-2 border transition-all shrink-0 ${
+              showCustomizer 
+                ? "bg-primary/10 border-primary text-primary" 
+                : "bg-surface border-border hover:border-primary/50 text-text-muted hover:text-foreground"
+            }`}
+            title="Kustomisasi Kop Surat & Tanda Tangan"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="hidden md:inline">Atur Kop & TTD</span>
+            {showCustomizer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95 shrink-0 flex-1 sm:flex-initial justify-center"
+          >
+            <Printer className="w-5 h-5" />
+            <span>Cetak Laporan Resmi</span>
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigasi Pilihan Laporan */}
@@ -348,6 +429,152 @@ export default function ReportsClient({
           );
         })}
       </div>
+
+      {/* Drawer Live Customizer Kop & TTD */}
+      {showCustomizer && (
+        <div className="bg-surface border-2 border-primary/40 rounded-xl p-6 no-print space-y-6 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2 text-primary font-bold text-sm">
+              <Settings className="w-4 h-4" />
+              <h3>Konfigurasi Kop Surat & Penandatangan Resmi</h3>
+            </div>
+            <button
+              onClick={resetConfig}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border hover:border-rose-500 hover:text-rose-500 rounded-lg text-xs font-bold transition-all"
+              title="Kembalikan ke Nama & Slogan Standar"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Standar</span>
+            </button>
+          </div>
+
+          {/* Form Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+            {/* Kop Bagian Perusahaan */}
+            <div className="space-y-4 bg-background/50 p-4 rounded-xl border border-border">
+              <h4 className="font-bold text-text-muted uppercase tracking-wider text-[10px] flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-primary" /> Bagian Identitas Header
+              </h4>
+              
+              <div>
+                <label className="block text-text-muted font-bold mb-1">Nama Perusahaan / Organisasi</label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => {
+                    setCompanyName(e.target.value);
+                    saveConfig({ companyName: e.target.value, companySlogan, signer1Name, signer1Role, signer2Name, signer2Role, signer3Name, signer3Role });
+                  }}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 font-bold text-foreground focus:outline-none focus:border-primary"
+                  placeholder="PT. INVENTARIS TEKNOLOGI UTAMA"
+                />
+              </div>
+
+              <div>
+                <label className="block text-text-muted font-bold mb-1">Slogan / Keterangan Unit Kerja</label>
+                <input
+                  type="text"
+                  value={companySlogan}
+                  onChange={(e) => {
+                    setCompanySlogan(e.target.value);
+                    saveConfig({ companyName, companySlogan: e.target.value, signer1Name, signer1Role, signer2Name, signer2Role, signer3Name, signer3Role });
+                  }}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-text-muted focus:outline-none focus:border-primary"
+                  placeholder="Pusat Pengelolaan Manajemen Aset..."
+                />
+              </div>
+            </div>
+
+            {/* Bagian Kolom Tanda Tangan */}
+            <div className="space-y-4 bg-background/50 p-4 rounded-xl border border-border">
+              <h4 className="font-bold text-text-muted uppercase tracking-wider text-[10px] flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-amber-500" /> Kolom Tanda Tangan Footer
+              </h4>
+
+              <div className="grid grid-cols-3 gap-3">
+                {/* Kolom 1 */}
+                <div className="space-y-2.5">
+                  <span className="block text-[10px] font-bold text-primary">Kiri (Disiapkan)</span>
+                  <input
+                    type="text"
+                    value={signer1Name}
+                    onChange={(e) => {
+                      setSigner1Name(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name: e.target.value, signer1Role, signer2Name, signer2Role, signer3Name, signer3Role });
+                    }}
+                    placeholder="Nama Staf"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 font-bold focus:outline-none focus:border-primary text-center text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={signer1Role}
+                    onChange={(e) => {
+                      setSigner1Role(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name, signer1Role: e.target.value, signer2Name, signer2Role, signer3Name, signer3Role });
+                    }}
+                    placeholder="Jabatan"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-text-muted text-[10px] focus:outline-none focus:border-primary text-center"
+                  />
+                </div>
+
+                {/* Kolom 2 */}
+                <div className="space-y-2.5 border-x border-border/60 px-2">
+                  <span className="block text-[10px] font-bold text-primary">Tengah (Diperiksa)</span>
+                  <input
+                    type="text"
+                    value={signer2Name}
+                    onChange={(e) => {
+                      setSigner2Name(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name, signer1Role, signer2Name: e.target.value, signer2Role, signer3Name, signer3Role });
+                    }}
+                    placeholder="Nama Manager"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 font-bold focus:outline-none focus:border-primary text-center text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={signer2Role}
+                    onChange={(e) => {
+                      setSigner2Role(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name, signer1Role, signer2Name, signer2Role: e.target.value, signer3Name, signer3Role });
+                    }}
+                    placeholder="Jabatan"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-text-muted text-[10px] focus:outline-none focus:border-primary text-center"
+                  />
+                </div>
+
+                {/* Kolom 3 */}
+                <div className="space-y-2.5">
+                  <span className="block text-[10px] font-bold text-primary">Kanan (Disetujui)</span>
+                  <input
+                    type="text"
+                    value={signer3Name}
+                    onChange={(e) => {
+                      setSigner3Name(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name, signer1Role, signer2Name, signer2Role, signer3Name: e.target.value, signer3Role });
+                    }}
+                    placeholder="Nama Direktur"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 font-bold focus:outline-none focus:border-primary text-center text-xs"
+                  />
+                  <input
+                    type="text"
+                    value={signer3Role}
+                    onChange={(e) => {
+                      setSigner3Role(e.target.value);
+                      saveConfig({ companyName, companySlogan, signer1Name, signer1Role, signer2Name, signer2Role, signer3Name, signer3Role: e.target.value });
+                    }}
+                    placeholder="Jabatan"
+                    className="w-full bg-background border border-border rounded-md px-2 py-1.5 text-text-muted text-[10px] focus:outline-none focus:border-primary text-center"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-text-muted italic text-center border-t border-border pt-2">
+            💡 Setiap perubahan otomatis disimpan di penyimpanan lokal peramban Anda secara instan dan langsung aktif saat tombol Cetak ditekan.
+          </p>
+        </div>
+      )}
 
       {/* Kontrol Tambahan Berdasarkan Tab Aktif */}
       <div className="no-print">
@@ -716,10 +943,10 @@ export default function ReportsClient({
         {/* KOP SURAT RESMI */}
         <div style={{ borderBottom: "2px solid black", paddingBottom: "10px", marginBottom: "15px", textAlign: "center" }}>
           <h2 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, textTransform: "uppercase", letterSpacing: "1px" }}>
-            PT. INVENTARIS TEKNOLOGI UTAMA
+            {companyName || "PT. INVENTARIS TEKNOLOGI UTAMA"}
           </h2>
           <p style={{ fontSize: "11px", margin: "3px 0 0 0" }}>
-            Pusat Pengelolaan Manajemen Aset, Sarana Infrastruktur & Fasilitas Komputer
+            {companySlogan || "Pusat Pengelolaan Manajemen Aset, Sarana Infrastruktur & Fasilitas Komputer"}
           </p>
           <p style={{ fontSize: "10px", fontStyle: "italic", margin: "2px 0 0 0" }}>
             Dicetak otomatis oleh Sistem IT Inventory pada: {formatDate(new Date().toISOString())}
@@ -1036,16 +1263,16 @@ export default function ReportsClient({
               </tr>
               <tr>
                 <td>
-                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Admin Operasional</span>
-                  <span style={{ fontSize: "10px" }}>Staf IT Inventory</span>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>{signer1Name || "Admin Operasional"}</span>
+                  <span style={{ fontSize: "10px" }}>{signer1Role || "Staf IT Inventory"}</span>
                 </td>
                 <td>
-                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Kepala Bagian IT</span>
-                  <span style={{ fontSize: "10px" }}>Manager Infrastruktur</span>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>{signer2Name || "Kepala Bagian IT"}</span>
+                  <span style={{ fontSize: "10px" }}>{signer2Role || "Manager Infrastruktur"}</span>
                 </td>
                 <td>
-                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>Direktur Keuangan</span>
-                  <span style={{ fontSize: "10px" }}>Eksekutif Manajemen</span>
+                  <span style={{ fontWeight: "bold", textDecoration: "underline", display: "block" }}>{signer3Name || "Direktur Keuangan"}</span>
+                  <span style={{ fontSize: "10px" }}>{signer3Role || "Eksekutif Manajemen"}</span>
                 </td>
               </tr>
             </tbody>
