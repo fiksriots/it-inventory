@@ -19,6 +19,7 @@ import {
 import { updateServiceStatus } from "../actions";
 import DeleteServiceButton from "./delete-button";
 import ServiceCompleteForm from "./service-complete-form";
+import ImagePopupViewer from "./image-popup-viewer";
 
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -153,15 +154,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               <div>
                 <p className="text-[10px] text-text-muted font-bold uppercase mb-1">Surat Jalan / Tanda Terima Awal</p>
                 {service.service_doc_url ? (
-                  <a 
-                    href={service.service_doc_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2.5 bg-background border border-border hover:border-primary/50 rounded-lg transition-all group text-xs font-medium"
-                  >
-                    <span className="truncate text-primary font-bold">Lihat Dokumen Awal</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-text-muted group-hover:text-primary transition-colors" />
-                  </a>
+                  <ImagePopupViewer 
+                    title="Surat Jalan / Tanda Terima Awal"
+                    url={service.service_doc_url}
+                    buttonLabel="Lihat Dokumen Awal"
+                    variant="primary"
+                  />
                 ) : (
                   <p className="text-xs italic text-text-muted bg-background/50 p-2 rounded border border-dashed border-border text-center">Tidak ada lampiran dokumen awal.</p>
                 )}
@@ -170,15 +168,12 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               <div>
                 <p className="text-[10px] text-text-muted font-bold uppercase mb-1">Bukti Faktur / Invoice Penyelesaian</p>
                 {service.invoice_url ? (
-                  <a 
-                    href={service.invoice_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg transition-all group text-xs font-medium"
-                  >
-                    <span className="truncate text-emerald-600 dark:text-emerald-400 font-bold">Buka Bukti Faktur</span>
-                    <Download className="w-3.5 h-3.5 text-emerald-500" />
-                  </a>
+                  <ImagePopupViewer 
+                    title="Bukti Faktur / Invoice Penyelesaian"
+                    url={service.invoice_url}
+                    buttonLabel="Buka Bukti Faktur"
+                    variant="success"
+                  />
                 ) : (
                   <p className="text-xs italic text-text-muted bg-background/50 p-2 rounded border border-dashed border-border text-center">Belum ada faktur terunggah.</p>
                 )}
