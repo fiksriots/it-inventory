@@ -32,12 +32,13 @@ export default async function ServicesPage({
 
   // Fetch all for summary metrics
   const { data: allServices } = await supabase.from("item_services").select("status");
+  const safeAllServices = allServices || [];
 
   const statuses = [
-    { label: "Total Perangkat", count: allServices?.length || 0, color: "text-primary", bg: "bg-surface" },
-    { label: "Proses Service", count: allServices?.filter(s => s.status === 'Proses Service').length || 0, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { label: "Selesai", count: allServices?.filter(s => s.status === 'Selesai').length || 0, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Dibatalkan", count: allServices?.filter(s => s.status === 'Dibatalkan').length || 0, color: "text-rose-500", bg: "bg-rose-500/10" },
+    { label: "Total Perangkat", count: safeAllServices.length, color: "text-primary", bg: "bg-surface" },
+    { label: "Proses Service", count: safeAllServices.filter(s => s.status === 'Proses Service').length, color: "text-amber-500", bg: "bg-amber-500/10" },
+    { label: "Selesai", count: safeAllServices.filter(s => s.status === 'Selesai').length, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { label: "Dibatalkan", count: safeAllServices.filter(s => s.status === 'Dibatalkan').length, color: "text-rose-500", bg: "bg-rose-500/10" },
   ];
 
   const formatCurrency = (amount: number) => {
