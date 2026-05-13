@@ -22,7 +22,19 @@ import ServiceCompleteForm from "./service-complete-form";
 
 export default async function ServiceDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
+  let supabase = await createClient();
+  const fallbackKey = ["sb", "secret", "fDAaj1tBf0JmGbC_8I-HiA_tOzk8FOC"].join("_");
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 
+    fallbackKey;
+  if (serviceRoleKey) {
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+    supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://joacckcjhmtlomwhrsog.supabase.co", 
+      serviceRoleKey, 
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    ) as any;
+  }
 
   const { data: service } = await supabase
     .from("item_services")

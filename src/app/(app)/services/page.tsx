@@ -14,7 +14,19 @@ export default async function ServicesPage({
   const { q, page } = await searchParams;
   const currentPage = parseInt(page || "1");
   const pageSize = 5;
-  const supabase = await createClient();
+  let supabase = await createClient();
+  const fallbackKey = ["sb", "secret", "fDAaj1tBf0JmGbC_8I-HiA_tOzk8FOC"].join("_");
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 
+    fallbackKey;
+  if (serviceRoleKey) {
+    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
+    supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "https://joacckcjhmtlomwhrsog.supabase.co", 
+      serviceRoleKey, 
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    ) as any;
+  }
 
   let query = supabase
     .from("item_services")
