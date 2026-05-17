@@ -33,6 +33,31 @@ export default async function ComputerDetailsPage({ params }: { params: Promise<
 
   if (!computer) notFound();
 
+  // Ambil riwayat pemeliharaan komputer (maintenance history)
+  let maintenanceLogs: any[] = [];
+  let dbTableMissing = false;
+
+  try {
+    const { data: logs, error: logsError } = await supabase
+      .from("computer_maintenance_logs")
+      .select("*")
+      .eq("computer_id", id)
+      .order("maintenance_date", { ascending: false });
+
+    if (logsError) {
+      if (logsError.code === "PGRST205" || logsError.message.includes("does not exist")) {
+        dbTableMissing = true;
+      } else {
+        console.error("Error fetching computer maintenance logs:", logsError);
+      }
+    } else {
+      maintenanceLogs = logs || [];
+    }
+  } catch (err) {
+    console.error("Failed to query computer maintenance logs:", err);
+    dbTableMissing = true;
+  }
+
   const statusColors: any = {
     'Aktif': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     'Maintenance': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -248,7 +273,11 @@ export default async function ComputerDetailsPage({ params }: { params: Promise<
 
         {/* Center/Right Column: Live Updaters */}
         <div className="lg:col-span-2 space-y-6">
-          <MaintenanceScheduleUpdater computer={computer} />
+          <MaintenanceScheduleUpdater
+            computer={computer}
+            maintenanceLogs={maintenanceLogs}
+            dbTableMissing={dbTableMissing}
+          />
           <ComputerSpecUpdater computer={computer} />
         </div>
       </div>
