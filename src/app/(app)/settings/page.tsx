@@ -14,7 +14,7 @@ export default async function SettingsPage() {
       .from("profiles")
       .select("*")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
     userProfile = data;
   }
   
@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   const { data: company } = await supabase
     .from("company_profile")
     .select("*")
-    .single();
+    .maybeSingle();
 
   // Get recent activity logs for Security tab with joined profiles
   const { data: logs } = await supabase
