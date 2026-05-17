@@ -105,8 +105,15 @@ export async function getPublicHolidays(year: number) {
       return [];
     }
 
-    const data = await res.json();
-    return (data || []) as { holiday_date: string; holiday_name: string; is_national_holiday: boolean }[];
+    const json = await res.json();
+    if (json && json.status === "success" && Array.isArray(json.data)) {
+      return json.data.map((item: any) => ({
+        holiday_date: item.date,
+        holiday_name: item.description,
+        is_national_holiday: true
+      }));
+    }
+    return [];
   } catch (err) {
     console.error("Error fetching public holidays from API:", err);
     return [];
