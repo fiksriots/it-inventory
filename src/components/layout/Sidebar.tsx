@@ -8,20 +8,45 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
-  const menuItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-    { icon: Package, label: "Master Barang", href: "/items" },
-    { icon: Tags, label: "Kategori Barang", href: "/categories" },
-    { icon: ArrowRightLeft, label: "Mutasi & Transfer", href: "/transfers" },
-    { icon: ShoppingCart, label: "Purchase Orders", href: "/po" },
-    { icon: Wrench, label: "Service Barang", href: "/services" },
-    { icon: Monitor, label: "Data Komputer", href: "/computers" },
-    { icon: Cctv, label: "Infrastruktur & Fasilitas", href: "/infrastructure" },
-    { icon: Users, label: "Departemen & Lokasi", href: "/locations" },
-    { icon: Users, label: "Supplier", href: "/suppliers" },
-    { icon: Printer, label: "Laporan & Cetak", href: "/reports" },
-    { icon: Calendar, label: "Jadwal Kerja IT", href: "/schedules" },
-    { icon: Settings, label: "Pengaturan", href: "/settings" },
+  const menuSections = [
+    {
+      title: "Ringkasan",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+      ]
+    },
+    {
+      title: "Manajemen Inventaris",
+      items: [
+        { icon: Package, label: "Master Barang", href: "/items" },
+        { icon: Tags, label: "Kategori Barang", href: "/categories" },
+        { icon: ArrowRightLeft, label: "Mutasi & Transfer", href: "/transfers" },
+        { icon: ShoppingCart, label: "Purchase Orders", href: "/po" },
+        { icon: Wrench, label: "Service Barang", href: "/services" },
+      ]
+    },
+    {
+      title: "Manajemen Aset IT",
+      items: [
+        { icon: Monitor, label: "Data Komputer", href: "/computers" },
+        { icon: Cctv, label: "Infrastruktur & Fasilitas", href: "/infrastructure" },
+      ]
+    },
+    {
+      title: "Data Master & Tim",
+      items: [
+        { icon: Users, label: "Departemen & Lokasi", href: "/locations" },
+        { icon: Users, label: "Supplier", href: "/suppliers" },
+        { icon: Calendar, label: "Jadwal Kerja IT", href: "/schedules" },
+      ]
+    },
+    {
+      title: "Laporan & Sistem",
+      items: [
+        { icon: Printer, label: "Laporan & Cetak", href: "/reports" },
+        { icon: Settings, label: "Pengaturan", href: "/settings" },
+      ]
+    }
   ];
 
   return (
@@ -43,20 +68,24 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-        <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4 px-3">
-          Menu Utama
-        </div>
-        {menuItems.map((item, idx) => (
-          <Link
-            key={idx}
-            href={item.href}
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-muted hover:text-foreground hover:bg-background transition-all duration-200 group"
-          >
-            <item.icon className="w-5 h-5 group-hover:text-primary transition-colors" />
-            <span className="font-medium">{item.label}</span>
-          </Link>
+      <nav className="flex-1 py-6 px-3 space-y-6 overflow-y-auto">
+        {menuSections.map((section, secIdx) => (
+          <div key={secIdx} className="space-y-1">
+            <div className="text-[10px] font-bold text-text-muted/50 uppercase tracking-widest px-3 mb-2">
+              {section.title}
+            </div>
+            {section.items.map((item, idx) => (
+              <Link
+                key={idx}
+                href={item.href}
+                onClick={onClose}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-text-muted hover:text-foreground hover:bg-background transition-all duration-200 group text-sm"
+              >
+                <item.icon className="w-4.5 h-4.5 group-hover:text-primary transition-colors" />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            ))}
+          </div>
         ))}
       </nav>
 
