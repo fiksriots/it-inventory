@@ -68,6 +68,7 @@ export async function importItemsBulk(itemsData: any[]) {
   });
 
   let importedCount = 0;
+  const generatedSequences: Record<string, number> = {};
 
   for (const row of itemsData) {
     // Normalisasi kunci dari file Excel (bisa berupa bhs indonesia / inggris)
@@ -104,23 +105,29 @@ export async function importItemsBulk(itemsData: any[]) {
     // Auto generate SKU jika kosong / -AUTO
     if (!sku || sku === "-AUTO") {
       const prefix = catName ? catName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "ITEM";
-      const { data: existingItems } = await supabase
-        .from("items")
-        .select("sku")
-        .like("sku", `${prefix}-%`);
+      
+      if (generatedSequences[prefix] === undefined) {
+        const { data: existingItems } = await supabase
+          .from("items")
+          .select("sku")
+          .like("sku", `${prefix}-%`);
 
-      let maxSeq = 0;
-      if (existingItems && existingItems.length > 0) {
-        existingItems.forEach((item: any) => {
-          const parts = item.sku.split('-');
-          const numStr = parts[parts.length - 1];
-          const num = parseInt(numStr, 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        });
+        let maxSeq = 0;
+        if (existingItems && existingItems.length > 0) {
+          existingItems.forEach((item: any) => {
+            const parts = item.sku.split('-');
+            const numStr = parts[parts.length - 1];
+            const num = parseInt(numStr, 10);
+            if (!isNaN(num) && num > maxSeq) {
+              maxSeq = num;
+            }
+          });
+        }
+        generatedSequences[prefix] = maxSeq;
       }
-      sku = `${prefix}-${(maxSeq + 1).toString().padStart(4, '0')}`;
+
+      generatedSequences[prefix]++;
+      sku = `${prefix}-${generatedSequences[prefix].toString().padStart(4, '0')}`;
     }
 
     // Simpan data barang (upsert berdasarkan SKU agar jika sudah ada, datanya diperbarui)
@@ -244,6 +251,7 @@ export async function importComputersBulk(computersData: any[]) {
   });
 
   let importedCount = 0;
+  const generatedComputerSequences: Record<string, number> = {};
 
   for (const row of computersData) {
     const name = row["Nama Komputer"] || row["Nama"] || row["name"] || row["Name"];
@@ -287,23 +295,28 @@ export async function importComputersBulk(computersData: any[]) {
       const dateStr = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
       const prefix = `PC-${dateStr}`;
 
-      const { data: existingComps } = await supabase
-        .from("computers")
-        .select("asset_number")
-        .like("asset_number", `${prefix}-%`);
+      if (generatedComputerSequences[prefix] === undefined) {
+        const { data: existingComps } = await supabase
+          .from("computers")
+          .select("asset_number")
+          .like("asset_number", `${prefix}-%`);
 
-      let maxSeq = 0;
-      if (existingComps && existingComps.length > 0) {
-        existingComps.forEach((c: any) => {
-          const parts = c.asset_number.split('-');
-          const seqStr = parts[parts.length - 1];
-          const seqNum = parseInt(seqStr, 10);
-          if (!isNaN(seqNum) && seqNum > maxSeq) {
-            maxSeq = seqNum;
-          }
-        });
+        let maxSeq = 0;
+        if (existingComps && existingComps.length > 0) {
+          existingComps.forEach((c: any) => {
+            const parts = c.asset_number.split('-');
+            const seqStr = parts[parts.length - 1];
+            const seqNum = parseInt(seqStr, 10);
+            if (!isNaN(seqNum) && seqNum > maxSeq) {
+              maxSeq = seqNum;
+            }
+          });
+        }
+        generatedComputerSequences[prefix] = maxSeq;
       }
-      asset_number = `${prefix}-${(maxSeq + 1).toString().padStart(3, '0')}`;
+
+      generatedComputerSequences[prefix]++;
+      asset_number = `${prefix}-${generatedComputerSequences[prefix].toString().padStart(3, '0')}`;
     }
 
     const { error } = await supabase
@@ -387,6 +400,7 @@ export async function importInfrastructureBulk(infraData: any[]) {
   });
 
   let importedCount = 0;
+  const generatedInfraSequences: Record<string, number> = {};
 
   for (const row of infraData) {
     const name = row["Nama Fasilitas"] || row["Nama"] || row["name"] || row["Name"];
@@ -428,23 +442,28 @@ export async function importInfrastructureBulk(infraData: any[]) {
       const dateStr = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
       const prefix = `${catPrefix}-${dateStr}`;
 
-      const { data: existingAssets } = await supabase
-        .from("infrastructure_assets")
-        .select("asset_number")
-        .like("asset_number", `${prefix}-%`);
+      if (generatedInfraSequences[prefix] === undefined) {
+        const { data: existingAssets } = await supabase
+          .from("infrastructure_assets")
+          .select("asset_number")
+          .like("asset_number", `${prefix}-%`);
 
-      let maxSeq = 0;
-      if (existingAssets && existingAssets.length > 0) {
-        existingAssets.forEach((asset: any) => {
-          const parts = asset.asset_number.split('-');
-          const seqStr = parts[parts.length - 1];
-          const seqNum = parseInt(seqStr, 10);
-          if (!isNaN(seqNum) && seqNum > maxSeq) {
-            maxSeq = seqNum;
-          }
-        });
+        let maxSeq = 0;
+        if (existingAssets && existingAssets.length > 0) {
+          existingAssets.forEach((asset: any) => {
+            const parts = asset.asset_number.split('-');
+            const seqStr = parts[parts.length - 1];
+            const seqNum = parseInt(seqStr, 10);
+            if (!isNaN(seqNum) && seqNum > maxSeq) {
+              maxSeq = seqNum;
+            }
+          });
+        }
+        generatedInfraSequences[prefix] = maxSeq;
       }
-      asset_number = `${prefix}-${(maxSeq + 1).toString().padStart(3, '0')}`;
+
+      generatedInfraSequences[prefix]++;
+      asset_number = `${prefix}-${generatedInfraSequences[prefix].toString().padStart(3, '0')}`;
     }
 
     const { error } = await supabase
