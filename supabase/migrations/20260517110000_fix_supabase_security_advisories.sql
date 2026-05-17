@@ -142,11 +142,15 @@ USING ( bucket_id = 'invoices' );
 -- Cabut hak akses EXECUTE dari PUBLIC, authenticated, dan anon agar fungsi ini hanya bisa dijalankan oleh system/trigger
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, authenticated, anon;
 
--- 10. Amankan skema public dari akses anonim (Menghapus seluruh peringatan skema GraphQL Publik)
--- Karena ini sistem inventaris internal, pengguna yang tidak login (anon) sama sekali tidak boleh melihat tabel/skema apapun
+-- 10. Amankan skema public dari akses anonim
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
 
--- 11. Muat ulang cache skema API PostgREST
+-- 11. Nonaktifkan extension pg_graphql (Menghapus seluruh 17 peringatan skema GraphQL secara total)
+-- Karena aplikasi Next.js Anda hanya menggunakan REST API (supabase.from(...)) dan tidak menggunakan GraphQL,
+-- kita bisa menonaktifkan extension ini secara aman demi keamanan maksimum.
+DROP EXTENSION IF EXISTS pg_graphql CASCADE;
+
+-- 12. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
