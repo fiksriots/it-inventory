@@ -40,5 +40,48 @@ CREATE POLICY "Users can update own profile."
 -- 6. Perbaiki kerentanan Search Path Mutable pada fungsi handle_new_user (Security Advisor Warning)
 ALTER FUNCTION public.handle_new_user() SET search_path = public;
 
--- 7. Muat ulang cache skema API PostgREST
+-- 7. Perbaiki RLS Policy Always True pada tabel inventaris lainnya
+-- Mengubah USING (true) menjadi USING (auth.role() = 'authenticated')
+
+-- Inventory Logs
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.inventory_logs;
+CREATE POLICY "Enable all for authenticated users" ON public.inventory_logs FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Item Stocks
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.item_stocks;
+CREATE POLICY "Enable all for authenticated users" ON public.item_stocks FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Item Transfers
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.item_transfers;
+CREATE POLICY "Enable all for authenticated users" ON public.item_transfers FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Items
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.items;
+CREATE POLICY "Enable all for authenticated users" ON public.items FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Locations
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.locations;
+CREATE POLICY "Enable all for authenticated users" ON public.locations FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- PO Items
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.po_items;
+CREATE POLICY "Enable all for authenticated users" ON public.po_items FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Purchase Orders
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.purchase_orders;
+CREATE POLICY "Enable all for authenticated users" ON public.purchase_orders FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- Suppliers
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.suppliers;
+CREATE POLICY "Enable all for authenticated users" ON public.suppliers FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
+-- 8. Batasi hak akses SELECT pada bucket storage 'invoices' agar tidak mengekspos daftar file secara publik
+-- Menambahkan klausa 'TO authenticated' agar hanya pengguna terlogin yang dapat melakukan list/select objects
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access"
+ON storage.objects FOR SELECT
+TO authenticated
+USING ( bucket_id = 'invoices' );
+
+-- 9. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
