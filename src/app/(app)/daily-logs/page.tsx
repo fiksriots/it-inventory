@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import DailyLogsClient from "./daily-logs-client";
 
 export const metadata = {
-  title: "Laporan Kerja Harian - IT Inventory",
+  title: "Laporan Kerja Harian - OpsFlow IT",
   description: "Catat dan dokumentasikan seluruh laporan aktivitas kerja IT Support harian.",
 };
 

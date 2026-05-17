@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { login } from "./actions";
-import { Loader2, Lock, Mail, Package } from "lucide-react";
+import { Loader2, Lock, Mail, Cpu } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LoginPage() {
@@ -18,11 +18,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo & Brand */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
-            <Package className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20 animate-pulse">
+            <Cpu className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">IT Inventory</h1>
-          <p className="text-text-muted mt-1 text-sm">Masuk ke sistem manajemen inventaris</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">OpsFlow <span className="text-primary">IT</span></h1>
+          <p className="text-text-muted mt-1.5 text-xs font-semibold uppercase tracking-wider">IT Operations & Service Management</p>
         </div>
 
         {/* Card Login */}
@@ -81,8 +81,8 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-text-muted mt-6">
-          © 2025 IT Inventory System. Hak cipta dilindungi.
+        <p className="text-center text-xs text-text-muted mt-6 font-medium">
+          © 2026 OpsFlow IT. Hak Cipta Dilindungi.
         </p>
       </div>
     </div>

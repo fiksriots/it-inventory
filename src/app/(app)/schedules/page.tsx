@@ -1,7 +1,7 @@
 import SchedulesClient from "./schedules-client";
 
 export const metadata = {
-  title: "Jadwal Kerja Tim IT - IT Inventory",
+  title: "Jadwal Kerja Tim IT - OpsFlow IT",
   description: "Kelola jadwal kerja, cuti, dispensasi (DP), dan hari libur nasional (PH) tim IT secara realtime.",
 };
 

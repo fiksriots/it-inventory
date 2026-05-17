@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import ProjectDetailClient from "./project-detail-client";
 
 export const metadata = {
-  title: "Project Detail - IT Inventory",
+  title: "Project Detail - OpsFlow IT",
   description: "Lihat detail riwayat pengerjaan project, progres pengerjaan, dan dokumentasi foto IT project.",
 };
 

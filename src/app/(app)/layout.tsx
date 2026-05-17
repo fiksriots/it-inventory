@@ -4,8 +4,8 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "IT Inventory System",
-  description: "Modern IT Inventory Management System",
+  title: "OpsFlow IT",
+  description: "OpsFlow IT - Modern IT Service & Operations Management Suite",
 };
 
 import { getNavbarStats } from "@/components/layout/actions";

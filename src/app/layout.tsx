@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "IT Inventory System",
-  description: "Modern IT Inventory Management System",
+  title: "OpsFlow IT",
+  description: "OpsFlow IT - Modern IT Service & Operations Management Suite",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" }

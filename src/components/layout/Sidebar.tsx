@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer, Calendar, FolderKanban, ClipboardList } from "lucide-react";
+import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer, Calendar, FolderKanban, ClipboardList, Cpu } from "lucide-react";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -56,10 +56,10 @@ export default function Sidebar({ onClose }: SidebarProps) {
       {/* Logo Area */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-border">
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center mr-3 shadow-lg shadow-primary/20">
-            <Package className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mr-3 shadow-lg shadow-primary/20">
+            <Cpu className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="font-bold text-lg tracking-tight">IT Inventory</span>
+          <span className="font-extrabold text-base tracking-tight text-foreground">OpsFlow <span className="text-primary">IT</span></span>
         </div>
         <button 
           onClick={onClose}

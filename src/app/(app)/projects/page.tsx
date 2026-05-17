@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import ProjectsClient from "./projects-client";
 
 export const metadata = {
-  title: "Project Planning - IT Inventory",
+  title: "Project Planning - OpsFlow IT",
   description: "Kelola perencanaan project, timeline, progres, dan dokumentasi aset IT secara terpusat.",
 };
 
