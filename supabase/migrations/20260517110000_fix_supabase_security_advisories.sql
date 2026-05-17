@@ -25,5 +25,17 @@ FROM purchase_orders po
 LEFT JOIN suppliers s ON po.supplier_id = s.id
 LEFT JOIN locations l ON po.location_id = l.id;
 
--- 5. Muat ulang cache skema API PostgREST
+-- 5. Optimasi Performa RLS pada tabel profiles (Menyelesaikan Peringatan Performance Advisor)
+-- Menggunakan subquery (SELECT auth.uid()) agar planner PostgreSQL melakukan caching nilai user ID
+DROP POLICY IF EXISTS "Users can insert their own profile." ON public.profiles;
+CREATE POLICY "Users can insert their own profile."
+  ON public.profiles FOR INSERT
+  WITH CHECK ( (SELECT auth.uid()) = id );
+
+DROP POLICY IF EXISTS "Users can update own profile." ON public.profiles;
+CREATE POLICY "Users can update own profile."
+  ON public.profiles FOR UPDATE
+  USING ( (SELECT auth.uid()) = id );
+
+-- 6. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
