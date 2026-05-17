@@ -4,13 +4,18 @@ ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
 -- 2. Aktifkan RLS pada tabel computers
 ALTER TABLE IF EXISTS public.computers ENABLE ROW LEVEL SECURITY;
 
--- 3. Buat kebijakan akses penuh untuk pengguna terautentikasi pada tabel computers
+-- 3. Buat kebijakan akses penuh untuk pengguna terautentikasi pada tabel computers (Dioptimalkan dengan subquery)
 DROP POLICY IF EXISTS "Allow authenticated users full access on computers" ON public.computers;
+DROP POLICY IF EXISTS "Allow public read access" ON public.computers;
+DROP POLICY IF EXISTS "Allow public insert access" ON public.computers;
+DROP POLICY IF EXISTS "Allow public update access" ON public.computers;
+DROP POLICY IF EXISTS "Allow public delete access" ON public.computers;
+
 CREATE POLICY "Allow authenticated users full access on computers"
 ON public.computers FOR ALL
 TO authenticated
-USING (true)
-WITH CHECK (true);
+USING (((SELECT auth.role()) = 'authenticated'))
+WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- 4. Rekonstruksi purchase_orders_view dengan opsi security_invoker = true
 -- Langkah ini mengubah view dari Security Definer menjadi Security Invoker (mengikuti RLS tabel purchase_orders)
@@ -41,39 +46,84 @@ CREATE POLICY "Users can update own profile."
 ALTER FUNCTION public.handle_new_user() SET search_path = public;
 
 -- 7. Perbaiki RLS Policy Always True pada tabel inventaris lainnya
--- Mengubah USING (true) menjadi USING (auth.role() = 'authenticated')
+-- Menggunakan pola subquery cached untuk performa tinggi (menyelesaikan peringatan Auth RLS Initialization Plan)
+
+-- Categories
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.categories;
+CREATE POLICY "Enable all for authenticated users" ON public.categories FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+-- Company Profile
+DROP POLICY IF EXISTS "Allow authenticated users to insert company profile" ON public.company_profile;
+CREATE POLICY "Allow authenticated users to insert company profile" ON public.company_profile FOR INSERT TO authenticated WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow authenticated users to update company profile" ON public.company_profile;
+CREATE POLICY "Allow authenticated users to update company profile" ON public.company_profile FOR UPDATE TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+-- Computer Maintenance Logs
+DROP POLICY IF EXISTS "Allow public insert access" ON public.computer_maintenance_logs;
+CREATE POLICY "Allow public insert access" ON public.computer_maintenance_logs FOR INSERT TO authenticated WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public update access" ON public.computer_maintenance_logs;
+CREATE POLICY "Allow public update access" ON public.computer_maintenance_logs FOR UPDATE TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public delete access" ON public.computer_maintenance_logs;
+CREATE POLICY "Allow public delete access" ON public.computer_maintenance_logs FOR DELETE TO authenticated USING (((SELECT auth.role()) = 'authenticated'));
+
+-- Infrastructure Assets
+DROP POLICY IF EXISTS "Allow public insert access" ON public.infrastructure_assets;
+CREATE POLICY "Allow public insert access" ON public.infrastructure_assets FOR INSERT TO authenticated WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public update access" ON public.infrastructure_assets;
+CREATE POLICY "Allow public update access" ON public.infrastructure_assets FOR UPDATE TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public delete access" ON public.infrastructure_assets;
+CREATE POLICY "Allow public delete access" ON public.infrastructure_assets FOR DELETE TO authenticated USING (((SELECT auth.role()) = 'authenticated'));
+
+-- Infrastructure Maintenance Logs
+DROP POLICY IF EXISTS "Allow public insert access" ON public.infrastructure_maintenance_logs;
+CREATE POLICY "Allow public insert access" ON public.infrastructure_maintenance_logs FOR INSERT TO authenticated WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public update access" ON public.infrastructure_maintenance_logs;
+CREATE POLICY "Allow public update access" ON public.infrastructure_maintenance_logs FOR UPDATE TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+
+DROP POLICY IF EXISTS "Allow public delete access" ON public.infrastructure_maintenance_logs;
+CREATE POLICY "Allow public delete access" ON public.infrastructure_maintenance_logs FOR DELETE TO authenticated USING (((SELECT auth.role()) = 'authenticated'));
+
+-- Item Services
+DROP POLICY IF EXISTS "Allow authenticated users full access on item_services" ON public.item_services;
+CREATE POLICY "Allow authenticated users full access on item_services" ON public.item_services FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Inventory Logs
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.inventory_logs;
-CREATE POLICY "Enable all for authenticated users" ON public.inventory_logs FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.inventory_logs FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Item Stocks
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.item_stocks;
-CREATE POLICY "Enable all for authenticated users" ON public.item_stocks FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.item_stocks FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Item Transfers
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.item_transfers;
-CREATE POLICY "Enable all for authenticated users" ON public.item_transfers FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.item_transfers FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Items
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.items;
-CREATE POLICY "Enable all for authenticated users" ON public.items FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.items FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Locations
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.locations;
-CREATE POLICY "Enable all for authenticated users" ON public.locations FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.locations FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- PO Items
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.po_items;
-CREATE POLICY "Enable all for authenticated users" ON public.po_items FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.po_items FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Purchase Orders
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.purchase_orders;
-CREATE POLICY "Enable all for authenticated users" ON public.purchase_orders FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.purchase_orders FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- Suppliers
 DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.suppliers;
-CREATE POLICY "Enable all for authenticated users" ON public.suppliers FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Enable all for authenticated users" ON public.suppliers FOR ALL TO authenticated USING (((SELECT auth.role()) = 'authenticated')) WITH CHECK (((SELECT auth.role()) = 'authenticated'));
 
 -- 8. Batasi hak akses SELECT pada bucket storage 'invoices' agar tidak mengekspos daftar file secara publik
 -- Menjadikan bucket 'invoices' privat (sangat direkomendasikan karena invoice berisi data pembelian sensitif)
