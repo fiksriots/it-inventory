@@ -1,0 +1,585 @@
+"use client";
+
+import { useState, useTransition, useRef } from "react";
+import { 
+  ClipboardList, Plus, Search, Users, Clock, Calendar, 
+  Trash2, Image, FileImage, X, Loader2, CheckCircle2, 
+  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink
+} from "lucide-react";
+import { useToast } from "@/components/ui/ToastProvider";
+import { createDailyLog, deleteDailyLog } from "./actions";
+
+interface DailyLogsClientProps {
+  initialLogs: any[];
+  dbTableMissing: boolean;
+}
+
+export default function DailyLogsClient({ initialLogs, dbTableMissing }: DailyLogsClientProps) {
+  const [logs, setLogs] = useState<any[]>(initialLogs);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("Semua");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  
+  // Lightbox State
+  const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
+  const [sqlCopied, setSqlCopied] = useState(false);
+
+  // Form States
+  const [activityName, setActivityName] = useState("");
+  const [details, setDetails] = useState("");
+  const [status, setStatus] = useState("Selesai");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [technicianName, setTechnicianName] = useState("Tim IT Support");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sqlCode = `-- Jalankan SQL ini di Supabase SQL Editor Anda untuk mengaktifkan tabel Laporan Harian:
+
+CREATE TABLE IF NOT EXISTS public.it_daily_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    activity_name TEXT NOT NULL,
+    details TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Selesai' CHECK (status IN ('Selesai', 'Pending', 'Terhambat')),
+    image_url TEXT,
+    technician_name TEXT NOT NULL DEFAULT 'Tim IT Support',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.it_daily_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can select daily logs" ON public.it_daily_logs FOR SELECT USING (((SELECT auth.role()) = 'authenticated'));
+CREATE POLICY "Authenticated users can insert daily logs" ON public.it_daily_logs FOR INSERT WITH CHECK (((SELECT auth.role()) = 'authenticated'));
+CREATE POLICY "Authenticated users can update daily logs" ON public.it_daily_logs FOR UPDATE USING (((SELECT auth.role()) = 'authenticated'));
+CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_logs FOR DELETE USING (((SELECT auth.role()) = 'authenticated'));`;
+
+  const copySql = () => {
+    navigator.clipboard.writeText(sqlCode);
+    setSqlCopied(true);
+    toast("SQL berhasil disalin!", "success");
+    setTimeout(() => setSqlCopied(false), 2000);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast("Ukuran gambar maksimal 5MB!", "error");
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const openCreateModal = () => {
+    setActivityName("");
+    setDetails("");
+    setStatus("Selesai");
+    setDate(new Date().toISOString().split("T")[0]);
+    setTechnicianName("Tim IT Support");
+    clearImage();
+    setIsModalOpen(true);
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activityName.trim()) return toast("Judul kegiatan wajib diisi!", "error");
+    if (!details.trim()) return toast("Rincian pekerjaan wajib diisi!", "error");
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("activity_name", activityName);
+      formData.append("details", details);
+      formData.append("status", status);
+      formData.append("date", date);
+      formData.append("technician_name", technicianName);
+      if (selectedImage) {
+        formData.append("image", selectedImage);
+      }
+
+      const res = await createDailyLog(null, formData);
+      if (res.error) {
+        toast(res.error, "error");
+      } else {
+        toast("Laporan harian berhasil disimpan!", "success");
+        setIsModalOpen(false);
+        if (res.log) {
+          setLogs([res.log, ...logs]);
+        }
+      }
+    });
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    const logItem = logs.find(l => l.id === id);
+    if (logItem?.type === "project") {
+      toast("Laporan ini terhubung dengan Project Planning. Harap hapus langsung dari Detail Project.", "error");
+      return;
+    }
+
+    // Defensive UUID Self-Healing Check
+    if (id.includes(".") || id.length !== 36) {
+      toast("Sinkronisasi laporan... Memuat ulang data.", "error");
+      setLogs(logs.filter(l => l.id !== id));
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
+      return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin menghapus laporan "${name}"? Bukti dokumentasi terkait akan terhapus permanen.`)) {
+      return;
+    }
+
+    startTransition(async () => {
+      const res = await deleteDailyLog(id);
+      if (res.error) {
+        toast(res.error, "error");
+      } else {
+        toast("Laporan berhasil dihapus!", "success");
+        setLogs(logs.filter(l => l.id !== id));
+      }
+    });
+  };
+
+  const formatDateFull = (dateStr: string) => {
+    try {
+      const dateObj = new Date(dateStr);
+      return dateObj.toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const filteredLogs = logs.filter(l => {
+    const matchesSearch = l.activity_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      l.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.technician_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = selectedStatus === "Semua" || l.status === selectedStatus;
+    const matchesDate = !selectedDate || l.date === selectedDate;
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
+  if (dbTableMissing) {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 shadow-sm flex flex-col items-center text-center space-y-4">
+          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-2xl animate-pulse">
+            <AlertTriangle className="w-10 h-10" />
+          </div>
+          <h2 className="text-xl font-black text-foreground">Tabel Laporan Harian IT Belum Diinisialisasi</h2>
+          <p className="text-sm text-text-muted max-w-lg">
+            Tabel basis data \`it_daily_logs\` belum terdeteksi. Silakan salin script SQL di bawah ini dan jalankan di **Supabase SQL Editor** Anda untuk mengaktifkan fitur pencatatan laporan harian.
+          </p>
+
+          <div className="w-full relative bg-[#0d1117] border border-border/60 rounded-xl overflow-hidden mt-2">
+            <div className="flex justify-between items-center px-4 py-2 border-b border-border/40 bg-surface/50">
+              <span className="text-xs text-text-muted font-mono font-semibold">20260517150000_create_it_daily_logs.sql</span>
+              <button
+                onClick={copySql}
+                className="flex items-center gap-1.5 px-3 py-1 bg-surface hover:bg-background border border-border/80 rounded-lg text-xs font-bold text-text-muted hover:text-foreground transition-all"
+              >
+                {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                {sqlCopied ? "Disalin!" : "Salin SQL"}
+              </button>
+            </div>
+            <pre className="p-4 text-left text-xs font-mono overflow-x-auto text-emerald-400/90 leading-relaxed max-h-80 overflow-y-auto">
+              <code>{sqlCode}</code>
+            </pre>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+              <ClipboardList className="w-7 h-7" />
+            </div>
+            Laporan Kerja Harian IT
+          </h1>
+          <p className="text-sm text-text-muted mt-1">
+            Catat agenda, perbaikan, instalasi, dan penanganan gangguan yang dilakukan oleh IT Support setiap harinya.
+          </p>
+        </div>
+        <button
+          onClick={openCreateModal}
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0 text-xs"
+        >
+          <Plus className="w-4.5 h-4.5" />
+          Buat Laporan Harian
+        </button>
+      </div>
+
+      {/* Filter panel */}
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Status Filters */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {["Semua", "Selesai", "Pending", "Terhambat"].map((statusOption) => (
+              <button
+                key={statusOption}
+                onClick={() => setSelectedStatus(statusOption)}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
+                  selectedStatus === statusOption
+                    ? "bg-primary text-white shadow-md shadow-primary/10"
+                    : "bg-background border border-border text-text-muted hover:text-foreground hover:bg-surface"
+                }`}
+              >
+                {statusOption === "Semua" ? "Semua Status" : statusOption}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            {/* Date Quick Filter */}
+            <div className="relative w-full sm:w-auto">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full sm:w-44 pl-9 pr-3 py-2 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors text-text-muted"
+              />
+              {selectedDate && (
+                <button 
+                  onClick={() => setSelectedDate("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground p-0.5 rounded-full hover:bg-surface"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Search input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Cari tugas, deskripsi, teknisi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-background border border-border rounded-xl text-xs placeholder-text-muted focus:outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Reports Listing */}
+      {filteredLogs.length === 0 ? (
+        <div className="p-16 text-center rounded-2xl bg-surface border border-border/40 shadow-sm">
+          <ClipboardList className="w-12 h-12 text-text-muted/40 mx-auto mb-3" />
+          <p className="text-text-muted text-sm font-semibold">Tidak ada laporan harian yang ditemukan.</p>
+          <p className="text-xs text-text-muted/65 mt-1">Buat laporan harian pertama Anda untuk mendokumentasikan kerja hari ini.</p>
+        </div>
+      ) : (
+        <div className="space-y-8 pl-4 border-l-2 border-border/70 ml-2 py-2">
+          {filteredLogs.map((log) => {
+            const hasImage = !!log.image_url;
+            return (
+              <div key={log.id} className="relative group animate-in fade-in duration-300">
+                {/* Timeline dot */}
+                <div className="absolute -left-[25px] top-2 w-3.5 h-3.5 rounded-full bg-surface border-2 border-primary flex items-center justify-center shadow-sm group-hover:bg-primary transition-colors">
+                  <div className="w-1 h-1 bg-primary group-hover:bg-surface rounded-full transition-colors" />
+                </div>
+
+                <div className="space-y-2">
+                  {/* Date Tag */}
+                  <span className="text-[10px] font-black text-primary uppercase tracking-wider bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-md">
+                    {formatDateFull(log.date)}
+                  </span>
+
+                  {/* Log Card Body */}
+                  <div className="bg-surface border border-border hover:border-primary/30 rounded-2xl p-5 shadow-sm space-y-4 transition-all duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/30 pb-3">
+                      <div>
+                        {log.type === "project" ? (
+                          <div 
+                            className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer"
+                            onClick={() => window.location.href = `/projects/${log.project_id}`}
+                            title="Buka detail project"
+                          >
+                            <h3 className="font-extrabold text-sm text-foreground hover:text-primary transition-colors flex items-center gap-1">
+                              {log.activity_name}
+                              <ExternalLink className="w-3.5 h-3.5 text-primary shrink-0" />
+                            </h3>
+                          </div>
+                        ) : (
+                          <h3 className="font-extrabold text-sm text-foreground">{log.activity_name}</h3>
+                        )}
+                        <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-text-muted">
+                          <Users className="w-3.5 h-3.5 text-text-muted/60" />
+                          <span>Teknisi: <strong className="text-foreground">{log.technician_name}</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                          log.type === "project" 
+                            ? "bg-violet-500/10 text-violet-500 border border-violet-500/20" 
+                            : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        }`}>
+                          {log.type === "project" ? "Project" : "Mandiri"}
+                        </span>
+
+                        <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                          log.status === "Selesai" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                          log.status === "Pending" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                          "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                        }`}>
+                          {log.status}
+                        </span>
+
+                        {log.type !== "project" && (
+                          <button
+                            onClick={() => handleDelete(log.id, log.activity_name)}
+                            className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95"
+                            title="Hapus Laporan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details content */}
+                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-line font-medium">
+                      {log.details}
+                    </p>
+
+                    {/* Image Documentation */}
+                    {hasImage && (
+                      <div className="pt-2">
+                        <div 
+                          className="relative w-40 h-24 rounded-xl overflow-hidden border border-border/80 group/thumb cursor-pointer shadow-sm bg-background p-1 hover:border-primary/45 transition-colors"
+                          onClick={() => setSelectedDocImage(log.image_url)}
+                        >
+                          <img 
+                            src={log.image_url} 
+                            alt="Bukti Pekerjaan" 
+                            className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover/thumb:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
+                            <Maximize2 className="w-4 h-4 text-white animate-in zoom-in-75 duration-200" />
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold text-text-muted/50 mt-1.5 block tracking-wider uppercase">FOTO DOKUMENTASI FISIK</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal: New Activity Log */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setIsModalOpen(false)}>
+          <div className="bg-surface border border-border w-full max-w-lg rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border">
+              <h3 className="font-black text-base text-foreground flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-primary" />
+                Buat Laporan Kerja Harian
+              </h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 text-text-muted hover:text-foreground rounded-lg hover:bg-background"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Tanggal Kerja <span className="text-rose-500">*</span></label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Nama Teknisi <span className="text-rose-500">*</span></label>
+                  <select
+                    value={technicianName}
+                    onChange={(e) => setTechnicianName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors"
+                  >
+                    <option value="Tim IT Support">Tim IT Support</option>
+                    <option value="Ahmad Dzakiyul Fikri">Fikri</option>
+                    <option value="Raffa">Raffa</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Judul Aktivitas / Gangguan <span className="text-rose-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="Misal: Perbaikan Gangguan Koneksi Internet HRD"
+                  required
+                  value={activityName}
+                  onChange={(e) => setActivityName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Rincian Pekerjaan <span className="text-rose-500">*</span></label>
+                <textarea
+                  placeholder="Jelaskan secara mendetail apa saja yang dikerjakan... (Misal: Melakukan reboot router, crimping ulang kabel LAN RG45, testing ping, hasil koneksi kembali normal.)"
+                  required
+                  rows={4}
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Status Penyelesaian</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors"
+                >
+                  <option value="Selesai">Selesai (Done)</option>
+                  <option value="Pending">Pending (Dalam Antrean)</option>
+                  <option value="Terhambat">Terhambat (Blocker)</option>
+                </select>
+              </div>
+
+              {/* Documentation Image */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Image className="w-3.5 h-3.5 text-primary" />
+                  Bukti Dokumentasi Pekerjaan (Opsional)
+                </label>
+
+                {!imagePreview ? (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-border/80 hover:border-primary/50 rounded-xl p-6 text-center cursor-pointer bg-background hover:bg-surface/50 transition-all group"
+                  >
+                    <FileImage className="w-8 h-8 text-text-muted/50 mx-auto mb-2 group-hover:text-primary transition-colors" />
+                    <p className="text-xs font-bold text-text-muted">Klik untuk memilih gambar</p>
+                    <p className="text-[9px] text-text-muted/65 mt-0.5">JPEG, PNG, WEBP (Maks 5MB)</p>
+                  </div>
+                ) : (
+                  <div className="relative rounded-xl border border-border overflow-hidden bg-background p-2 flex items-center gap-3">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview upload" 
+                      className="w-12 h-12 object-cover rounded-lg border border-border"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate">{selectedImage?.name}</p>
+                      <p className="text-[9px] text-text-muted mt-0.5">{(selectedImage!.size / (1024 * 1024)).toFixed(2)} MB</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors border border-rose-500/10 active:scale-95 animate-in"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2.5 bg-background border border-border text-text-muted font-bold rounded-xl text-xs transition-all hover:bg-surface active:scale-95"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl text-xs shadow-md shadow-primary/10 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    "Simpan Laporan"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal Popup */}
+      {selectedDocImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" 
+          onClick={() => setSelectedDocImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={selectedDocImage} 
+              alt="Dokumentasi Full" 
+              className="max-w-full max-h-[85vh] rounded-2xl border border-white/10 shadow-2xl object-contain animate-in zoom-in-95 duration-200" 
+            />
+            <button 
+              onClick={() => setSelectedDocImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-black/40 hover:bg-black/60 rounded-full transition-all border border-white/10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

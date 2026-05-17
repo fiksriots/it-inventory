@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer, Calendar } from "lucide-react";
+import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer, Calendar, FolderKanban, ClipboardList } from "lucide-react";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -13,6 +13,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
       title: "Ringkasan",
       items: [
         { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+        { icon: FolderKanban, label: "Project Planning", href: "/projects" },
+        { icon: ClipboardList, label: "Laporan Harian", href: "/daily-logs" },
       ]
     },
     {
