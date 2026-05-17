@@ -473,3 +473,298 @@ export async function importInfrastructureBulk(infraData: any[]) {
   revalidatePath("/infrastructure");
   return { success: true, count: importedCount };
 }
+
+// ==========================================
+// 4. DATA PURCHASE ORDER (PO)
+// ==========================================
+
+export async function getAllPurchaseOrdersForExport() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("purchase_orders")
+    .select(`
+      id,
+      po_number,
+      status,
+      total_amount,
+      created_at,
+      suppliers (name),
+      po_items (
+        quantity,
+        unit_price,
+        items (sku, name)
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error exporting POs:", error);
+    throw new Error(error.message);
+  }
+
+  const rows: any[] = [];
+  data?.forEach((po: any) => {
+    const items = po.po_items || [];
+    if (items.length === 0) {
+      rows.push({
+        "Nomor PO": po.po_number,
+        "Supplier": po.suppliers?.name || "-",
+        "Status": po.status || "Draft",
+        "Nama Barang": "-",
+        "SKU Barang": "-",
+        "Jumlah": 0,
+        "Harga Satuan": 0,
+        "Total Harga": 0,
+        "Grand Total PO": po.total_amount || 0,
+        "Tanggal Dibuat": po.created_at || "-"
+      });
+    } else {
+      items.forEach((item: any) => {
+        rows.push({
+          "Nomor PO": po.po_number,
+          "Supplier": po.suppliers?.name || "-",
+          "Status": po.status || "Draft",
+          "Nama Barang": item.items?.name || "-",
+          "SKU Barang": item.items?.sku || "-",
+          "Jumlah": item.quantity || 0,
+          "Harga Satuan": item.unit_price || 0,
+          "Total Harga": (item.quantity || 0) * (item.unit_price || 0),
+          "Grand Total PO": po.total_amount || 0,
+          "Tanggal Dibuat": po.created_at || "-"
+        });
+      });
+    }
+  });
+  return rows;
+}
+
+export async function importPurchaseOrdersBulk(poData: any[]) {
+  const supabase = await createClient();
+
+  // Ambil data user saat ini
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Cache suppliers, locations, items
+  const { data: allSuppliers } = await supabase.from("suppliers").select("id, name");
+  const supplierMap: Record<string, string> = {};
+  allSuppliers?.forEach(s => {
+    supplierMap[s.name.trim().toLowerCase()] = s.id;
+  });
+
+  const { data: allLocations } = await supabase.from("locations").select("id, name");
+  const locationMap: Record<string, string> = {};
+  allLocations?.forEach(loc => {
+    locationMap[loc.name.trim().toLowerCase()] = loc.id;
+  });
+
+  const { data: allItems } = await supabase.from("items").select("id, sku, name");
+  const itemSkuMap: Record<string, string> = {};
+  const itemNameMap: Record<string, string> = {};
+  allItems?.forEach(item => {
+    itemSkuMap[item.sku.trim().toLowerCase()] = item.id;
+    itemNameMap[item.name.trim().toLowerCase()] = item.id;
+  });
+
+  // Group rows by Nomor PO
+  const poGroups: Record<string, any[]> = {};
+  poData.forEach(row => {
+    const poNum = row["Nomor PO"] || row["no_po"] || row["PO_Number"] || row["Nomor_PO"];
+    if (!poNum) return;
+    const key = poNum.toString().trim();
+    if (!poGroups[key]) {
+      poGroups[key] = [];
+    }
+    poGroups[key].push(row);
+  });
+
+  let importedPOCount = 0;
+
+  for (const poNum of Object.keys(poGroups)) {
+    const rows = poGroups[poNum];
+    const firstRow = rows[0];
+
+    const supName = firstRow["Supplier"] || firstRow["supplier"] || "Supplier Umum";
+    const status = firstRow["Status"] || firstRow["status"] || "Draft";
+    const dateStr = firstRow["Tanggal Dibuat"] || firstRow["Tanggal"] || firstRow["created_at"];
+
+    // 1. Resolve Supplier
+    let supplier_id = null;
+    if (supName) {
+      const lowerSup = supName.trim().toLowerCase();
+      if (supplierMap[lowerSup]) {
+        supplier_id = supplierMap[lowerSup];
+      } else {
+        const { data: newSup } = await supabase
+          .from("suppliers")
+          .insert([{ name: supName.trim() }])
+          .select("id")
+          .single();
+        if (newSup) {
+          supplier_id = newSup.id;
+          supplierMap[lowerSup] = newSup.id;
+        }
+      }
+    }
+
+    // 2. Upsert Purchase Order Header
+    let po_id = null;
+    const { data: existingPO } = await supabase
+      .from("purchase_orders")
+      .select("id")
+      .eq("po_number", poNum)
+      .single();
+
+    const poHeaderData: any = {
+      po_number: poNum,
+      supplier_id,
+      status: status.toString().trim(),
+      created_by: user?.id || null
+    };
+
+    if (dateStr) {
+      poHeaderData.created_at = new Date(dateStr).toISOString();
+    }
+
+    if (existingPO) {
+      po_id = existingPO.id;
+      await supabase
+        .from("purchase_orders")
+        .update(poHeaderData)
+        .eq("id", po_id);
+      
+      // Delete old items to re-insert cleanly
+      await supabase.from("po_items").delete().eq("po_id", po_id);
+    } else {
+      const { data: newPO } = await supabase
+        .from("purchase_orders")
+        .insert([poHeaderData])
+        .select("id")
+        .single();
+      if (newPO) {
+        po_id = newPO.id;
+      }
+    }
+
+    if (!po_id) continue;
+
+    let grandTotal = 0;
+
+    // 3. Process PO Items
+    for (const row of rows) {
+      const itemName = row["Nama Barang"] || row["Nama"] || row["item_name"];
+      let itemSku = row["SKU Barang"] || row["SKU"] || row["sku"];
+      const qty = parseInt(row["Jumlah"] || row["quantity"] || row["qty"] || "0");
+      const price = parseFloat(row["Harga Satuan"] || row["unit_price"] || row["price"] || "0");
+
+      if (!itemName && !itemSku) continue;
+      if (qty <= 0) continue;
+
+      // Resolve or create Item
+      let item_id = null;
+      const lowerSku = itemSku ? itemSku.toString().trim().toLowerCase() : "";
+      const lowerName = itemName ? itemName.toString().trim().toLowerCase() : "";
+
+      if (lowerSku && itemSkuMap[lowerSku]) {
+        item_id = itemSkuMap[lowerSku];
+      } else if (lowerName && itemNameMap[lowerName]) {
+        item_id = itemNameMap[lowerName];
+      } else {
+        // Create new item
+        const finalSku = itemSku || `ITEM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const { data: newItem } = await supabase
+          .from("items")
+          .insert([{
+            name: itemName ? itemName.trim() : "Barang Tanpa Nama",
+            sku: finalSku,
+            price: price || 0
+          }])
+          .select("id, sku, name")
+          .single();
+        
+        if (newItem) {
+          item_id = newItem.id;
+          itemSkuMap[newItem.sku.toLowerCase()] = newItem.id;
+          itemNameMap[newItem.name.toLowerCase()] = newItem.id;
+        }
+      }
+
+      if (item_id) {
+        const itemTotal = qty * price;
+        grandTotal += itemTotal;
+
+        // Insert PO Item
+        await supabase.from("po_items").insert([{
+          po_id,
+          item_id,
+          quantity: qty,
+          unit_price: price
+        }]);
+
+        // 4. Jika status PO adalah "Selesai", perbarui stoknya!
+        if (status === "Selesai") {
+          let location_id = null;
+          const locKeys = Object.keys(locationMap);
+          if (locKeys.length > 0) {
+            location_id = locationMap[locKeys[0]];
+          } else {
+            const { data: newLoc } = await supabase
+              .from("locations")
+              .insert([{ name: "Gudang Utama" }])
+              .select("id")
+              .single();
+            if (newLoc) {
+              location_id = newLoc.id;
+              locationMap["gudang utama"] = newLoc.id;
+            }
+          }
+
+          if (location_id) {
+            const { data: existingStock } = await supabase
+              .from("item_stocks")
+              .select("quantity")
+              .eq("item_id", item_id)
+              .eq("location_id", location_id)
+              .single();
+
+            if (existingStock) {
+              await supabase
+                .from("item_stocks")
+                .update({ quantity: existingStock.quantity + qty })
+                .eq("item_id", item_id)
+                .eq("location_id", location_id);
+            } else {
+              await supabase
+                .from("item_stocks")
+                .insert([{
+                  item_id,
+                  location_id,
+                  quantity: qty,
+                  condition: 'Baru'
+                }]);
+            }
+
+            await supabase.from("inventory_logs").insert([{
+              item_id,
+              location_id,
+              user_id: user?.id,
+              mutation_type: 'INBOUND',
+              quantity: qty,
+              notes: `Stok bertambah otomatis dari import PO nomor ${poNum}.`
+            }]);
+          }
+        }
+      }
+    }
+
+    // Update grand total di PO Header
+    await supabase
+      .from("purchase_orders")
+      .update({ total_amount: grandTotal })
+      .eq("id", po_id);
+
+    importedPOCount++;
+  }
+
+  revalidatePath("/po");
+  return { success: true, count: importedPOCount };
+}

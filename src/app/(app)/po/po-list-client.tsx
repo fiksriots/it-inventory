@@ -5,6 +5,31 @@ import { ShoppingCart, Plus, Eye, Calendar, Building2, ChevronLeft, ChevronRight
 import Link from "next/link";
 import POSearch from "./po-search";
 import POFilter from "./po-filter";
+import ExcelImportExport from "@/components/ui/ExcelImportExport";
+import { getAllPurchaseOrdersForExport, importPurchaseOrdersBulk } from "@/app/(app)/services/import-export-actions";
+
+const poTemplate = [
+  {
+    "Nomor PO": "PO-20260517-001",
+    "Supplier": "PT Mandiri Sukses",
+    "Status": "Selesai",
+    "Nama Barang": "Laptop Asus VivoBook",
+    "SKU Barang": "-AUTO",
+    "Jumlah": 5,
+    "Harga Satuan": 12000000,
+    "Tanggal Dibuat": "2026-05-17"
+  },
+  {
+    "Nomor PO": "PO-20260517-001",
+    "Supplier": "PT Mandiri Sukses",
+    "Status": "Selesai",
+    "Nama Barang": "Keyboard Wireless Logitech",
+    "SKU Barang": "-AUTO",
+    "Jumlah": 10,
+    "Harga Satuan": 450000,
+    "Tanggal Dibuat": "2026-05-17"
+  }
+];
 
 interface POListClientProps {
   pos: any[];
@@ -172,6 +197,13 @@ export default function POListClient({
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <POSearch />
             <POFilter />
+            <ExcelImportExport
+              exportAction={getAllPurchaseOrdersForExport}
+              importAction={importPurchaseOrdersBulk}
+              templateData={poTemplate}
+              fileName="Data_PO"
+              buttonLabel="Purchase Order"
+            />
           </div>
           
           <div className="text-xs text-text-muted flex items-center gap-4">
