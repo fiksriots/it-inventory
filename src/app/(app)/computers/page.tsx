@@ -5,6 +5,41 @@ import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteComputer } from "./actions";
+import ExcelImportExport from "@/components/ui/ExcelImportExport";
+import { getAllComputersForExport, importComputersBulk } from "@/app/(app)/services/import-export-actions";
+
+const computerTemplate = [
+  {
+    "Nama Komputer": "PC-DEVELOPMENT-01",
+    "Nomor Aset": "-AUTO",
+    "Lokasi": "Server Room",
+    "User Assigned": "Budi Santoso",
+    "Alamat IP": "192.168.2.10",
+    "Sistem Operasi": "Windows 11 Pro",
+    "Processor": "Intel Core i7-12700",
+    "RAM": "16GB DDR4",
+    "Storage": "512GB NVMe SSD",
+    "Status": "Aktif",
+    "Terakhir Maintenance": "2026-05-01",
+    "Maintenance Berikutnya": "2026-11-01",
+    "Catatan": "Kondisi sangat baik, RAM baru diupgrade."
+  },
+  {
+    "Nama Komputer": "LAPTOP-MARKETING-02",
+    "Nomor Aset": "-AUTO",
+    "Lokasi": "Lantai 2",
+    "User Assigned": "Siti Rahma",
+    "Alamat IP": "192.168.2.35",
+    "Sistem Operasi": "Windows 11 Pro",
+    "Processor": "Intel Core i5-1135G7",
+    "RAM": "8GB DDR4",
+    "Storage": "256GB SSD",
+    "Status": "Aktif",
+    "Terakhir Maintenance": "2026-04-10",
+    "Maintenance Berikutnya": "2026-10-10",
+    "Catatan": "Layar bersih, keyboard normal."
+  }
+];
 
 export default async function ComputersPage({
   searchParams,
@@ -158,7 +193,16 @@ export default async function ComputersPage({
               </form>
             )}
           </div>
-          <Pagination totalPages={totalPages} currentPage={currentPage} />
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <ExcelImportExport
+              exportAction={getAllComputersForExport}
+              importAction={importComputersBulk}
+              templateData={computerTemplate}
+              fileName="Data_PC"
+              buttonLabel="Komputer"
+            />
+            <Pagination totalPages={totalPages} currentPage={currentPage} />
+          </div>
         </div>
 
         {/* Table */}

@@ -5,6 +5,31 @@ import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteItem } from "./actions";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
+import ExcelImportExport from "@/components/ui/ExcelImportExport";
+import { getAllItemsForExport, importItemsBulk } from "@/app/(app)/services/import-export-actions";
+
+const itemTemplate = [
+  {
+    "Nama Barang": "Laptop ThinkPad X1 Carbon",
+    "SKU": "-AUTO",
+    "Kategori": "Laptop",
+    "Harga (IDR)": 25000000,
+    "Total Stok": 5,
+    "Lokasi": "Server Room",
+    "Kondisi": "Baru",
+    "Deskripsi": "Laptop dinas untuk developer senior."
+  },
+  {
+    "Nama Barang": "Monitor Dell UltraSharp 27",
+    "SKU": "-AUTO",
+    "Kategori": "Monitor",
+    "Harga (IDR)": 7500000,
+    "Total Stok": 3,
+    "Lokasi": "Gudang Utama",
+    "Kondisi": "Baru",
+    "Deskripsi": "Monitor 2K resolusi tinggi."
+  }
+];
 
 export default async function ItemsPage({
   searchParams,
@@ -54,7 +79,16 @@ export default async function ItemsPage({
       <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
         {/* Table Toolbar */}
         <div className="p-4 border-b border-border flex flex-col md:flex-row gap-4 justify-between items-center bg-surface/50">
-          <SearchInput placeholder="Cari SKU atau nama barang..." />
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <SearchInput placeholder="Cari SKU atau nama barang..." />
+            <ExcelImportExport
+              exportAction={getAllItemsForExport}
+              importAction={importItemsBulk}
+              templateData={itemTemplate}
+              fileName="Data_Barang"
+              buttonLabel="Barang"
+            />
+          </div>
           <Pagination totalPages={totalPages} currentPage={currentPage} />
         </div>
 

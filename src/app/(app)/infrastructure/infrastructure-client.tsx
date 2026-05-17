@@ -4,6 +4,35 @@ import { useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
+import ExcelImportExport from "@/components/ui/ExcelImportExport";
+import { getAllInfrastructureForExport, importInfrastructureBulk } from "@/app/(app)/services/import-export-actions";
+
+const infraTemplate = [
+  {
+    "Nama Fasilitas": "CCTV Lobby Utama",
+    "Nomor Aset": "-AUTO",
+    "Kategori": "CCTV",
+    "Lokasi": "Lobby",
+    "Status": "Aktif",
+    "Alamat IP": "192.168.2.50",
+    "Vendor / Teknisi": "PT Security System Indo",
+    "Terakhir Maintenance": "2026-04-15",
+    "Maintenance Berikutnya": "2026-10-15",
+    "Catatan": "Kamera diganti baru, lensa dibersihkan."
+  },
+  {
+    "Nama Fasilitas": "AC Server Room 1",
+    "Nomor Aset": "-AUTO",
+    "Kategori": "AC/Pendingin",
+    "Lokasi": "Server Room",
+    "Status": "Aktif",
+    "Alamat IP": "-",
+    "Vendor / Teknisi": "Sinar Jaya AC",
+    "Terakhir Maintenance": "2026-05-01",
+    "Maintenance Berikutnya": "2026-08-01",
+    "Catatan": "Pengisian freon dan cuci blower."
+  }
+];
 
 interface InfrastructureClientProps {
   assets: any[];
@@ -154,8 +183,8 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
       </div>
 
       {/* Filter Controls */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="flex-1 relative w-full">
           <Search className="w-4 h-4 absolute left-4 top-3.5 text-text-muted" />
           <input
             type="text"
@@ -182,6 +211,15 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
               );
             })}
           </select>
+        </div>
+        <div className="w-full md:w-auto shrink-0 flex justify-end">
+          <ExcelImportExport
+            exportAction={getAllInfrastructureForExport}
+            importAction={importInfrastructureBulk}
+            templateData={infraTemplate}
+            fileName="Data_Infrastruktur"
+            buttonLabel="Fasilitas"
+          />
         </div>
       </div>
 
