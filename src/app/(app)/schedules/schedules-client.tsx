@@ -10,6 +10,15 @@ const monthNames = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
+interface DayInfo {
+  dayNum: number;
+  month: number;
+  year: number;
+  dateStr: string;
+  dayLabel: string;
+  isSunday: boolean;
+}
+
 export default function SchedulesClient() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1); // 1-12
@@ -18,6 +27,9 @@ export default function SchedulesClient() {
   const [members, setMembers] = useState<string[]>(["Fikri", "Raffa"]);
   const [loading, setLoading] = useState(true);
   
+  // Cutoff mode state (Default to true as requested for Cutoff 24)
+  const [isCutoffMode, setIsCutoffMode] = useState(true);
+
   // State for adding a new member
   const [newMemberName, setNewMemberName] = useState("");
   const [showAddMember, setShowAddMember] = useState(false);
@@ -27,6 +39,8 @@ export default function SchedulesClient() {
     memberName: string;
     dateStr: string;
     dayNum: number;
+    month: number;
+    year: number;
     currentStatus?: "M" | "C" | "DP" | "PH";
     currentNotes?: string;
   } | null>(null);
@@ -62,32 +76,79 @@ export default function SchedulesClient() {
     fetchSchedules();
   }, [currentMonth, currentYear]);
 
-  // Days in selected month helper
+  // Days in month helper
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month, 0).getDate();
   };
 
-  const daysCount = getDaysInMonth(currentMonth, currentYear);
-  const daysArray = Array.from({ length: daysCount }, (_, i) => i + 1);
-
-  // Date formatting helpers
-  const getDayName = (day: number) => {
-    const d = new Date(currentYear, currentMonth - 1, day);
-    return dayNames[d.getDay()];
+  // Generate the dynamic list of days depending on Normal or Cutoff mode
+  const getPeriodDays = (): DayInfo[] => {
+    if (!isCutoffMode) {
+      // Normal mode: 1st to last day of currentMonth
+      const daysCount = getDaysInMonth(currentMonth, currentYear);
+      return Array.from({ length: daysCount }, (_, i) => {
+        const day = i + 1;
+        const d = new Date(currentYear, currentMonth - 1, day);
+        return {
+          dayNum: day,
+          month: currentMonth,
+          year: currentYear,
+          dateStr: `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dayLabel: dayNames[d.getDay()],
+          isSunday: d.getDay() === 0
+        };
+      });
+    } else {
+      // Cutoff mode: 24th of prevMonth to 23rd of currentMonth
+      const prevM = currentMonth === 1 ? 12 : currentMonth - 1;
+      const prevY = currentMonth === 1 ? currentYear - 1 : currentYear;
+      const prevDaysCount = getDaysInMonth(prevM, prevY);
+      
+      const list: DayInfo[] = [];
+      
+      // Part 1: 24th to end of prevMonth
+      for (let day = 24; day <= prevDaysCount; day++) {
+        const d = new Date(prevY, prevM - 1, day);
+        list.push({
+          dayNum: day,
+          month: prevM,
+          year: prevY,
+          dateStr: `${prevY}-${String(prevM).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dayLabel: dayNames[d.getDay()],
+          isSunday: d.getDay() === 0
+        });
+      }
+      
+      // Part 2: 1st to 23rd of currentMonth
+      for (let day = 1; day <= 23; day++) {
+        const d = new Date(currentYear, currentMonth - 1, day);
+        list.push({
+          dayNum: day,
+          month: currentMonth,
+          year: currentYear,
+          dateStr: `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dayLabel: dayNames[d.getDay()],
+          isSunday: d.getDay() === 0
+        });
+      }
+      
+      return list;
+    }
   };
 
-  const getIsSunday = (day: number) => {
-    const d = new Date(currentYear, currentMonth - 1, day);
-    return d.getDay() === 0;
+  const periodDays = getPeriodDays();
+
+  const getPeriodRangeLabel = () => {
+    if (!isCutoffMode) {
+      return `Periode: 1 s/d ${getDaysInMonth(currentMonth, currentYear)} ${monthNames[currentMonth - 1]}`;
+    } else {
+      const prevM = currentMonth === 1 ? 12 : currentMonth - 1;
+      return `Periode Cutoff: 24 ${monthNames[prevM - 1]} s/d 23 ${monthNames[currentMonth - 1]}`;
+    }
   };
 
-  const formatDateString = (day: number) => {
-    return `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  };
-
-  // Helper to get schedule for a member and day
-  const getDaySchedule = (memberName: string, day: number) => {
-    const dateStr = formatDateString(day);
+  // Helper to get schedule for a member and specific date string
+  const getDaySchedule = (memberName: string, dateStr: string) => {
     return schedules.find(s => s.member_name === memberName && s.schedule_date === dateStr);
   };
 
@@ -110,7 +171,7 @@ export default function SchedulesClient() {
     }
   };
 
-  // Add new member to local state list
+  // Add new member to local list
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberName.trim()) return;
@@ -126,22 +187,23 @@ export default function SchedulesClient() {
     setMessage({ type: "success", text: `Anggota tim "${newMemberName}" ditambahkan ke board.` });
   };
 
-  // Remove member from local state list
+  // Remove member from board
   const handleRemoveMemberFromBoard = (name: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus "${name}" dari tampilan board bulan ini? (Data riwayat di database tetap tersimpan)`)) {
       setMembers(members.filter(m => m !== name));
     }
   };
 
-  // Open save dialog for a cell
-  const handleCellClick = (memberName: string, day: number) => {
-    const dateStr = formatDateString(day);
-    const existing = getDaySchedule(memberName, day);
+  // Open edit dialog for a cell
+  const handleCellClick = (memberName: string, dayObj: DayInfo) => {
+    const existing = getDaySchedule(memberName, dayObj.dateStr);
 
     setActiveCell({
       memberName,
-      dateStr,
-      dayNum: day,
+      dateStr: dayObj.dateStr,
+      dayNum: dayObj.dayNum,
+      month: dayObj.month,
+      year: dayObj.year,
       currentStatus: existing?.status,
       currentNotes: existing?.notes || ""
     });
@@ -223,7 +285,7 @@ export default function SchedulesClient() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Jadwal Kerja Tim IT</h1>
-            <p className="text-sm text-text-muted">Kelola jadwal kehadiran, cuti, dan dispensasi tim IT realtime.</p>
+            <p className="text-sm text-text-muted">Kelola jadwal kehadiran, cuti, dispensasi (DP), dan libur nasional (PH) tim IT realtime.</p>
           </div>
         </div>
 
@@ -287,32 +349,67 @@ export default function SchedulesClient() {
       )}
 
       {/* Main Board Container */}
-      <div className="bg-surface rounded-xl border border-border flex flex-col overflow-hidden">
+      <div className="bg-surface rounded-xl border border-border flex flex-col overflow-hidden animate-in fade-in duration-200">
         {/* Month Selector Header */}
-        <div className="p-4 border-b border-border flex flex-col sm:flex-row justify-between items-center gap-4 bg-background/50">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            <span className="font-semibold text-sm">Schedule Board IT</span>
+        <div className="p-4 border-b border-border flex flex-col lg:flex-row justify-between items-center gap-4 bg-background/50">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              <span className="font-semibold text-sm">Schedule Board IT</span>
+            </div>
+            
+            {/* Cutoff / Normal Period Mode Toggle */}
+            <div className="flex bg-background border border-border p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setIsCutoffMode(false)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  !isCutoffMode
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-text-muted hover:text-foreground"
+                }`}
+              >
+                Normal (1 - Akhir)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCutoffMode(true)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  isCutoffMode
+                    ? "bg-primary text-white shadow-sm"
+                    : "text-text-muted hover:text-foreground"
+                }`}
+              >
+                Cutoff (24 - 23)
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handlePrevMonth}
-              className="p-1.5 rounded-lg bg-background hover:bg-surface border border-border text-text-muted hover:text-foreground transition-all"
-              title="Bulan Sebelumnya"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="text-sm font-bold min-w-[150px] text-center">
-              {monthNames[currentMonth - 1]} {currentYear}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* Period Range info display */}
+            <div className="text-xs px-3 py-1.5 rounded-lg bg-background border border-border text-text-muted font-medium">
+              {getPeriodRangeLabel()}
             </div>
-            <button
-              onClick={handleNextMonth}
-              className="p-1.5 rounded-lg bg-background hover:bg-surface border border-border text-text-muted hover:text-foreground transition-all"
-              title="Bulan Berikutnya"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1.5 rounded-lg bg-background hover:bg-surface border border-border text-text-muted hover:text-foreground transition-all"
+                title="Bulan Sebelumnya"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="text-sm font-bold min-w-[150px] text-center">
+                {monthNames[currentMonth - 1]} {currentYear}
+              </div>
+              <button
+                onClick={handleNextMonth}
+                className="p-1.5 rounded-lg bg-background hover:bg-surface border border-border text-text-muted hover:text-foreground transition-all"
+                title="Bulan Berikutnya"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -333,18 +430,16 @@ export default function SchedulesClient() {
                   </th>
                   
                   {/* Render Columns for Days */}
-                  {daysArray.map(day => {
-                    const sun = getIsSunday(day);
-                    const dayLabel = getDayName(day);
+                  {periodDays.map(dayObj => {
                     return (
                       <th
-                        key={day}
+                        key={dayObj.dateStr}
                         className={`p-2 text-center text-[10px] font-bold border-r border-border min-w-[40px] max-w-[50px] ${
-                          sun ? "text-rose-400 bg-rose-500/5" : "text-text-muted"
+                          dayObj.isSunday ? "text-rose-400 bg-rose-500/5" : "text-text-muted"
                         }`}
                       >
-                        <div className="text-xs">{String(day).padStart(2, "0")}</div>
-                        <div className="font-medium text-[8px] uppercase">{dayLabel}</div>
+                        <div className="text-xs">{String(dayObj.dayNum).padStart(2, "0")}</div>
+                        <div className="font-medium text-[8px] uppercase">{dayObj.dayLabel}</div>
                       </th>
                     );
                   })}
@@ -366,19 +461,18 @@ export default function SchedulesClient() {
                     </td>
 
                     {/* Render status cells for each day */}
-                    {daysArray.map(day => {
-                      const sun = getIsSunday(day);
-                      const s = getDaySchedule(member, day);
+                    {periodDays.map(dayObj => {
+                      const s = getDaySchedule(member, dayObj.dateStr);
                       const displayStatus = s ? s.status : "M";
                       const displayNotes = s ? s.notes : "";
                       const isDefault = !s;
 
                       return (
                         <td
-                          key={day}
-                          onClick={() => handleCellClick(member, day)}
+                          key={dayObj.dateStr}
+                          onClick={() => handleCellClick(member, dayObj)}
                           className={`p-1.5 text-center border-r border-border align-middle cursor-pointer transition-all hover:bg-background ${
-                            sun ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
+                            dayObj.isSunday ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
                           }`}
                         >
                           <div className="w-full h-8 flex items-center justify-center">
@@ -436,7 +530,9 @@ export default function SchedulesClient() {
             <div className="p-4 border-b border-border flex justify-between items-center bg-background/50">
               <div>
                 <h3 className="font-bold text-base">Atur Jadwal Kerja</h3>
-                <p className="text-xs text-text-muted">{activeCell.memberName} — {activeCell.dayNum} {monthNames[currentMonth - 1]} {currentYear}</p>
+                <p className="text-xs text-text-muted">
+                  {activeCell.memberName} — {activeCell.dayNum} {monthNames[activeCell.month - 1]} {activeCell.year}
+                </p>
               </div>
               <button
                 onClick={() => setActiveCell(null)}

@@ -15,9 +15,12 @@ export interface Schedule {
 export async function getSchedules(month: number, year: number) {
   const supabase = await createClient();
   
-  // Format start and end date for filtering
-  const startDay = `${year}-${String(month).padStart(2, "0")}-01`;
-  // Get last day of month
+  // Format start date as 1st of previous month to support both Normal and Cutoff (24th-23rd) periods
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const startDay = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+  
+  // Get last day of current month
   const lastDayVal = new Date(year, month, 0).getDate();
   const endDay = `${year}-${String(month).padStart(2, "0")}-${String(lastDayVal).padStart(2, "0")}`;
 
