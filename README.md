@@ -177,4 +177,4 @@ Untuk peladen kantor lokal (Ubuntu/Linux/Windows) yang menginginkan penyimpanan 
 
 ---
 *Didesain dan dikembangkan dengan standar rekayasa perangkat lunak berkinerja tinggi.*  
-**Hak Cipta © 2026 PT. INVENTARIS TEKNOLOGI UTAMA. Semua Hak Dilindungi.**
+**Hak Cipta © 2026 Fiksriots. Semua Hak Dilindungi.**
