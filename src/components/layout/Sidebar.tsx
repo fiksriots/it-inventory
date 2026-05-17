@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer } from "lucide-react";
+import { LayoutDashboard, Package, ArrowRightLeft, ShoppingCart, Users, Settings, X, Tags, Wrench, Monitor, Cctv, Printer, Calendar } from "lucide-react";
 
 interface SidebarProps {
   onClose?: () => void;
@@ -20,6 +20,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
     { icon: Users, label: "Departemen & Lokasi", href: "/locations" },
     { icon: Users, label: "Supplier", href: "/suppliers" },
     { icon: Printer, label: "Laporan & Cetak", href: "/reports" },
+    { icon: Calendar, label: "Jadwal Kerja IT", href: "/schedules" },
     { icon: Settings, label: "Pengaturan", href: "/settings" },
   ];
 
