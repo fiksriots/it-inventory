@@ -83,5 +83,9 @@ ON storage.objects FOR SELECT
 TO authenticated
 USING ( bucket_id = 'invoices' );
 
--- 9. Muat ulang cache skema API PostgREST
+-- 9. Batasi eksekusi fungsi SECURITY DEFINER handle_new_user
+-- Cabut hak akses EXECUTE dari PUBLIC, authenticated, dan anon agar fungsi ini hanya bisa dijalankan oleh system/trigger
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, authenticated, anon;
+
+-- 10. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
