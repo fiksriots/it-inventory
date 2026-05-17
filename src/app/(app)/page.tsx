@@ -1,4 +1,4 @@
-import { Package, Tags, Users, AlertTriangle, ArrowRight, ShoppingCart, Clock, CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight, History, Activity, PlusCircle, ArrowLeftRight, PackagePlus } from "lucide-react";
+import { Package, Tags, Users, AlertTriangle, ArrowRight, ShoppingCart, Clock, CheckCircle2, XCircle, ArrowUpRight, ArrowDownRight, History, Activity, PlusCircle, ArrowLeftRight, PackagePlus, FolderKanban, ClipboardList, Calendar } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
 
@@ -35,7 +35,6 @@ export default async function Dashboard() {
   const totalValue = allStocks?.reduce((acc, curr) => acc + (curr.quantity * (curr.items as any)?.price || 0), 0) || 0;
   const conditionStats = allStocks?.reduce((acc: any, curr) => {
     const cond = curr.condition || "Normal";
-    // Group all variations of 'Rusak' into one bucket
     if (cond.includes("Rusak")) {
       acc.Rusak = (acc.Rusak || 0) + curr.quantity;
     } else {
@@ -44,27 +43,74 @@ export default async function Dashboard() {
     return acc;
   }, { Normal: 0, Baru: 0, Rusak: 0 });
 
+  // Operations Defensive Queries
+  let activeProjectsCount = 0;
+  let activeProjects: any[] = [];
+  let todayLogsCount = 0;
+  let dutyStaff: string[] = [];
+  let hasProjectsTable = true;
+  let hasDailyLogsTable = true;
+  let hasSchedulesTable = true;
+
+  try {
+    const { count } = await supabase.from("it_projects").select("*", { count: "exact", head: true }).neq("status", "Completed");
+    activeProjectsCount = count || 0;
+
+    const { data } = await supabase.from("it_projects").select("id, name, status, progress").neq("status", "Completed").order("progress", { ascending: true }).limit(3);
+    activeProjects = data || [];
+  } catch (err) {
+    hasProjectsTable = false;
+  }
+
+  try {
+    const { count } = await supabase.from("it_daily_logs").select("*", { count: "exact", head: true }).eq("date", new Date().toISOString().split("T")[0]);
+    todayLogsCount = count || 0;
+  } catch (err) {
+    hasDailyLogsTable = false;
+  }
+
+  try {
+    const todayDay = new Date().getDate().toString();
+    const currentMonthStr = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+
+    const { data: schedulesData } = await supabase
+      .from("it_schedules")
+      .select("technician_name, schedules")
+      .eq("month", currentMonthStr);
+
+    if (schedulesData) {
+      schedulesData.forEach((row: any) => {
+        const schedMap = row.schedules || {};
+        const todayCode = schedMap[todayDay];
+        if (todayCode === "M" || todayCode === "DP") {
+          dutyStaff.push(row.technician_name);
+        }
+      });
+    }
+  } catch (err) {
+    hasSchedulesTable = false;
+  }
+
   const stats = [
-    { label: "Total Aset", value: `Rp. ${totalValue.toLocaleString("id-ID")}`, icon: Package, color: "text-blue-500", bg: "bg-blue-500/10", href: "/items" },
-    { label: "Total PO", value: totalPO ?? 0, icon: ShoppingCart, color: "text-amber-500", bg: "bg-amber-500/10", href: "/po" },
-    { label: "Stok Normal", value: (conditionStats.Normal || 0) + (conditionStats.Baru || 0), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10", href: "/items" },
-    { label: "Unit Rusak", value: conditionStats.Rusak || 0, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10", href: "/items" },
+    { label: "Total Aset Inventaris", value: `Rp. ${totalValue.toLocaleString("id-ID")}`, icon: Package, color: "text-blue-500", bg: "bg-blue-500/10", href: "/items" },
+    { label: "Project IT Aktif", value: hasProjectsTable ? activeProjectsCount : 0, icon: FolderKanban, color: "text-violet-500", bg: "bg-violet-500/10", href: "/projects" },
+    { label: "Laporan Harian (Hari Ini)", value: hasDailyLogsTable ? todayLogsCount : 0, icon: ClipboardList, color: "text-emerald-500", bg: "bg-emerald-500/10", href: "/daily-logs" },
+    { label: "Total PO Pengadaan", value: totalPO ?? 0, icon: ShoppingCart, color: "text-amber-500", bg: "bg-amber-500/10", href: "/po" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight">Dashboard Overview</h1>
-          <p className="text-sm text-text-muted mt-1">Ringkasan status inventaris IT Anda secara real-time.</p>
+          <h1 className="text-2xl font-black tracking-tight">OpsFlow IT Overview</h1>
+          <p className="text-sm text-text-muted mt-1">Ringkasan status operasional, perencanaan project, dan inventaris IT real-time.</p>
         </div>
       </div>
 
-      {/* Stats Grid - Enhanced Responsiveness with Dynamic Font Sizing */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
         {stats.map((stat, idx) => {
           const valueStr = stat.value.toString();
-          // Dynamic font size - more aggressive to prevent truncation
           const getFontSize = (str: string) => {
             if (str.length > 15) return "text-base md:text-lg lg:text-xl";
             if (str.length > 12) return "text-lg md:text-xl lg:text-2xl";
@@ -77,7 +123,7 @@ export default async function Dashboard() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] md:text-xs font-black text-text-muted uppercase tracking-widest truncate">{stat.label}</p>
                   <h3 className={`${getFontSize(valueStr)} font-black mt-1 md:mt-2 text-foreground tracking-tighter transition-all leading-tight whitespace-nowrap`}>
-                    {stat.value.toLocaleString("id-ID")}
+                    {stat.value}
                   </h3>
                 </div>
                 <div className={`shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${stat.bg}`}>
@@ -91,51 +137,58 @@ export default async function Dashboard() {
 
       {/* Content Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Tables & Activity */}
+        {/* Left Column: Tables & Project Tracker */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Barang Terbaru */}
-          <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-base font-semibold">Barang Terbaru Ditambahkan</h2>
-              <Link href="/items" className="text-sm text-primary hover:underline flex items-center gap-1">
-                Lihat Semua <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-            {recentItems && recentItems.length > 0 ? (
-              <table className="w-full text-sm">
-                <thead className="text-xs text-text-muted uppercase bg-background">
-                  <tr>
-                    <th className="px-6 py-3 text-left font-semibold">Nama Barang</th>
-                    <th className="px-6 py-3 text-left font-semibold">SKU</th>
-                    <th className="px-6 py-3 text-left font-semibold">Kategori</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {recentItems.map((item: any) => (
-                    <tr key={item.id} className="hover:bg-background/50 transition-colors">
-                      <td className="px-6 py-3 font-medium">{item.name}</td>
-                      <td className="px-6 py-3 text-text-muted">{item.sku}</td>
-                      <td className="px-6 py-3">
-                        <span className="px-2 py-0.5 bg-background border border-border rounded text-[10px] font-bold">
-                          {(item as any).categories?.name || "-"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-48 text-text-muted">
-                <Package className="w-10 h-10 mb-3 opacity-20" />
-                <p className="text-sm">Belum ada barang yang ditambahkan.</p>
+          {/* Active Projects Tracker */}
+          {hasProjectsTable && activeProjects.length > 0 && (
+            <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <FolderKanban className="w-4.5 h-4.5 text-primary" />
+                  <h2 className="text-base font-semibold">Progres IT Project Planning</h2>
+                </div>
+                <Link href="/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
+                  Lihat Semua Project <ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-            )}
-          </div>
+              <div className="p-6 space-y-4">
+                {activeProjects.map((proj) => (
+                  <Link key={proj.id} href={`/projects/${proj.id}`} className="block group p-4 bg-background border border-border rounded-xl hover:border-primary/40 transition-colors">
+                    <div className="flex items-center justify-between gap-4 mb-2.5">
+                      <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate max-w-xs md:max-w-md">{proj.name}</h3>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        proj.status === "In Progress" ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" :
+                        proj.status === "On Hold" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
+                        "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                      }`}>
+                        {proj.status}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs font-semibold text-text-muted">
+                        <span>Progress Pekerjaan</span>
+                        <span className="text-foreground">{proj.progress}%</span>
+                      </div>
+                      <div className="w-full bg-background border border-border h-2 rounded-full overflow-hidden p-0.5">
+                        <div 
+                          className="bg-primary h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${proj.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* PO Terbaru */}
           <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-base font-semibold">Purchase Order Terbaru</h2>
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4.5 h-4.5 text-primary" />
+                <h2 className="text-base font-semibold">Purchase Order Terbaru</h2>
+              </div>
               <Link href="/po" className="text-sm text-primary hover:underline flex items-center gap-1">
                 Lihat Semua PO <ArrowRight className="w-4 h-4" />
               </Link>
@@ -186,7 +239,7 @@ export default async function Dashboard() {
           <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
               <History className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-semibold">Aktivitas Terakhir</h2>
+              <h2 className="text-base font-semibold">Mutasi Logistik Terakhir</h2>
             </div>
             <div className="p-4 space-y-4">
               {recentLogs && recentLogs.length > 0 ? (
@@ -209,7 +262,7 @@ export default async function Dashboard() {
               ) : (
                 <div className="text-center py-10">
                   <Activity className="w-8 h-8 text-text-muted mx-auto mb-2 opacity-20" />
-                  <p className="text-xs text-text-muted">Belum ada aktivitas.</p>
+                  <p className="text-xs text-text-muted">Belum ada aktivitas logistik.</p>
                 </div>
               )}
             </div>
@@ -218,19 +271,54 @@ export default async function Dashboard() {
 
         {/* Right Column: Sidebar */}
         <div className="space-y-6">
+          {/* IT Support On Duty */}
+          {hasSchedulesTable && (
+            <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 px-6 py-4 border-b border-border bg-emerald-500/5">
+                <Calendar className="w-4.5 h-4.5 text-emerald-500" />
+                <h2 className="text-base font-semibold text-emerald-700 dark:text-emerald-400">IT Support On Duty</h2>
+              </div>
+              <div className="p-5 space-y-4">
+                {dutyStaff.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-text-muted font-black uppercase tracking-wider">Teknisi Piket Hari Ini ({new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long" })}):</p>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {dutyStaff.map((staff, idx) => (
+                        <span key={idx} className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                          {staff}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-text-muted">
+                    <p className="text-xs italic bg-background border border-dashed border-border p-3 rounded-lg">Tidak ada teknisi terjadwal piksel masuk hari ini.</p>
+                  </div>
+                )}
+                <div className="pt-3 border-t border-border/80">
+                  <Link href="/schedules" className="text-xs text-primary font-bold hover:underline flex items-center justify-between group">
+                    <span>Lihat Seluruh Kalender Jadwal</span>
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Quick Shortcuts */}
           <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
             <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-              <PlusCircle className="w-4 h-4 text-primary" />
+              <PlusCircle className="w-4.5 h-4.5 text-primary" />
               Akses Cepat
             </h2>
             <div className="grid grid-cols-1 gap-3">
               {[
+                { label: "Kelola Project IT", sub: "RAB & progress plan", href: "/projects", icon: FolderKanban, color: "bg-violet-500/10 text-violet-600", border: "hover:border-violet-500/50" },
+                { label: "Laporan Harian", sub: "Catat & unggah foto", href: "/daily-logs", icon: ClipboardList, color: "bg-emerald-500/10 text-emerald-600", border: "hover:border-emerald-500/50" },
+                { label: "Jadwal Shift Kerja", sub: "Duty calendar & shift", href: "/schedules", icon: Calendar, color: "bg-rose-500/10 text-rose-600", border: "hover:border-rose-500/50" },
                 { label: "Tambah Barang", sub: "Input aset IT baru", href: "/items/new", icon: PackagePlus, color: "bg-blue-500/10 text-blue-600", border: "hover:border-blue-500/50" },
                 { label: "Buat PO Baru", sub: "Proses pengadaan", href: "/po/new", icon: ShoppingCart, color: "bg-amber-500/10 text-amber-600", border: "hover:border-amber-500/50" },
-                { label: "Mutasi Barang", sub: "Stok Masuk/Keluar", href: "/transfers/new-mutation", icon: Activity, color: "bg-emerald-500/10 text-emerald-600", border: "hover:border-emerald-500/50" },
-                { label: "Transfer Stok", sub: "Pindah antar gudang", href: "/transfers/new-transfer", icon: ArrowLeftRight, color: "bg-violet-500/10 text-violet-600", border: "hover:border-violet-500/50" },
-                { label: "Tambah Kategori", sub: "Klasifikasi aset", href: "/categories/new", icon: Tags, color: "bg-rose-500/10 text-rose-600", border: "hover:border-rose-500/50" },
               ].map((link, idx) => (
                 <Link
                   key={idx}
@@ -310,3 +398,4 @@ export default async function Dashboard() {
     </div>
   );
 }
+
