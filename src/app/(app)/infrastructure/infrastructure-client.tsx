@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench } from "lucide-react";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface InfrastructureClientProps {
   assets: any[];
@@ -13,8 +14,14 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
   const [selectedLocation, setSelectedLocation] = useState("Semua");
+  const { toast } = useToast();
 
-  const categories = ["Semua", "CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+  // Ambil kategori unik yang ada di database + kategori default
+  const defaultCategories = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+  const dbCategories = Array.from(new Set(assets.map(a => a.category).filter(Boolean)));
+  
+  // Gabungkan dan hilangkan duplikasi, urutkan
+  const categories = ["Semua", ...Array.from(new Set([...defaultCategories, ...dbCategories]))];
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch = 
@@ -110,29 +117,40 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
       </div>
 
       {/* Category Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {categories.map((cat) => {
-          const count = cat === "Semua" ? totalAssets : assets.filter(a => a.category === cat).length;
-          const isActive = selectedCategory === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 border ${
-                isActive 
-                  ? "bg-primary text-white border-primary shadow-md shadow-primary/20" 
-                  : "bg-surface text-text-muted border-border hover:bg-background hover:text-foreground"
-              }`}
-            >
-              {cat}
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                isActive ? "bg-white/20 text-white" : "bg-background text-text-muted"
-              }`}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none w-full border-b border-border/30 pb-3 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-none">
+          {categories.map((cat) => {
+            const count = cat === "Semua" ? totalAssets : assets.filter(a => a.category === cat).length;
+            const isActive = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 border ${
+                  isActive 
+                    ? "bg-primary text-white border-primary shadow-md shadow-primary/20" 
+                    : "bg-surface text-text-muted border-border hover:bg-background hover:text-foreground"
+                }`}
+              >
+                {cat}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  isActive ? "bg-white/20 text-white" : "bg-background text-text-muted"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => {
+            toast("Untuk menambah kategori kustom baru, silakan klik 'Registrasi Fasilitas' lalu aktifkan '+ Kategori Kustom' pada form!", "success");
+          }}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:border-primary shrink-0 hover:scale-105 active:scale-95 sm:ml-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Tambah Kategori Baru
+        </button>
       </div>
 
       {/* Filter Controls */}

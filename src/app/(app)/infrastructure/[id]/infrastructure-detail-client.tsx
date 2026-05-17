@@ -18,6 +18,8 @@ export default function InfrastructureDetailClient({ asset, locations, maintenan
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [selectedCat, setSelectedCat] = useState(asset.category);
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [logLoading, setLogLoading] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
@@ -298,18 +300,39 @@ export default function InfrastructureDetailClient({ asset, locations, maintenan
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-text-muted uppercase">Kategori</label>
-                  <select
-                    name="category"
-                    defaultValue={asset.category}
-                    className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
-                  >
-                    <option value="CCTV">CCTV</option>
-                    <option value="DVR">DVR</option>
-                    <option value="Gate/Portal">Gate/Portal</option>
-                    <option value="AC/Pendingin">AC/Pendingin</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
+                  <label className="text-xs font-bold text-text-muted uppercase flex justify-between items-center">
+                    <span>Kategori</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomCategory(!isCustomCategory)}
+                      className="text-[9px] text-primary hover:underline font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      {isCustomCategory ? "Pilih" : "+ Kustom"}
+                    </button>
+                  </label>
+                  {isCustomCategory ? (
+                    <input
+                      type="text"
+                      name="category"
+                      required
+                      defaultValue={asset.category}
+                      className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                      placeholder="Ketik kategori..."
+                    />
+                  ) : (
+                    <select
+                      name="category"
+                      value={selectedCat}
+                      onChange={(e) => setSelectedCat(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                    >
+                      <option value="CCTV">CCTV</option>
+                      <option value="DVR">DVR</option>
+                      <option value="Gate/Portal">Gate/Portal</option>
+                      <option value="AC/Pendingin">AC/Pendingin</option>
+                      <option value="Lainnya">Lainnya</option>
+                    </select>
+                  )}
                 </div>
 
                 <div className="space-y-1">

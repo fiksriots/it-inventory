@@ -13,6 +13,8 @@ interface InfrastructureFormProps {
 
 export default function InfrastructureForm({ locations }: InfrastructureFormProps) {
   const [loading, setLoading] = useState(false);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [selectedCat, setSelectedCat] = useState("CCTV");
   const router = useRouter();
   const { toast } = useToast();
 
@@ -74,20 +76,38 @@ export default function InfrastructureForm({ locations }: InfrastructureFormProp
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
-                Kategori Fasilitas <span className="text-rose-500">*</span>
+              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex justify-between items-center">
+                <span>Kategori Fasilitas <span className="text-rose-500">*</span></span>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomCategory(!isCustomCategory)}
+                  className="text-[10px] text-primary hover:underline font-black uppercase tracking-widest cursor-pointer"
+                >
+                  {isCustomCategory ? "Pilih dari Daftar" : "+ Kategori Kustom"}
+                </button>
               </label>
-              <select
-                name="category"
-                defaultValue="CCTV"
-                className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
-              >
-                <option value="CCTV">CCTV (Kamera Pengawas)</option>
-                <option value="DVR">DVR (Digital Video Recorder / NVR)</option>
-                <option value="Gate/Portal">Gate / Portal Akses Kendaraan</option>
-                <option value="AC/Pendingin">AC / Sistem Pendingin Ruangan</option>
-                <option value="Lainnya">Fasilitas Lainnya</option>
-              </select>
+              {isCustomCategory ? (
+                <input
+                  type="text"
+                  name="category"
+                  required
+                  placeholder="Ketik kategori baru (contoh: Router, Server, UPS)..."
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none placeholder:text-text-muted/40"
+                />
+              ) : (
+                <select
+                  name="category"
+                  value={selectedCat}
+                  onChange={(e) => setSelectedCat(e.target.value)}
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                >
+                  <option value="CCTV">CCTV (Kamera Pengawas)</option>
+                  <option value="DVR">DVR (Digital Video Recorder / NVR)</option>
+                  <option value="Gate/Portal">Gate / Portal Akses Kendaraan</option>
+                  <option value="AC/Pendingin">AC / Sistem Pendingin Ruangan</option>
+                  <option value="Lainnya">Fasilitas Lainnya</option>
+                </select>
+              )}
             </div>
 
             <div className="space-y-2">
