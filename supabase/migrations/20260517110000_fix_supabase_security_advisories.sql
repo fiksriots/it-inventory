@@ -37,5 +37,8 @@ CREATE POLICY "Users can update own profile."
   ON public.profiles FOR UPDATE
   USING ( (SELECT auth.uid()) = id );
 
--- 6. Muat ulang cache skema API PostgREST
+-- 6. Perbaiki kerentanan Search Path Mutable pada fungsi handle_new_user (Security Advisor Warning)
+ALTER FUNCTION public.handle_new_user() SET search_path = public;
+
+-- 7. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
