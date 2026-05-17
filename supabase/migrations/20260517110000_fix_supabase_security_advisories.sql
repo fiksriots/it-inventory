@@ -14,7 +14,7 @@ WITH CHECK (true);
 
 -- 4. Rekonstruksi purchase_orders_view dengan opsi security_invoker = true
 -- Langkah ini mengubah view dari Security Definer menjadi Security Invoker (mengikuti RLS tabel purchase_orders)
-DROP VIEW IF EXISTS public.purchase_orders_view;
+DROP VIEW IF EXISTS public.purchase_orders_view CASCADE;
 CREATE OR REPLACE VIEW public.purchase_orders_view
 WITH (security_invoker = true) AS
 SELECT 
