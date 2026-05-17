@@ -369,6 +369,10 @@ export default function SchedulesClient() {
                     {daysArray.map(day => {
                       const sun = getIsSunday(day);
                       const s = getDaySchedule(member, day);
+                      const displayStatus = s ? s.status : "M";
+                      const displayNotes = s ? s.notes : "";
+                      const isDefault = !s;
+
                       return (
                         <td
                           key={day}
@@ -378,18 +382,20 @@ export default function SchedulesClient() {
                           }`}
                         >
                           <div className="w-full h-8 flex items-center justify-center">
-                            {s ? (
-                              <span
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold shadow-sm ${getStatusBadgeClass(
-                                  s.status
-                                )}`}
-                                title={s.notes ? `${getStatusLabel(s.status)}: ${s.notes}` : getStatusLabel(s.status)}
-                              >
-                                {s.status}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-text-muted/40 font-medium">-</span>
-                            )}
+                            <span
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold shadow-sm ${getStatusBadgeClass(
+                                displayStatus
+                              )} ${isDefault ? "opacity-75 border-dashed" : ""}`}
+                              title={
+                                isDefault
+                                  ? "Default: Masuk kerja"
+                                  : displayNotes
+                                  ? `${getStatusLabel(displayStatus)}: ${displayNotes}`
+                                  : getStatusLabel(displayStatus)
+                              }
+                            >
+                              {displayStatus}
+                            </span>
                           </div>
                         </td>
                       );
