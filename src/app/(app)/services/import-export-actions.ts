@@ -123,16 +123,16 @@ export async function importItemsBulk(itemsData: any[]) {
       sku = `${prefix}-${(maxSeq + 1).toString().padStart(4, '0')}`;
     }
 
-    // Simpan data barang
+    // Simpan data barang (upsert berdasarkan SKU agar jika sudah ada, datanya diperbarui)
     const { data: newItem, error: itemErr } = await supabase
       .from("items")
-      .insert([{
+      .upsert({
         name: name.trim(),
         sku: sku.trim(),
         category_id,
         price: parseFloat(priceVal.toString().replace(/[^0-9.-]/g, "")) || 0,
         description: desc.trim()
-      }])
+      }, { onConflict: 'sku' })
       .select()
       .single();
 
@@ -143,7 +143,7 @@ export async function importItemsBulk(itemsData: any[]) {
 
     importedCount++;
 
-    // Masukkan stok awal jika ditentukan
+    // Masukkan/perbarui stok jika ditentukan
     const qty = parseInt(qtyVal.toString());
     if (newItem && locName && !isNaN(qty) && qty > 0) {
       const lowerLoc = locName.trim().toLowerCase();
@@ -164,19 +164,19 @@ export async function importItemsBulk(itemsData: any[]) {
 
       if (location_id) {
         await Promise.all([
-          supabase.from("item_stocks").insert([{
+          supabase.from("item_stocks").upsert({
             item_id: newItem.id,
             location_id,
             quantity: qty,
             condition: cond
-          }]),
+          }, { onConflict: 'item_id,location_id' }),
           supabase.from("inventory_logs").insert([{
             item_id: newItem.id,
             location_id,
             user_id: user?.id,
             mutation_type: 'INBOUND',
             quantity: qty,
-            notes: 'Diimpor otomatis via Excel.'
+            notes: 'Stok diperbarui otomatis via Excel.'
           }])
         ]);
       }
@@ -308,7 +308,7 @@ export async function importComputersBulk(computersData: any[]) {
 
     const { error } = await supabase
       .from("computers")
-      .insert([{
+      .upsert({
         name: name.trim(),
         asset_number: asset_number.trim(),
         location_id,
@@ -322,7 +322,7 @@ export async function importComputersBulk(computersData: any[]) {
         last_maintenance_date: last_maint ? last_maint.toString().trim() : null,
         next_maintenance_date: next_maint ? next_maint.toString().trim() : null,
         notes: notes.toString().trim()
-      }]);
+      }, { onConflict: 'asset_number' });
 
     if (error) {
       console.error(`Gagal mengimpor komputer ${name}:`, error);
@@ -449,7 +449,7 @@ export async function importInfrastructureBulk(infraData: any[]) {
 
     const { error } = await supabase
       .from("infrastructure_assets")
-      .insert([{
+      .upsert({
         name: name.trim(),
         asset_number: asset_number.trim(),
         category: category.toString().trim(),
@@ -460,7 +460,7 @@ export async function importInfrastructureBulk(infraData: any[]) {
         last_maintenance_date: last_maint ? last_maint.toString().trim() : null,
         next_maintenance_date: next_maint ? next_maint.toString().trim() : null,
         notes: notes.toString().trim()
-      }]);
+      }, { onConflict: 'asset_number' });
 
     if (error) {
       console.error(`Gagal mengimpor fasilitas ${name}:`, error);
