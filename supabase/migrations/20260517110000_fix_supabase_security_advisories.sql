@@ -76,7 +76,12 @@ DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.suppliers;
 CREATE POLICY "Enable all for authenticated users" ON public.suppliers FOR ALL TO authenticated USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 
 -- 8. Batasi hak akses SELECT pada bucket storage 'invoices' agar tidak mengekspos daftar file secara publik
--- Menambahkan klausa 'TO authenticated' agar hanya pengguna terlogin yang dapat melakukan list/select objects
+-- Menjadikan bucket 'invoices' privat (sangat direkomendasikan karena invoice berisi data pembelian sensitif)
+-- Dan membatasi kueri objek SELECT hanya untuk pengguna terautentikasi (authenticated)
+UPDATE storage.buckets
+SET public = false
+WHERE id = 'invoices';
+
 DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access"
 ON storage.objects FOR SELECT
@@ -87,5 +92,11 @@ USING ( bucket_id = 'invoices' );
 -- Cabut hak akses EXECUTE dari PUBLIC, authenticated, dan anon agar fungsi ini hanya bisa dijalankan oleh system/trigger
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, authenticated, anon;
 
--- 10. Muat ulang cache skema API PostgREST
+-- 10. Amankan skema public dari akses anonim (Menghapus seluruh peringatan skema GraphQL Publik)
+-- Karena ini sistem inventaris internal, pengguna yang tidak login (anon) sama sekali tidak boleh melihat tabel/skema apapun
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM anon;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon;
+
+-- 11. Muat ulang cache skema API PostgREST
 NOTIFY pgrst, 'reload schema';
