@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Globe,
   MapPin,
-  Store
+  Store,
+  Edit
 } from "lucide-react";
 import { updatePOStatus } from "../actions";
 import POClientView from "./po-client-view";
@@ -70,7 +71,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
         </div>
         
         {/* Quick Actions (Update Status) */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {po.status === 'Draft' && (
             <form action={async () => { "use server"; await updatePOStatus(po.id, 'Menunggu Persetujuan'); }}>
               <button className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20">
@@ -99,6 +100,17 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                 Selesaikan PO
               </button>
             </form>
+          )}
+
+          {/* Revisi PO Button */}
+          {po.status !== 'Selesai' && (
+            <Link 
+              href={`/po/${po.id}/edit`} 
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 rounded-lg text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Edit className="w-4 h-4 text-primary" />
+              Revisi PO
+            </Link>
           )}
 
           {/* Delete Button (Always show) */}

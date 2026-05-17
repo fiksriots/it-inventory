@@ -300,3 +300,90 @@ export async function uploadPOInvoice(poId: string, formData: FormData) {
     return { error: `Gagal mengunggah file: ${error.message}` };
   }
 }
+
+export async function updatePurchaseOrder(id: string, prevState: any, formData: FormData) {
+  const supabase = await createClient();
+
+  const supplierId = formData.get("supplier_id") as string;
+  const adminFee = parseFloat(formData.get("admin_fee") as string || "0");
+  const shippingFee = parseFloat(formData.get("shipping_fee") as string || "0");
+  const discountAmount = parseFloat(formData.get("discount_amount") as string || "0");
+  const paymentMethod = formData.get("payment_method") as string;
+  
+  const department = formData.get("department") as string;
+  const requestedBy = formData.get("requested_by") as string;
+  const locationId = formData.get("location_id") as string;
+  const supplierType = formData.get("supplier_type") as string || "Offline";
+  const notes = formData.get("notes") as string;
+
+  // Extract items
+  const itemsJson = formData.get("items_data") as string;
+  const items = JSON.parse(itemsJson || "[]");
+
+  if (!supplierId || items.length === 0) {
+    return { error: "Supplier dan minimal satu barang wajib diisi." };
+  }
+
+  // Calculate totals
+  const subtotal = items.reduce((acc: number, curr: any) => acc + (curr.quantity * curr.unit_price), 0);
+  const totalAmount = subtotal + adminFee + shippingFee - discountAmount;
+
+  // 1. Update the PO in DB
+  const { error: poError } = await supabase
+    .from("purchase_orders")
+    .update({
+      supplier_id: supplierId,
+      subtotal,
+      admin_fee: adminFee,
+      shipping_fee: shippingFee,
+      discount_amount: discountAmount,
+      total_amount: totalAmount,
+      payment_method: paymentMethod,
+      department,
+      requested_by: requestedBy,
+      location_id: locationId || null,
+      supplier_type: supplierType,
+      notes
+    })
+    .eq("id", id);
+
+  if (poError) {
+    console.error("PO Edit Error:", poError);
+    return { error: `Gagal merevisi PO: ${poError.message}` };
+  }
+
+  // 2. Delete existing PO Items
+  const { error: deleteItemsError } = await supabase
+    .from("po_items")
+    .delete()
+    .eq("po_id", id);
+
+  if (deleteItemsError) {
+    console.error("PO Items Delete Error:", deleteItemsError);
+    return { error: `Gagal membersihkan item PO lama: ${deleteItemsError.message}` };
+  }
+
+  // 3. Insert new PO Items
+  const poItems = items.map((item: any) => ({
+    po_id: id,
+    item_id: item.item_id || null,
+    custom_item_name: item.custom_item_name || null,
+    item_link: item.item_link || null,
+    unit: item.unit || "PCS",
+    quantity: item.quantity,
+    unit_price: item.unit_price
+  }));
+
+  const { error: itemsError } = await supabase
+    .from("po_items")
+    .insert(poItems);
+
+  if (itemsError) {
+    console.error("PO Items Insert Error:", itemsError);
+    return { error: `PO direvisi tapi gagal menyimpan item baru: ${itemsError.message}` };
+  }
+
+  revalidatePath(`/po/${id}`);
+  revalidatePath("/po");
+  redirect(`/po/${id}`);
+}
