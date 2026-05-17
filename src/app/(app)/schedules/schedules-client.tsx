@@ -152,6 +152,25 @@ export default function SchedulesClient() {
     return schedules.find(s => s.member_name === memberName && s.schedule_date === dateStr);
   };
 
+  // Calculate real-time stats (Total M, C, DP, PH) for a member in the current period
+  const getMemberStats = (memberName: string) => {
+    let mCount = 0;
+    let cCount = 0;
+    let dpCount = 0;
+    let phCount = 0;
+
+    periodDays.forEach(dayObj => {
+      const s = getDaySchedule(memberName, dayObj.dateStr);
+      const status = s ? s.status : "M"; // Default is "M"
+      if (status === "M") mCount++;
+      else if (status === "C") cCount++;
+      else if (status === "DP") dpCount++;
+      else if (status === "PH") phCount++;
+    });
+
+    return { mCount, cCount, dpCount, phCount };
+  };
+
   // Handle month/year navigation
   const handlePrevMonth = () => {
     if (currentMonth === 1) {
@@ -421,7 +440,7 @@ export default function SchedulesClient() {
               <p className="text-sm">Memuat data jadwal...</p>
             </div>
           ) : (
-            <table className="w-full border-collapse text-left select-none table-fixed min-w-[1200px]">
+            <table className="w-full border-collapse text-left select-none table-fixed min-w-[1450px]">
               <thead>
                 <tr className="bg-background/25 border-b border-border">
                   {/* Sticky First Column for Member Names */}
@@ -443,6 +462,20 @@ export default function SchedulesClient() {
                       </th>
                     );
                   })}
+
+                  {/* Summary Columns */}
+                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-emerald-400 uppercase tracking-wider">
+                    Tot M
+                  </th>
+                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                    Tot C
+                  </th>
+                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-blue-400 uppercase tracking-wider">
+                    Tot DP
+                  </th>
+                  <th className="w-16 bg-background/55 p-2 text-center text-[10px] font-black text-rose-400 uppercase tracking-wider">
+                    Tot PH
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -494,6 +527,27 @@ export default function SchedulesClient() {
                         </td>
                       );
                     })}
+
+                    {/* Render live real-time stats columns */}
+                    {(() => {
+                      const stats = getMemberStats(member);
+                      return (
+                        <>
+                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-emerald-400 bg-emerald-500/5">
+                            {stats.mCount}
+                          </td>
+                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-amber-400 bg-amber-500/5">
+                            {stats.cCount}
+                          </td>
+                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-blue-400 bg-blue-500/5">
+                            {stats.dpCount}
+                          </td>
+                          <td className="p-2 text-center align-middle font-black text-xs text-rose-400 bg-rose-500/5" title="Total Hari PH dalam cutoff ini">
+                            {stats.phCount}
+                          </td>
+                        </>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>
