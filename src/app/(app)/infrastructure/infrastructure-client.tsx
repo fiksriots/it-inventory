@@ -34,6 +34,14 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
   const maintenanceAssets = assets.filter(a => a.status === 'Maintenance').length;
   const brokenAssets = assets.filter(a => a.status === 'Rusak').length;
 
+  // Hitung jumlah perangkat per lokasi
+  const assetCountsByLocation: Record<string, number> = {};
+  assets.forEach(a => {
+    if (a.location_id) {
+      assetCountsByLocation[a.location_id] = (assetCountsByLocation[a.location_id] || 0) + 1;
+    }
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header & Actions */}
@@ -146,10 +154,15 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
             onChange={(e) => setSelectedLocation(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-surface border border-border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none appearance-none font-bold text-foreground cursor-pointer"
           >
-            <option value="Semua">Semua Lokasi / Area</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
-            ))}
+            <option value="Semua">Semua Lokasi / Area ({totalAssets} perangkat)</option>
+            {locations.map((loc) => {
+              const count = assetCountsByLocation[loc.id] || 0;
+              return (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name} ({count} perangkat)
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>

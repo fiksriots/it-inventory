@@ -37,8 +37,8 @@ export default async function ComputersPage({
   // Ambil daftar lokasi untuk opsi filter
   const { data: locations } = await supabase.from("locations").select("id, name").order("name");
 
-  // Ambil data untuk ringkasan metrik
-  const { data: allComps } = await supabase.from("computers").select("status, next_maintenance_date");
+  // Ambil data untuk ringkasan metrik dan hitung lokasi
+  const { data: allComps } = await supabase.from("computers").select("status, next_maintenance_date, location_id");
 
   const now = new Date();
   const warningThreshold = new Date();
@@ -60,6 +60,14 @@ export default async function ComputersPage({
   }).length || 0;
 
   const totalPages = Math.ceil((count || 0) / pageSize);
+
+  // Hitung jumlah komputer per lokasi
+  const computerCountsByLocation: Record<string, number> = {};
+  allComps?.forEach(c => {
+    if (c.location_id) {
+      computerCountsByLocation[c.location_id] = (computerCountsByLocation[c.location_id] || 0) + 1;
+    }
+  });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10 animate-in fade-in duration-500">
@@ -134,10 +142,15 @@ export default async function ComputersPage({
                   defaultValue={location || ""}
                   className="w-full sm:w-48 bg-background border border-border rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer h-full min-h-[38px]"
                 >
-                  <option value="">Semua Lokasi</option>
-                  {locations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
+                  <option value="">Semua Lokasi ({totalComps} unit)</option>
+                  {locations.map((loc) => {
+                    const cnt = computerCountsByLocation[loc.id] || 0;
+                    return (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name} ({cnt} unit)
+                      </option>
+                    );
+                  })}
                 </select>
                 <button type="submit" className="px-3 py-2 bg-surface hover:bg-background border border-border rounded-xl text-xs font-bold text-text-muted transition-colors shrink-0">
                   Filter
