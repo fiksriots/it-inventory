@@ -88,3 +88,27 @@ export async function deleteSchedule(memberName: string, scheduleDate: string) {
   revalidatePath("/schedules");
   return { success: true };
 }
+
+export async function getPublicHolidays(year: number) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout fallback
+
+    const res = await fetch(`https://api-hari-libur.vercel.app/api?year=${year}`, {
+      signal: controller.signal,
+      next: { revalidate: 86400 } // Cache for 24 hours
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      return [];
+    }
+
+    const data = await res.json();
+    return (data || []) as { holiday_date: string; holiday_name: string; is_national_holiday: boolean }[];
+  } catch (err) {
+    console.error("Error fetching public holidays from API:", err);
+    return [];
+  }
+}

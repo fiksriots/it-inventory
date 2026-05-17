@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getSchedules, saveSchedule, deleteSchedule, Schedule } from "./actions";
+import { getSchedules, saveSchedule, deleteSchedule, getPublicHolidays, Schedule } from "./actions";
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Users, Check, Trash2, Info, X } from "lucide-react";
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -17,6 +17,8 @@ interface DayInfo {
   dateStr: string;
   dayLabel: string;
   isSunday: boolean;
+  isHoliday: boolean;
+  holidayName: string;
 }
 
 export default function SchedulesClient() {
@@ -27,6 +29,9 @@ export default function SchedulesClient() {
   const [members, setMembers] = useState<string[]>(["Fikri", "Raffa"]);
   const [loading, setLoading] = useState(true);
   
+  // Public holiday state
+  const [publicHolidays, setPublicHolidays] = useState<{ holiday_date: string; holiday_name: string }[]>([]);
+
   // Cutoff mode state (Default to true as requested for Cutoff 24)
   const [isCutoffMode, setIsCutoffMode] = useState(true);
 
@@ -50,7 +55,20 @@ export default function SchedulesClient() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Fetch schedules when month or year changes
+  // Fetch public holidays for current and previous year (to support cross-year/cutoff boundaries)
+  const fetchHolidays = async () => {
+    try {
+      const [currentYearHolidays, prevYearHolidays] = await Promise.all([
+        getPublicHolidays(currentYear),
+        getPublicHolidays(currentYear - 1)
+      ]);
+      setPublicHolidays([...prevYearHolidays, ...currentYearHolidays]);
+    } catch (err) {
+      console.error("Failed to fetch public holidays:", err);
+    }
+  };
+
+  // Fetch schedules
   const fetchSchedules = async () => {
     setLoading(true);
     try {
@@ -76,6 +94,11 @@ export default function SchedulesClient() {
     fetchSchedules();
   }, [currentMonth, currentYear]);
 
+  // Fetch public holidays when currentYear changes
+  useEffect(() => {
+    fetchHolidays();
+  }, [currentYear]);
+
   // Days in month helper
   const getDaysInMonth = (month: number, year: number) => {
     return new Date(year, month, 0).getDate();
@@ -83,19 +106,31 @@ export default function SchedulesClient() {
 
   // Generate the dynamic list of days depending on Normal or Cutoff mode
   const getPeriodDays = (): DayInfo[] => {
+    const checkHoliday = (dateStr: string) => {
+      const h = publicHolidays.find(item => item.holiday_date === dateStr);
+      return {
+        isHoliday: !!h,
+        holidayName: h ? h.holiday_name : ""
+      };
+    };
+
     if (!isCutoffMode) {
       // Normal mode: 1st to last day of currentMonth
       const daysCount = getDaysInMonth(currentMonth, currentYear);
       return Array.from({ length: daysCount }, (_, i) => {
         const day = i + 1;
         const d = new Date(currentYear, currentMonth - 1, day);
+        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const { isHoliday, holidayName } = checkHoliday(dateStr);
         return {
           dayNum: day,
           month: currentMonth,
           year: currentYear,
-          dateStr: `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dateStr,
           dayLabel: dayNames[d.getDay()],
-          isSunday: d.getDay() === 0
+          isSunday: d.getDay() === 0,
+          isHoliday,
+          holidayName
         };
       });
     } else {
@@ -109,26 +144,34 @@ export default function SchedulesClient() {
       // Part 1: 24th to end of prevMonth
       for (let day = 24; day <= prevDaysCount; day++) {
         const d = new Date(prevY, prevM - 1, day);
+        const dateStr = `${prevY}-${String(prevM).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const { isHoliday, holidayName } = checkHoliday(dateStr);
         list.push({
           dayNum: day,
           month: prevM,
           year: prevY,
-          dateStr: `${prevY}-${String(prevM).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dateStr,
           dayLabel: dayNames[d.getDay()],
-          isSunday: d.getDay() === 0
+          isSunday: d.getDay() === 0,
+          isHoliday,
+          holidayName
         });
       }
       
       // Part 2: 1st to 23rd of currentMonth
       for (let day = 1; day <= 23; day++) {
         const d = new Date(currentYear, currentMonth - 1, day);
+        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const { isHoliday, holidayName } = checkHoliday(dateStr);
         list.push({
           dayNum: day,
           month: currentMonth,
           year: currentYear,
-          dateStr: `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+          dateStr,
           dayLabel: dayNames[d.getDay()],
-          isSunday: d.getDay() === 0
+          isSunday: d.getDay() === 0,
+          isHoliday,
+          holidayName
         });
       }
       
@@ -217,6 +260,10 @@ export default function SchedulesClient() {
   const handleCellClick = (memberName: string, dayObj: DayInfo) => {
     const existing = getDaySchedule(memberName, dayObj.dateStr);
 
+    // If clicking a public holiday that has no database status yet, default it to "PH" in the modal
+    const defaultStatus = existing ? existing.status : (dayObj.isHoliday ? "PH" : "M");
+    const defaultNotes = existing ? (existing.notes || "") : (dayObj.isHoliday ? dayObj.holidayName : "");
+
     setActiveCell({
       memberName,
       dateStr: dayObj.dateStr,
@@ -227,8 +274,8 @@ export default function SchedulesClient() {
       currentNotes: existing?.notes || ""
     });
 
-    setSelectedStatus(existing ? existing.status : "M");
-    setScheduleNotes(existing?.notes || "");
+    setSelectedStatus(defaultStatus);
+    setScheduleNotes(defaultNotes);
   };
 
   // Save or delete schedule
@@ -453,8 +500,13 @@ export default function SchedulesClient() {
                     return (
                       <th
                         key={dayObj.dateStr}
-                        className={`p-2 text-center text-[10px] font-bold border-r border-border min-w-[40px] max-w-[50px] ${
-                          dayObj.isSunday ? "text-rose-400 bg-rose-500/5" : "text-text-muted"
+                        title={dayObj.isHoliday ? `${dayObj.holidayName} (Tanggal Merah)` : undefined}
+                        className={`p-2 text-center text-[10px] font-bold border-r border-border min-w-[40px] max-w-[50px] transition-colors ${
+                          dayObj.isHoliday
+                            ? "text-amber-400 bg-amber-500/20 border-b-2 border-b-amber-500/50"
+                            : dayObj.isSunday
+                            ? "text-rose-400 bg-rose-500/5"
+                            : "text-text-muted"
                         }`}
                       >
                         <div className="text-xs">{String(dayObj.dayNum).padStart(2, "0")}</div>
@@ -496,8 +548,10 @@ export default function SchedulesClient() {
                     {/* Render status cells for each day */}
                     {periodDays.map(dayObj => {
                       const s = getDaySchedule(member, dayObj.dateStr);
-                      const displayStatus = s ? s.status : "M";
-                      const displayNotes = s ? s.notes : "";
+                      
+                      // Dynamic default status: If it is a Public Holiday API date, default it visually to "PH" (Holiday) instead of "M"!
+                      const displayStatus = s ? s.status : (dayObj.isHoliday ? "PH" : "M");
+                      const displayNotes = s ? s.notes : (dayObj.isHoliday ? dayObj.holidayName : "");
                       const isDefault = !s;
 
                       return (
@@ -505,7 +559,11 @@ export default function SchedulesClient() {
                           key={dayObj.dateStr}
                           onClick={() => handleCellClick(member, dayObj)}
                           className={`p-1.5 text-center border-r border-border align-middle cursor-pointer transition-all hover:bg-background ${
-                            dayObj.isSunday ? "bg-rose-500/5 hover:bg-rose-500/10" : ""
+                            dayObj.isHoliday
+                              ? "bg-amber-500/5 hover:bg-amber-500/10"
+                              : dayObj.isSunday
+                              ? "bg-rose-500/5 hover:bg-rose-500/10"
+                              : ""
                           }`}
                         >
                           <div className="w-full h-8 flex items-center justify-center">
@@ -515,7 +573,7 @@ export default function SchedulesClient() {
                               )} ${isDefault ? "opacity-75 border-dashed" : ""}`}
                               title={
                                 isDefault
-                                  ? "Default: Masuk kerja"
+                                  ? (dayObj.isHoliday ? `Default: ${dayObj.holidayName} (Tanggal Merah)` : "Default: Masuk kerja")
                                   : displayNotes
                                   ? `${getStatusLabel(displayStatus)}: ${displayNotes}`
                                   : getStatusLabel(displayStatus)
@@ -572,6 +630,10 @@ export default function SchedulesClient() {
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-extrabold text-[10px]">PH</span>
             <span className="text-text-muted">Public Holiday / Libur Nasional (Selain Minggu)</span>
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto text-[10px] text-amber-400/80 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse mr-1"></span>
+            <span>Kolom Tanggal Kuning Emas menandakan Tanggal Merah Hari Besar Nasional otomatis (API)</span>
           </div>
         </div>
       </div>
