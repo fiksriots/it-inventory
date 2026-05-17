@@ -91,16 +91,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
         ))}
       </nav>
 
-      {/* User Area */}
-      <div className="p-4 border-t border-border mt-auto">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-background border border-border">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium text-foreground truncate">Admin User</p>
-            <p className="text-xs text-text-muted truncate">admin@example.com</p>
-          </div>
+      {/* Developer Footer */}
+      <div className="p-4.5 border-t border-border mt-auto bg-surface/40 text-center">
+        <div className="flex flex-col items-center justify-center gap-1 animate-in fade-in duration-300">
+          <p className="text-[9px] text-text-muted/50 font-black tracking-widest uppercase">OpsFlow IT Platform</p>
+          <p className="text-[10.5px] text-text-muted font-bold flex items-center gap-1 justify-center">
+            Website ini dibuat oleh <span className="font-black text-primary hover:text-primary-hover transition-colors">FiksRiots</span>
+          </p>
         </div>
       </div>
     </aside>
