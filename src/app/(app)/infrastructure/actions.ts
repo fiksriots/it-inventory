@@ -172,3 +172,84 @@ export async function deleteInfrastructure(id: string) {
   revalidatePath("/infrastructure");
   return { success: true };
 }
+
+export async function createInfraMaintenanceLog(assetId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const maintenance_date = formData.get("maintenance_date") as string;
+  const maintenance_title = formData.get("maintenance_title") as string;
+  
+  const rawNotes = formData.get("notes") as string;
+  const notes = rawNotes && rawNotes.trim() !== "" ? rawNotes.trim() : null;
+  
+  const rawPerformedBy = formData.get("performed_by") as string;
+  const performed_by = rawPerformedBy && rawPerformedBy.trim() !== "" ? rawPerformedBy.trim() : null;
+  
+  const status_after = formData.get("status_after") as string || "Aktif";
+
+  if (!maintenance_date || !maintenance_title) {
+    throw new Error("Tanggal Perawatan dan Judul wajib diisi.");
+  }
+
+  // 1. Insert ke tabel log
+  const logPayload = {
+    asset_id: assetId,
+    maintenance_date,
+    maintenance_title,
+    notes,
+    performed_by,
+    status_after
+  };
+
+  const { error: logError } = await supabase
+    .from("infrastructure_maintenance_logs")
+    .insert([logPayload]);
+
+  if (logError) {
+    console.error("Insert Log Error Details:", logError);
+    throw new Error(`Gagal menyimpan log perawatan: ${logError.message}`);
+  }
+
+  // 2. Update tanggal terakhir perawatan, tanggal berikutnya (opsional), dan status pada aset
+  const assetPayload: any = {
+    last_maintenance_date: maintenance_date,
+    status: status_after
+  };
+
+  const rawNextDate = formData.get("next_maintenance_date") as string;
+  if (rawNextDate && rawNextDate.trim() !== "") {
+    assetPayload.next_maintenance_date = rawNextDate.trim();
+  }
+
+  const { error: assetError } = await supabase
+    .from("infrastructure_assets")
+    .update(assetPayload)
+    .eq("id", assetId);
+
+  if (assetError) {
+    console.error("Update Asset Error Details:", assetError);
+  }
+
+  revalidatePath("/infrastructure");
+  revalidatePath(`/infrastructure/${assetId}`);
+  return { success: true };
+}
+
+export async function deleteInfraMaintenanceLog(id: string, assetId: string) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("infrastructure_maintenance_logs")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Delete Log Error:", error);
+    throw new Error(`Gagal menghapus log perawatan: ${error.message}`);
+  }
+
+  revalidatePath("/infrastructure");
+  revalidatePath(`/infrastructure/${assetId}`);
+  return { success: true };
+}
+

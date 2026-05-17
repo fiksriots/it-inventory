@@ -30,5 +30,37 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
     .select("id, name")
     .order("name");
 
-  return <InfrastructureDetailClient asset={asset} locations={locations || []} />;
+  // Ambil riwayat perawatan (maintenance history)
+  let maintenanceLogs: any[] = [];
+  let dbTableMissing = false;
+
+  try {
+    const { data: logs, error: logsError } = await supabase
+      .from("infrastructure_maintenance_logs")
+      .select("*")
+      .eq("asset_id", id)
+      .order("maintenance_date", { ascending: false });
+
+    if (logsError) {
+      if (logsError.code === "PGRST205" || logsError.message.includes("does not exist")) {
+        dbTableMissing = true;
+      } else {
+        console.error("Error fetching maintenance logs:", logsError);
+      }
+    } else {
+      maintenanceLogs = logs || [];
+    }
+  } catch (err) {
+    console.error("Failed to query maintenance logs:", err);
+    dbTableMissing = true;
+  }
+
+  return (
+    <InfrastructureDetailClient
+      asset={asset}
+      locations={locations || []}
+      maintenanceLogs={maintenanceLogs}
+      dbTableMissing={dbTableMissing}
+    />
+  );
 }
