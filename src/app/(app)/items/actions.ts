@@ -18,6 +18,37 @@ export async function createItem(prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
+  let finalSku = sku;
+  if (finalSku.endsWith("-AUTO") || !finalSku) {
+    // Fetch category code/name to generate the correct SKU prefix
+    const { data: category } = await supabase
+      .from("categories")
+      .select("name, code")
+      .eq("id", category_id)
+      .single();
+
+    const prefix = category ? (category.code || category.name.split(' ')[0]).toUpperCase().replace(/[^A-Z0-9]/g, "") : "ITEM";
+    
+    // Find all SKUs that match this prefix
+    const { data: existingItems } = await supabase
+      .from("items")
+      .select("sku")
+      .like("sku", `${prefix}-%`);
+
+    let maxSeq = 0;
+    if (existingItems && existingItems.length > 0) {
+      existingItems.forEach(item => {
+        const parts = item.sku.split('-');
+        const numStr = parts[parts.length - 1];
+        const num = parseInt(numStr, 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      });
+    }
+    finalSku = `${prefix}-${(maxSeq + 1).toString().padStart(4, '0')}`;
+  }
+
   // Mulai proses fetch user secara paralel dengan insert item untuk menghemat waktu round-trip jaringan
   const userPromise = supabase.auth.getUser();
 
@@ -25,7 +56,7 @@ export async function createItem(prevState: any, formData: FormData) {
     .from("items")
     .insert([{ 
       name, 
-      sku, 
+      sku: finalSku, 
       category_id: category_id || null, 
       condition: condition || 'Baru',
       price: price ? parseFloat(price) : 0,

@@ -57,14 +57,32 @@ export async function createService(prevState: any, formData: FormData) {
   // Auto-generate Service Number if empty
   if (!serviceNumber || serviceNumber.trim() === "" || serviceNumber === "AUTO") {
     const date = new Date();
-    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-    const { count } = await supabase
-      .from("item_services")
-      .select("*", { count: "exact", head: true })
-      .filter("created_at", "gte", `${date.toISOString().split('T')[0]}T00:00:00`);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    const prefix = `SRV-${dateStr}-`;
     
-    const seq = ((count || 0) + 1).toString().padStart(3, '0');
-    serviceNumber = `SRV-${dateStr}-${seq}`;
+    // Fetch all services created today to find the highest sequence
+    const { data: todayServices } = await supabase
+      .from("item_services")
+      .select("service_number")
+      .like("service_number", `${prefix}%`);
+
+    let maxSeq = 0;
+    if (todayServices && todayServices.length > 0) {
+      todayServices.forEach((s: any) => {
+        const parts = s.service_number.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seqNum = parseInt(seqStr, 10);
+        if (!isNaN(seqNum) && seqNum > maxSeq) {
+          maxSeq = seqNum;
+        }
+      });
+    }
+    
+    const seq = (maxSeq + 1).toString().padStart(3, '0');
+    serviceNumber = `${prefix}${seq}`;
   }
 
   // Handle Document Upload (Surat Jalan / Tanda Terima Awal)

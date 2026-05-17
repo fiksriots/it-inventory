@@ -6,12 +6,24 @@ import CategoryForm from "./category-form";
 export default async function NewCategoryPage() {
   const supabase = await createClient();
   
-  // Get the count to generate the next code (K-0001 format)
-  const { count } = await supabase
+  // Get all category codes to find the highest sequence number (K-0001 format)
+  const { data: categories } = await supabase
     .from("categories")
-    .select("*", { count: "exact", head: true });
+    .select("code");
     
-  const nextNum = (count || 0) + 1;
+  let maxNum = 0;
+  if (categories && categories.length > 0) {
+    categories.forEach(cat => {
+      if (cat.code && cat.code.startsWith("K-")) {
+        const num = parseInt(cat.code.replace("K-", ""), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+  }
+    
+  const nextNum = maxNum + 1;
   const nextCode = `K-${nextNum.toString().padStart(4, '0')}`;
 
   return (

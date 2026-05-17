@@ -43,8 +43,32 @@ export async function createComputer(prevState: any, formData: FormData) {
 
   // Generate nomor aset jika diset AUTO atau kosong
   if (!assetNumber || assetNumber === "AUTO" || assetNumber.trim() === "") {
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    assetNumber = `PC-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${rand}`;
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    const prefix = `PC-${dateStr}-`;
+
+    const { data: todayAssets } = await supabase
+      .from("computers")
+      .select("asset_number")
+      .like("asset_number", `${prefix}%`);
+
+    let maxSeq = 0;
+    if (todayAssets && todayAssets.length > 0) {
+      todayAssets.forEach(a => {
+        const parts = a.asset_number.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seqNum = parseInt(seqStr, 10);
+        if (!isNaN(seqNum) && seqNum > maxSeq) {
+          maxSeq = seqNum;
+        }
+      });
+    }
+
+    const seq = (maxSeq + 1).toString().padStart(3, '0');
+    assetNumber = `${prefix}${seq}`;
   }
 
   const { data: { user } } = await supabase.auth.getUser();

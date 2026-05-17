@@ -14,10 +14,9 @@ export default function ItemForm({ categories, locations }: { categories: any[];
     if (selectedCategory) {
       const category = categories.find(c => c.id === selectedCategory);
       if (category) {
-        // Sanitize name: remove spaces, take first word or full name if short
-        const prefix = category.name.split(' ')[0].toUpperCase();
-        const randomNum = Math.floor(1000 + Math.random() * 9000);
-        setSku(`${prefix}-${randomNum}`);
+        // Use category code (or first word of name) stripped of symbols
+        const prefix = (category.code || category.name.split(' ')[0]).toUpperCase().replace(/[^A-Z0-9]/g, "");
+        setSku(`${prefix}-AUTO`);
       }
     } else {
       setSku("");

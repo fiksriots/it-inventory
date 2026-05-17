@@ -36,10 +36,33 @@ export async function createInfrastructure(formData: FormData) {
   }
 
   // Generasi nomor aset unik
-  const randomHex = Math.floor(1000 + Math.random() * 9000);
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
   const catPrefix = category.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, "INF");
-  const asset_number = `${catPrefix}-${dateStr}-${randomHex}`;
+  const prefix = `${catPrefix}-${dateStr}-`;
+
+  const { data: todayAssets } = await supabase
+    .from("infrastructure_assets")
+    .select("asset_number")
+    .like("asset_number", `${prefix}%`);
+
+  let maxSeq = 0;
+  if (todayAssets && todayAssets.length > 0) {
+    todayAssets.forEach(a => {
+      const parts = a.asset_number.split('-');
+      const seqStr = parts[parts.length - 1];
+      const seqNum = parseInt(seqStr, 10);
+      if (!isNaN(seqNum) && seqNum > maxSeq) {
+        maxSeq = seqNum;
+      }
+    });
+  }
+
+  const seq = (maxSeq + 1).toString().padStart(3, '0');
+  const asset_number = `${prefix}${seq}`;
 
   const payload = {
     asset_number,

@@ -34,16 +34,34 @@ export async function createPurchaseOrder(prevState: any, formData: FormData) {
   }
 
   // Auto-generate PO Number if requested or empty
-  if (!poNumber || poNumber === "AUTO") {
+  if (!poNumber || poNumber === "AUTO" || poNumber.trim() === "") {
     const date = new Date();
-    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-    const { count } = await supabase
-      .from("purchase_orders")
-      .select("*", { count: "exact", head: true })
-      .filter("created_at", "gte", `${date.toISOString().split('T')[0]}T00:00:00`);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    const prefix = `PO-${dateStr}-`;
     
-    const seq = ((count || 0) + 1).toString().padStart(3, '0');
-    poNumber = `PO-${dateStr}-${seq}`;
+    // Fetch all POs created today to find the highest sequence
+    const { data: todayPOs } = await supabase
+      .from("purchase_orders")
+      .select("po_number")
+      .like("po_number", `${prefix}%`);
+
+    let maxSeq = 0;
+    if (todayPOs && todayPOs.length > 0) {
+      todayPOs.forEach(p => {
+        const parts = p.po_number.split('-');
+        const seqStr = parts[parts.length - 1];
+        const seqNum = parseInt(seqStr, 10);
+        if (!isNaN(seqNum) && seqNum > maxSeq) {
+          maxSeq = seqNum;
+        }
+      });
+    }
+    
+    const seq = (maxSeq + 1).toString().padStart(3, '0');
+    poNumber = `${prefix}${seq}`;
   }
 
   // Calculate totals
