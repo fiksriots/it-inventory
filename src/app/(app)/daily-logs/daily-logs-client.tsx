@@ -330,25 +330,25 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
         </div>
       ) : (
         <>
-          <div className="space-y-8 pl-4 border-l-2 border-border/70 ml-2 py-2 print:hidden">
+          <div className="space-y-5 pl-4 border-l-2 border-border/70 ml-2 py-2 print:hidden">
             {filteredLogs.map((log) => {
               const hasImage = !!log.image_url;
             return (
               <div key={log.id} className="relative group animate-in fade-in duration-300 print-break-inside-avoid mb-6">
                 {/* Timeline dot */}
-                <div className="absolute -left-[25px] top-2 w-3.5 h-3.5 rounded-full bg-surface border-2 border-primary flex items-center justify-center shadow-sm group-hover:bg-primary transition-colors no-print">
+                <div className="absolute -left-[25px] top-1.5 w-3.5 h-3.5 rounded-full bg-surface border-2 border-primary flex items-center justify-center shadow-sm group-hover:bg-primary transition-colors no-print">
                   <div className="w-1 h-1 bg-primary group-hover:bg-surface rounded-full transition-colors" />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {/* Date Tag */}
                   <span className="text-[10px] font-black text-primary uppercase tracking-wider bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-md">
                     {formatDateFull(log.date)}
                   </span>
 
                   {/* Log Card Body */}
-                  <div className="bg-surface border border-border hover:border-primary/30 rounded-2xl p-5 shadow-sm space-y-4 transition-all duration-300">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/30 pb-3">
+                  <div className="bg-surface border border-border hover:border-primary/30 rounded-xl p-3 sm:p-4 shadow-sm space-y-2.5 transition-all duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/30 pb-2.5">
                       <div>
                         {log.type === "project" ? (
                           <div 
