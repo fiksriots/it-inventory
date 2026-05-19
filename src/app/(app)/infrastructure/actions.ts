@@ -214,12 +214,70 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
     throw new Error("Tanggal Perawatan dan Judul wajib diisi.");
   }
 
+  const replaced_item_id = formData.get("replaced_item_id") as string;
+  const replaced_quantity_str = formData.get("replaced_quantity") as string;
+  const source_location_id = formData.get("source_location_id") as string;
+  const replaced_quantity = replaced_quantity_str ? parseInt(replaced_quantity_str) : 0;
+
+  let partReplacementNote = "";
+
+  if (replaced_item_id && replaced_quantity > 0 && source_location_id) {
+    // 1. Pastikan "Gudang Rusak" ada
+    let { data: rusakLocation } = await supabase.from("locations").select("id").eq("name", "Gudang Rusak").single();
+    if (!rusakLocation) {
+      const { data: newLoc } = await supabase.from("locations").insert([{ name: "Gudang Rusak", address: "Penampungan Barang Rusak" }]).select().single();
+      rusakLocation = newLoc;
+    }
+
+    if (rusakLocation) {
+      // 2. Kurangi dari source location
+      const { data: sourceStock } = await supabase.from("item_stocks").select("quantity").eq("item_id", replaced_item_id).eq("location_id", source_location_id).single();
+      if (!sourceStock || sourceStock.quantity < replaced_quantity) {
+        throw new Error("Stok suku cadang di gudang sumber tidak mencukupi untuk pergantian.");
+      }
+      await supabase.from("item_stocks").update({ quantity: sourceStock.quantity - replaced_quantity, last_updated: new Date().toISOString() }).eq("item_id", replaced_item_id).eq("location_id", source_location_id);
+
+      // 3. Tambah di Gudang Rusak
+      const { data: rusakStock } = await supabase.from("item_stocks").select("quantity").eq("item_id", replaced_item_id).eq("location_id", rusakLocation.id).single();
+      if (rusakStock) {
+        await supabase.from("item_stocks").update({ quantity: rusakStock.quantity + replaced_quantity, last_updated: new Date().toISOString() }).eq("item_id", replaced_item_id).eq("location_id", rusakLocation.id);
+      } else {
+        await supabase.from("item_stocks").insert([{ item_id: replaced_item_id, location_id: rusakLocation.id, quantity: replaced_quantity }]);
+      }
+
+      // 4. Catat ke inventory_logs
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+      await supabase.from("inventory_logs").insert([
+        {
+          item_id: replaced_item_id,
+          location_id: source_location_id,
+          mutation_type: "OUTBOUND",
+          quantity: replaced_quantity,
+          notes: `Pergantian suku cadang untuk pemeliharaan infrastruktur (ID: ${assetId})`,
+          user_id: userId
+        },
+        {
+          item_id: replaced_item_id,
+          location_id: rusakLocation.id,
+          mutation_type: "INBOUND",
+          quantity: replaced_quantity,
+          notes: `Sisa komponen rusak dari pemeliharaan infrastruktur (ID: ${assetId})`,
+          user_id: userId
+        }
+      ]);
+
+      const { data: itemData } = await supabase.from("items").select("name").eq("id", replaced_item_id).single();
+      partReplacementNote = `\n\n[Sistem] Pergantian Part: ${itemData?.name || 'Item'} (x${replaced_quantity}). Part lama dimasukkan ke Gudang Rusak.`;
+    }
+  }
+
   // 1. Insert ke tabel log
   const logPayload = {
     asset_id: assetId,
     maintenance_date,
     maintenance_title,
-    notes,
+    notes: (notes || "") + partReplacementNote,
     performed_by,
     status_after
   };
@@ -252,6 +310,18 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
   if (assetError) {
     console.error("Update Asset Error Details:", assetError);
   }
+
+  // 3. Tambahkan ke laporan harian otomatis
+  const { data: assetData } = await supabase.from("infrastructure_assets").select("name, asset_number").eq("id", assetId).single();
+  const assetName = assetData?.name ? `${assetData.name} (${assetData.asset_number})` : "Infrastruktur";
+
+  await supabase.from("it_daily_logs").insert({
+    activity_name: `Maintenance: ${assetName}`,
+    details: `${maintenance_title}\n\nNotes: ${notes || "-"}`,
+    status: status_after === "Aktif" ? "Selesai" : "Pending",
+    date: maintenance_date,
+    technician_name: performed_by || "Tim IT Support"
+  });
 
   revalidatePath("/infrastructure");
   revalidatePath(`/infrastructure/${assetId}`);

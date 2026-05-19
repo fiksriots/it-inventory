@@ -90,8 +90,17 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
 
     setLoading(true);
     try {
+      let finalFile = file;
+      if (file.type.startsWith("image/")) {
+        try {
+          const imageCompression = (await import("browser-image-compression")).default;
+          finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+        } catch (err) {
+          console.error("Compression error:", err);
+        }
+      }
       const formData = new FormData();
-      formData.append("logo", file);
+      formData.append("logo", finalFile);
       await uploadCompanyLogo(formData);
       toast("Logo berhasil diunggah!", "success");
     } catch (error: any) {
@@ -107,8 +116,17 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
 
     setLoading(true);
     try {
+      let finalFile = file;
+      if (file.type.startsWith("image/")) {
+        try {
+          const imageCompression = (await import("browser-image-compression")).default;
+          finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+        } catch (err) {
+          console.error("Compression error:", err);
+        }
+      }
       const formData = new FormData();
-      formData.append("avatar", file);
+      formData.append("avatar", finalFile);
       await uploadProfilePhoto(formData);
       toast("Foto profil berhasil diunggah!", "success");
     } catch (error: any) {

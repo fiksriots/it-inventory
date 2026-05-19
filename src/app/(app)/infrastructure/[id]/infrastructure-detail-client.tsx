@@ -10,11 +10,12 @@ import { useToast } from "@/components/ui/ToastProvider";
 interface InfrastructureDetailClientProps {
   asset: any;
   locations: any[];
+  itemsList?: any[];
   maintenanceLogs: any[];
   dbTableMissing?: boolean;
 }
 
-export default function InfrastructureDetailClient({ asset, locations, maintenanceLogs = [], dbTableMissing = false }: InfrastructureDetailClientProps) {
+export default function InfrastructureDetailClient({ asset, locations, itemsList = [], maintenanceLogs = [], dbTableMissing = false }: InfrastructureDetailClientProps) {
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -23,6 +24,7 @@ export default function InfrastructureDetailClient({ asset, locations, maintenan
   const [isAddingLog, setIsAddingLog] = useState(false);
   const [logLoading, setLogLoading] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+  const [hasPartReplacement, setHasPartReplacement] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -673,6 +675,47 @@ NOTIFY pgrst, 'reload schema';`);
                             *Mengatur jadwal berikutnya ke 3 bulan kedepan
                           </span>
                         </div>
+                      </div>
+
+                      <div className="space-y-2 sm:col-span-2 bg-amber-500/5 p-4 rounded-xl border border-amber-500/20">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-amber-600 uppercase flex items-center gap-2">
+                            <Wrench className="w-4 h-4" /> Ada Pergantian Suku Cadang (Part)?
+                          </label>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" className="sr-only peer" checked={hasPartReplacement} onChange={() => setHasPartReplacement(!hasPartReplacement)} />
+                            <div className="w-9 h-5 bg-border rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                          </label>
+                        </div>
+                        {hasPartReplacement && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 mt-3 border-t border-amber-500/20">
+                            <div className="space-y-1 sm:col-span-1">
+                              <label className="text-[10px] font-bold text-text-muted uppercase">Suku Cadang Pengganti</label>
+                              <select name="replaced_item_id" required className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500/20 outline-none">
+                                <option value="">-- Pilih Suku Cadang --</option>
+                                {itemsList.map((item: any) => (
+                                  <option key={item.id} value={item.id}>{item.name} ({item.sku})</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-text-muted uppercase">Jumlah</label>
+                              <input type="number" name="replaced_quantity" min="1" defaultValue="1" required className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500/20 outline-none" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-text-muted uppercase">Ambil dari Gudang</label>
+                              <select name="source_location_id" required className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-amber-500/20 outline-none">
+                                <option value="">-- Pilih Sumber Stok --</option>
+                                {locations.map((loc: any) => (
+                                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <p className="text-[10px] text-amber-600/70 sm:col-span-3">
+                              *Stok di gudang sumber akan dikurangi. Suku cadang lama akan otomatis dipindahkan ke "Gudang Rusak".
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-1 sm:col-span-2">

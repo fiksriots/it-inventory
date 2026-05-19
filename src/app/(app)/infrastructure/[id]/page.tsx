@@ -30,6 +30,11 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
     .select("id, name")
     .order("name");
 
+  const { data: itemsList } = await supabase
+    .from("items")
+    .select("id, name, sku")
+    .order("name");
+
   // Ambil riwayat perawatan (maintenance history)
   let maintenanceLogs: any[] = [];
   let dbTableMissing = false;
@@ -59,6 +64,7 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
     <InfrastructureDetailClient
       asset={asset}
       locations={locations || []}
+      itemsList={itemsList || []}
       maintenanceLogs={maintenanceLogs}
       dbTableMissing={dbTableMissing}
     />

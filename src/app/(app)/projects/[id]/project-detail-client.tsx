@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import imageCompression from "browser-image-compression";
 import Link from "next/link";
 import { 
   ArrowLeft, Calendar, Clock, Plus, Trash2, Image, FileImage, 
@@ -127,7 +128,18 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
       formData.append("content", content);
       formData.append("progress_percent_after", String(progressPercentAfter));
       if (selectedImage) {
-        formData.append("image", selectedImage);
+        try {
+          const options = {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          };
+          const compressedFile = await imageCompression(selectedImage, options);
+          formData.append("image", compressedFile);
+        } catch (error) {
+          console.error("Error compressing image:", error);
+          formData.append("image", selectedImage);
+        }
       }
 
       const res = await addProjectLog(null, formData);

@@ -158,6 +158,18 @@ export async function createService(prevState: any, formData: FormData) {
     return { error: `Gagal menyimpan data service: ${insertError.message}` };
   }
 
+  // Tambahkan ke laporan harian otomatis
+  const { data: itemData } = await supabase.from("items").select("name").eq("id", itemId).single();
+  const itemName = itemData?.name || "Barang";
+
+  await supabase.from("it_daily_logs").insert({
+    activity_name: `Pengiriman Service: ${itemName}`,
+    details: `No Service: ${serviceNumber}\nKendala: ${problemDescription}\nDikirim oleh: ${sentByName || "Tim IT Support"}`,
+    status: "Pending",
+    date: sentDateInput || new Date().toISOString().split("T")[0],
+    technician_name: "Tim IT Support"
+  });
+
   revalidatePath("/services");
   redirect("/services");
 }
@@ -236,6 +248,19 @@ export async function completeService(id: string, formData: FormData) {
     console.error("Update complete error:", updateError);
     return { error: `Gagal menyelesaikan service: ${updateError.message}` };
   }
+
+  // Tambahkan ke laporan harian otomatis
+  const { data: serviceData } = await supabase.from("item_services").select("service_number, items(name)").eq("id", id).single();
+  const itemName = serviceData?.items?.name || "Barang";
+  const serviceNumber = serviceData?.service_number || id;
+  
+  await supabase.from("it_daily_logs").insert({
+    activity_name: `Selesai Service: ${itemName}`,
+    details: `No Service: ${serviceNumber}\nKondisi Akhir: ${finalCondition}\nBiaya: Rp ${cost}\nCatatan: ${notes || "-"}`,
+    status: "Selesai",
+    date: completedDateInput || new Date().toISOString().split("T")[0],
+    technician_name: "Tim IT Support"
+  });
 
   revalidatePath("/services");
   revalidatePath(`/services/${id}`);

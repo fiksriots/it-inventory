@@ -39,6 +39,24 @@ export default function NewServicePage() {
     }
   };
 
+  const handleClientAction = async (formData: FormData) => {
+    const file = formData.get("service_doc") as File;
+    if (file && file.size > 0 && file.type.startsWith("image/")) {
+      try {
+        const imageCompression = (await import("browser-image-compression")).default;
+        const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+        formData.set("service_doc", compressedFile);
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
+    }
+    
+    // In React 19 / Next.js 15, we can call startTransition with formAction
+    // However, formAction here from useActionState expects a formData argument.
+    // To ensure pending state works correctly:
+    formAction(formData);
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Header */}
@@ -56,7 +74,7 @@ export default function NewServicePage() {
       </div>
 
       {/* Main Form */}
-      <form action={formAction} className="space-y-6">
+      <form action={handleClientAction} className="space-y-6">
         <div className="bg-surface border border-border rounded-xl shadow-sm p-6 space-y-6">
           <h2 className="font-semibold text-sm flex items-center gap-2 text-primary border-b border-border pb-3">
             <Package className="w-4 h-4" />

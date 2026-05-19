@@ -58,6 +58,9 @@ export default async function ComputerDetailsPage({ params }: { params: Promise<
     dbTableMissing = true;
   }
 
+  const { data: itemsList } = await supabase.from("items").select("id, name, sku").order("name");
+  const { data: locationsList } = await supabase.from("locations").select("id, name").order("name");
+
   const statusColors: any = {
     'Aktif': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     'Maintenance': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
@@ -277,6 +280,8 @@ export default async function ComputerDetailsPage({ params }: { params: Promise<
             computer={computer}
             maintenanceLogs={maintenanceLogs}
             dbTableMissing={dbTableMissing}
+            itemsList={itemsList || []}
+            locationsList={locationsList || []}
           />
           <ComputerSpecUpdater computer={computer} />
         </div>

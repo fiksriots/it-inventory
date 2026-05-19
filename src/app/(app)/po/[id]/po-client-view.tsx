@@ -31,8 +31,18 @@ export default function POClientView({ po, items }: POClientViewProps) {
     setIsUploading(true);
     setUploadError(null);
     
+    let finalFile = file;
+    if (file.type.startsWith("image/")) {
+      try {
+        const imageCompression = (await import("browser-image-compression")).default;
+        finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+      } catch (err) {
+        console.error("Compression error:", err);
+      }
+    }
+    
     const formData = new FormData();
-    formData.append("invoice", file);
+    formData.append("invoice", finalFile);
     
     const result = await uploadPOInvoice(po.id, formData);
     
