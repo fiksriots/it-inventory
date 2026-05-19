@@ -6,8 +6,6 @@ import { writeFile } from "fs/promises";
 import path from "path";
 import fs from "fs";
 
-import sharp from "sharp";
-
 async function getActionClient() {
   const normalClient = await createClient();
   const fallbackKey = ["sb", "secret", "fDAaj1tBf0JmGbC_8I-HiA_tOzk8FOC"].join("_");
@@ -169,11 +167,8 @@ export async function addProjectLog(prevState: any, formData: FormData) {
         const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.jpg`;
         const filePath = path.join(uploadDir, fileName);
         
-        // Auto compress image to save disk space and prevent loading issues
-        await sharp(buffer)
-          .resize(1280, 1280, { fit: "inside", withoutEnlargement: true })
-          .jpeg({ quality: 80 })
-          .toFile(filePath);
+        // Write physical file directly to avoid sharp/memory errors on server
+        fs.writeFileSync(filePath, buffer);
         
         imageUrl = `/uploads/projects/${fileName}`;
       } catch (uploadErr) {
