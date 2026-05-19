@@ -128,18 +128,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
       formData.append("content", content);
       formData.append("progress_percent_after", String(progressPercentAfter));
       if (selectedImage) {
-        try {
-          const options = {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: false,
-          };
-          const compressedFile = await imageCompression(selectedImage, options);
-          formData.append("image", compressedFile);
-        } catch (error) {
-          console.error("Error compressing image:", error);
-          formData.append("image", selectedImage);
-        }
+        formData.append("image", selectedImage);
       }
 
       const res = await addProjectLog(null, formData);
