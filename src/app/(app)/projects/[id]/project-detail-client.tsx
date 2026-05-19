@@ -132,7 +132,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
           const options = {
             maxSizeMB: 0.5,
             maxWidthOrHeight: 1920,
-            useWebWorker: true,
+            useWebWorker: false,
           };
           const compressedFile = await imageCompression(selectedImage, options);
           formData.append("image", compressedFile);

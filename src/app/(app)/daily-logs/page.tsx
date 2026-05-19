@@ -10,6 +10,8 @@ export default async function DailyLogsPage() {
   const supabase = await createClient();
 
   let logs: any[] = [];
+  let itemsList: any[] = [];
+  let locationsList: any[] = [];
   let dbTableMissing = false;
 
   try {
@@ -25,6 +27,12 @@ export default async function DailyLogsPage() {
       .from("it_project_logs")
       .select("*, it_projects(name)")
       .order("created_at", { ascending: false });
+
+    // 3. Fetch items and locations for material usage
+    const { data: items } = await supabase.from("items").select("id, name, sku").order("name");
+    const { data: locations } = await supabase.from("locations").select("id, name").order("name");
+    itemsList = items || [];
+    locationsList = locations || [];
 
     if (dailyError) {
       if (dailyError.code === "42P01") {
@@ -73,6 +81,8 @@ export default async function DailyLogsPage() {
   return (
     <DailyLogsClient 
       initialLogs={logs} 
+      itemsList={itemsList}
+      locationsList={locationsList}
       dbTableMissing={dbTableMissing} 
     />
   );

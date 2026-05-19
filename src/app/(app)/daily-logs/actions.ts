@@ -60,12 +60,56 @@ export async function createDailyLog(prevState: any, formData: FormData) {
       }
     }
 
+    // Process Material Usage
+    const usedItemId = formData.get("used_item_id") as string;
+    const usedQuantityStr = formData.get("used_quantity") as string;
+    const sourceLocationId = formData.get("source_location_id") as string;
+    const usedQuantity = usedQuantityStr ? parseInt(usedQuantityStr) : 0;
+    
+    let materialNote = "";
+
+    if (usedItemId && usedQuantity > 0 && sourceLocationId) {
+      // 1. Cek stok
+      const { data: sourceStock } = await supabase
+        .from("item_stocks")
+        .select("quantity")
+        .eq("item_id", usedItemId)
+        .eq("location_id", sourceLocationId)
+        .single();
+        
+      if (!sourceStock || sourceStock.quantity < usedQuantity) {
+        return { error: "Stok material di gudang sumber tidak mencukupi untuk penggunaan." };
+      }
+
+      // 2. Kurangi stok
+      await supabase
+        .from("item_stocks")
+        .update({ quantity: sourceStock.quantity - usedQuantity, last_updated: new Date().toISOString() })
+        .eq("item_id", usedItemId)
+        .eq("location_id", sourceLocationId);
+
+      // 3. Catat mutasi log
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("inventory_logs").insert([{
+        item_id: usedItemId,
+        location_id: sourceLocationId,
+        mutation_type: "OUTBOUND",
+        quantity: usedQuantity,
+        notes: `Penggunaan material untuk Laporan Harian IT: ${activityName}`,
+        user_id: user?.id
+      }]);
+
+      // 4. Update rincian pekerjaan
+      const { data: itemData } = await supabase.from("items").select("name").eq("id", usedItemId).single();
+      materialNote = `\n\n[Sistem] Material Digunakan: ${itemData?.name || 'Item'} (x${usedQuantity}).`;
+    }
+
     // Insert database record
     const { data: log, error } = await supabase
       .from("it_daily_logs")
       .insert({
         activity_name: activityName,
-        details,
+        details: details + materialNote,
         status,
         date,
         technician_name: technicianName,

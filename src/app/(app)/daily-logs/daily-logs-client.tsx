@@ -12,10 +12,12 @@ import { createDailyLog, deleteDailyLog } from "./actions";
 
 interface DailyLogsClientProps {
   initialLogs: any[];
+  itemsList?: any[];
+  locationsList?: any[];
   dbTableMissing: boolean;
 }
 
-export default function DailyLogsClient({ initialLogs, dbTableMissing }: DailyLogsClientProps) {
+export default function DailyLogsClient({ initialLogs, itemsList = [], locationsList = [], dbTableMissing }: DailyLogsClientProps) {
   const [logs, setLogs] = useState<any[]>(initialLogs);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Semua");
@@ -36,6 +38,7 @@ export default function DailyLogsClient({ initialLogs, dbTableMissing }: DailyLo
   const [technicianName, setTechnicianName] = useState("Tim IT Support");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [hasMaterialUsage, setHasMaterialUsage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sqlCode = `-- Jalankan SQL ini di Supabase SQL Editor Anda untuk mengaktifkan tabel Laporan Harian:
@@ -97,6 +100,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
     setDate(new Date().toISOString().split("T")[0]);
     setTechnicianName("Tim IT Support");
     clearImage();
+    setHasMaterialUsage(false);
     setIsModalOpen(true);
   };
 
@@ -112,12 +116,26 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
       formData.append("status", status);
       formData.append("date", date);
       formData.append("technician_name", technicianName);
+      
+      const formElement = e.target as HTMLFormElement;
+      if (hasMaterialUsage) {
+        const usedItemId = (formElement.elements.namedItem("used_item_id") as HTMLSelectElement)?.value;
+        const usedQuantity = (formElement.elements.namedItem("used_quantity") as HTMLInputElement)?.value;
+        const sourceLocationId = (formElement.elements.namedItem("source_location_id") as HTMLSelectElement)?.value;
+        if (usedItemId && usedQuantity && sourceLocationId) {
+          formData.append("used_item_id", usedItemId);
+          formData.append("used_quantity", usedQuantity);
+          formData.append("source_location_id", sourceLocationId);
+        }
+      }
+
       if (selectedImage) {
         try {
           const options = {
             maxSizeMB: 0.5,
             maxWidthOrHeight: 1920,
-            useWebWorker: true,
+            useWebWorker: false,
+            initialQuality: 0.7,
           };
           const compressedFile = await imageCompression(selectedImage, options);
           formData.append("image", compressedFile);
@@ -493,6 +511,48 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                   <option value="Pending">Pending (Dalam Antrean)</option>
                   <option value="Terhambat">Terhambat (Blocker)</option>
                 </select>
+              </div>
+
+              {/* Material Usage Section */}
+              <div className="space-y-2 pt-2 border-t border-border/30">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1.5 tracking-wider">
+                    <ClipboardList className="w-3.5 h-3.5" /> Ada Penggunaan Material/Barang?
+                  </label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={hasMaterialUsage} onChange={() => setHasMaterialUsage(!hasMaterialUsage)} />
+                    <div className="w-8 h-4 bg-border rounded-full peer peer-checked:after:translate-x-full after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+                {hasMaterialUsage && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl mt-2 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Pilih Barang</label>
+                      <select name="used_item_id" required className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 outline-none">
+                        <option value="">-- Barang --</option>
+                        {itemsList.map((item: any) => (
+                          <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Jumlah</label>
+                      <input type="number" name="used_quantity" min="1" defaultValue="1" required className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 outline-none" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Ambil Dari</label>
+                      <select name="source_location_id" required className="w-full px-2 py-1.5 bg-background border border-border rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 outline-none">
+                        <option value="">-- Gudang --</option>
+                        {locationsList.map((loc: any) => (
+                          <option key={loc.id} value={loc.id}>{loc.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-[9px] text-emerald-600/80 sm:col-span-3 italic">
+                      *Stok akan otomatis terpotong saat laporan ini disimpan.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Documentation Image */}

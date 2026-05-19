@@ -44,7 +44,12 @@ export default function NewServicePage() {
     if (file && file.size > 0 && file.type.startsWith("image/")) {
       try {
         const imageCompression = (await import("browser-image-compression")).default;
-        const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+        const options = {
+            maxSizeMB: 0.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: false,
+        };
+        const compressedFile = await imageCompression(file, options);
         formData.set("service_doc", compressedFile);
       } catch (err) {
         console.error("Compression error:", err);

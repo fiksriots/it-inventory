@@ -35,7 +35,12 @@ export default function POClientView({ po, items }: POClientViewProps) {
     if (file.type.startsWith("image/")) {
       try {
         const imageCompression = (await import("browser-image-compression")).default;
-        finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+        const options = {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1920,
+          useWebWorker: false,
+        };
+        finalFile = await imageCompression(file, options);
       } catch (err) {
         console.error("Compression error:", err);
       }
