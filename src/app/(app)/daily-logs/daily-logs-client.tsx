@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from "react";
 import { 
   ClipboardList, Plus, Search, Users, Clock, Calendar, 
   Trash2, Image, FileImage, X, Loader2, CheckCircle2, 
-  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink, Printer
+  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink, Printer, Eye
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { createDailyLog, deleteDailyLog } from "./actions";
@@ -387,6 +387,15 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                           {log.status}
                         </span>
 
+                        {hasImage && (
+                          <button
+                            onClick={() => setSelectedDocImage(log.image_url)}
+                            className="p-1.5 bg-background hover:bg-primary/10 text-text-muted/60 hover:text-primary rounded-lg border border-border hover:border-primary/20 transition-all active:scale-95 no-print"
+                            title="Lihat Foto Dokumentasi"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {log.type !== "project" && (
                           <button
                             onClick={() => handleDelete(log.id, log.activity_name)}
@@ -403,26 +412,6 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                     <p className="text-xs text-foreground leading-relaxed whitespace-pre-line font-medium">
                       {log.details}
                     </p>
-
-                    {/* Image Documentation */}
-                    {hasImage && (
-                      <div className="pt-2">
-                        <div 
-                          className="relative w-40 h-24 rounded-xl overflow-hidden border border-border/80 group/thumb cursor-pointer shadow-sm bg-background p-1 hover:border-primary/45 transition-colors"
-                          onClick={() => setSelectedDocImage(log.image_url)}
-                        >
-                          <img 
-                            src={log.image_url} 
-                            alt="Bukti Pekerjaan" 
-                            className="w-full h-full object-cover rounded-lg transition-transform duration-300 group-hover/thumb:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity">
-                            <Maximize2 className="w-4 h-4 text-white animate-in zoom-in-75 duration-200" />
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-bold text-text-muted/50 mt-1.5 block tracking-wider uppercase">FOTO DOKUMENTASI FISIK</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
