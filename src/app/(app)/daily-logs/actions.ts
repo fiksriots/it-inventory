@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import fs from "fs";
 import path from "path";
 
+import sharp from "sharp";
+
 // Helper to get administrative service client or standard server action client
 async function getActionClient() {
   const supabase = await createClient();
@@ -35,8 +37,7 @@ export async function createDailyLog(prevState: any, formData: FormData) {
         const buffer = Buffer.from(bytes);
 
         // Standardize file name
-        const ext = path.extname(imageFile.name) || ".png";
-        const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}${ext}`;
+        const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.jpg`;
 
         // Ensure directories exist in workspace
         const uploadDir = path.join(process.cwd(), "public", "uploads", "daily-logs");
@@ -45,7 +46,13 @@ export async function createDailyLog(prevState: any, formData: FormData) {
         }
 
         const filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, buffer);
+        
+        // Auto compress image to save disk space and prevent loading issues
+        await sharp(buffer)
+          .resize(1280, 1280, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 80 })
+          .toFile(filePath);
+
         imageUrl = `/uploads/daily-logs/${fileName}`;
       } catch (uploadErr) {
         console.error("Error uploading physical file:", uploadErr);
