@@ -5,7 +5,7 @@ import imageCompression from "browser-image-compression";
 import { 
   ClipboardList, Plus, Search, Users, Clock, Calendar, 
   Trash2, Image, FileImage, X, Loader2, CheckCircle2, 
-  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink
+  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink, Printer
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { createDailyLog, deleteDailyLog } from "./actions";
@@ -256,21 +256,31 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
             </div>
             Laporan Kerja Harian IT
           </h1>
-          <p className="text-sm text-text-muted mt-1">
+          <p className="text-sm text-text-muted mt-1 no-print">
             Catat agenda, perbaikan, instalasi, dan penanganan gangguan yang dilakukan oleh IT Support setiap harinya.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0 text-xs"
-        >
-          <Plus className="w-4.5 h-4.5" />
-          Buat Laporan Harian
-        </button>
+        <div className="flex items-center gap-2 no-print">
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 shrink-0 text-xs shadow-sm"
+            title="Cetak Laporan / Simpan sbg PDF"
+          >
+            <Printer className="w-4.5 h-4.5" />
+            Cetak PDF
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0 text-xs"
+          >
+            <Plus className="w-4.5 h-4.5" />
+            Buat Laporan
+          </button>
+        </div>
       </div>
 
       {/* Filter panel */}
-      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm space-y-4 no-print">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Status Filters */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -326,19 +336,20 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
 
       {/* Reports Listing */}
       {filteredLogs.length === 0 ? (
-        <div className="p-16 text-center rounded-2xl bg-surface border border-border/40 shadow-sm">
+        <div className="p-16 text-center rounded-2xl bg-surface border border-border/40 shadow-sm print:hidden">
           <ClipboardList className="w-12 h-12 text-text-muted/40 mx-auto mb-3" />
           <p className="text-text-muted text-sm font-semibold">Tidak ada laporan harian yang ditemukan.</p>
           <p className="text-xs text-text-muted/65 mt-1">Buat laporan harian pertama Anda untuk mendokumentasikan kerja hari ini.</p>
         </div>
       ) : (
-        <div className="space-y-8 pl-4 border-l-2 border-border/70 ml-2 py-2">
-          {filteredLogs.map((log) => {
-            const hasImage = !!log.image_url;
+        <>
+          <div className="space-y-8 pl-4 border-l-2 border-border/70 ml-2 py-2 print:hidden">
+            {filteredLogs.map((log) => {
+              const hasImage = !!log.image_url;
             return (
-              <div key={log.id} className="relative group animate-in fade-in duration-300">
+              <div key={log.id} className="relative group animate-in fade-in duration-300 print-break-inside-avoid mb-6">
                 {/* Timeline dot */}
-                <div className="absolute -left-[25px] top-2 w-3.5 h-3.5 rounded-full bg-surface border-2 border-primary flex items-center justify-center shadow-sm group-hover:bg-primary transition-colors">
+                <div className="absolute -left-[25px] top-2 w-3.5 h-3.5 rounded-full bg-surface border-2 border-primary flex items-center justify-center shadow-sm group-hover:bg-primary transition-colors no-print">
                   <div className="w-1 h-1 bg-primary group-hover:bg-surface rounded-full transition-colors" />
                 </div>
 
@@ -392,7 +403,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                         {log.type !== "project" && (
                           <button
                             onClick={() => handleDelete(log.id, log.activity_name)}
-                            className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95"
+                            className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
                             title="Hapus Laporan"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -431,6 +442,34 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
             );
           })}
         </div>
+
+        {/* Print-Only Table View */}
+        <div className="hidden print:block w-full">
+          <h2 className="text-xl font-bold mb-4 text-center pb-2 border-b-2 border-black">Rekapan Laporan Kerja Harian IT</h2>
+          <table className="w-full text-xs border-collapse border border-black">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 text-left w-24">Tanggal</th>
+                <th className="border border-black p-2 text-left w-32">Teknisi</th>
+                <th className="border border-black p-2 text-left w-48">Judul Pekerjaan</th>
+                <th className="border border-black p-2 text-left">Rincian & Keterangan</th>
+                <th className="border border-black p-2 text-center w-24">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLogs.map((log) => (
+                <tr key={log.id} className="print-break-inside-avoid">
+                  <td className="border border-black p-2 align-top font-medium">{log.date}</td>
+                  <td className="border border-black p-2 align-top">{log.technician_name}</td>
+                  <td className="border border-black p-2 align-top font-bold">{log.activity_name}</td>
+                  <td className="border border-black p-2 align-top whitespace-pre-line">{log.details}</td>
+                  <td className="border border-black p-2 align-top text-center uppercase text-[10px] font-bold">{log.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
       )}
 
       {/* Modal: New Activity Log */}
