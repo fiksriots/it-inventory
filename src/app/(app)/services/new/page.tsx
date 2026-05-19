@@ -42,18 +42,7 @@ export default function NewServicePage() {
   const handleClientAction = async (formData: FormData) => {
     const file = formData.get("service_doc") as File;
     if (file && file.size > 0 && file.type.startsWith("image/")) {
-      try {
-        const imageCompression = (await import("browser-image-compression")).default;
-        const options = {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: false,
-        };
-        const compressedFile = await imageCompression(file, options);
-        formData.set("service_doc", compressedFile);
-      } catch (err) {
-        console.error("Compression error:", err);
-      }
+      
     }
     
     // In React 19 / Next.js 15, we can call startTransition with formAction

@@ -32,18 +32,7 @@ export default function ServiceCompleteForm({ service }: ServiceCompleteFormProp
     
     const invoiceFile = formData.get("invoice") as File;
     if (invoiceFile && invoiceFile.size > 0 && invoiceFile.type.startsWith("image/")) {
-      try {
-        const imageCompression = (await import("browser-image-compression")).default;
-        const options = {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: false,
-        };
-        const compressedFile = await imageCompression(invoiceFile, options);
-        formData.set("invoice", compressedFile);
-      } catch (err) {
-        console.error("Error compressing image:", err);
-      }
+      
     }
 
     try {

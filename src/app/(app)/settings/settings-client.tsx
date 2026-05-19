@@ -92,12 +92,7 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
     try {
       let finalFile = file;
       if (file.type.startsWith("image/")) {
-        try {
-          const imageCompression = (await import("browser-image-compression")).default;
-          finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
-        } catch (err) {
-          console.error("Compression error:", err);
-        }
+        
       }
       const formData = new FormData();
       formData.append("logo", finalFile);
@@ -118,12 +113,7 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
     try {
       let finalFile = file;
       if (file.type.startsWith("image/")) {
-        try {
-          const imageCompression = (await import("browser-image-compression")).default;
-          finalFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
-        } catch (err) {
-          console.error("Compression error:", err);
-        }
+        
       }
       const formData = new FormData();
       formData.append("avatar", finalFile);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import imageCompression from "browser-image-compression";
 import { 
   ClipboardList, Plus, Search, Users, Clock, Calendar, 
   Trash2, Image, FileImage, X, Loader2, CheckCircle2, 
@@ -130,19 +129,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
       }
 
       if (selectedImage) {
-        try {
-          const options = {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 1920,
-            useWebWorker: false,
-            initialQuality: 0.7,
-          };
-          const compressedFile = await imageCompression(selectedImage, options);
-          formData.append("image", compressedFile);
-        } catch (error) {
-          console.error("Error compressing image:", error);
-          formData.append("image", selectedImage);
-        }
+        formData.append("image", selectedImage);
       }
 
       const res = await createDailyLog(null, formData);
