@@ -115,3 +115,56 @@ export async function deleteItem(id: string) {
   revalidatePath("/items");
   return {};
 }
+
+export async function logItemUsage(formData: FormData) {
+  const supabase = await createClient();
+  const itemId = formData.get("item_id") as string;
+  const locationId = formData.get("location_id") as string;
+  const quantity = parseInt(formData.get("quantity") as string);
+  const notes = formData.get("notes") as string;
+
+  if (!itemId || !locationId || isNaN(quantity) || quantity <= 0) {
+    throw new Error("Data pemakaian tidak valid.");
+  }
+
+  // 1. Cek ketersediaan stok
+  const { data: stock } = await supabase
+    .from("item_stocks")
+    .select("quantity")
+    .eq("item_id", itemId)
+    .eq("location_id", locationId)
+    .single();
+
+  if (!stock || stock.quantity < quantity) {
+    throw new Error(`Stok tidak mencukupi. Sisa stok di lokasi ini hanya ${stock?.quantity || 0}.`);
+  }
+
+  // 2. Kurangi stok
+  const { error: updateError } = await supabase
+    .from("item_stocks")
+    .update({ quantity: stock.quantity - quantity, last_updated: new Date().toISOString() })
+    .eq("item_id", itemId)
+    .eq("location_id", locationId);
+
+  if (updateError) {
+    throw new Error(`Gagal memotong stok: ${updateError.message}`);
+  }
+
+  // 3. Catat ke inventory_logs
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error: logError } = await supabase.from("inventory_logs").insert([{
+    item_id: itemId,
+    location_id: locationId,
+    user_id: user?.id,
+    mutation_type: "OUTBOUND",
+    quantity: quantity,
+    notes: `[Pemakaian] ${notes}`
+  }]);
+
+  if (logError) {
+    throw new Error(`Gagal mencatat log: ${logError.message}`);
+  }
+
+  revalidatePath(`/items/${itemId}`);
+  return { success: true };
+}

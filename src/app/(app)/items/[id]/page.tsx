@@ -11,6 +11,7 @@ import {
   ArrowRightLeft,
   Calendar
 } from "lucide-react";
+import ItemUsageForm from "./item-usage-form";
 
 export default async function ItemDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -123,6 +124,9 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
               </div>
             </div>
           </div>
+
+          {/* Form Pemakaian Barang */}
+          <ItemUsageForm itemId={id} stocks={stocks || []} />
 
           {/* Stock Distribution */}
           <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
