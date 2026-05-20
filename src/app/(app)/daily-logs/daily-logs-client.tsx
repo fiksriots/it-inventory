@@ -900,8 +900,8 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                       className="w-12 h-12 object-cover rounded-lg border border-border"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-foreground truncate">{selectedImage?.name}</p>
-                      <p className="text-[9px] text-text-muted mt-0.5">{(selectedImage!.size / (1024 * 1024)).toFixed(2)} MB</p>
+                      <p className="text-xs font-bold text-foreground truncate">{selectedImage?.name ?? "Foto Dokumentasi Saat Ini"}</p>
+                      <p className="text-[9px] text-text-muted mt-0.5">{selectedImage ? `${(selectedImage.size / (1024 * 1024)).toFixed(2)} MB` : "Klik × untuk menghapus foto"}</p>
                     </div>
                     <button
                       type="button"
