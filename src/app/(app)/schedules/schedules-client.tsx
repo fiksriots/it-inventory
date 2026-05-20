@@ -380,8 +380,9 @@ export default function SchedulesClient() {
     <div className="space-y-6">
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 10mm; }
+          @page { size: A4 landscape !important; margin: 10mm !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
+          .max-w-7xl { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         }
       `}</style>
       
@@ -860,30 +861,33 @@ export default function SchedulesClient() {
       </div>
 
       {/* PRINT ONLY LAYOUT */}
-      <div className="hidden print:block w-full bg-white text-black text-[11px] font-sans">
-        <h2 className="text-center font-bold text-lg mb-6 uppercase">
+      <div 
+        className="hidden print:block bg-white text-black font-sans"
+        style={{ width: '100%', maxWidth: 'none', padding: '0 5mm' }}
+      >
+        <h2 className="text-center font-bold text-[18px] mb-8 uppercase tracking-wider">
           {getPrintTitle()}
         </h2>
         
         {/* Main Matrix */}
-        <table className="w-full border-collapse border border-black mb-8 text-center" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black mb-10 text-center text-[11px]" style={{ tableLayout: 'fixed' }}>
           <thead>
             {/* TGL Row */}
             <tr>
-              <th className="border border-black p-1 bg-[#ffff00] w-[50px]">TGL</th>
+              <th className="border border-black bg-[#ffff00]" style={{ padding: '6px', width: '60px' }}>TGL</th>
               {periodDays.map(d => (
-                <th key={`print-tgl-${d.dateStr}`} className="border border-black p-1 bg-[#ffff00] font-normal">
+                <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal" style={{ padding: '6px' }}>
                   {d.dayNum}
                 </th>
               ))}
             </tr>
             {/* HARI Row */}
             <tr>
-              <th className="border border-black p-1 bg-[#d9d9d9]">HARI</th>
+              <th className="border border-black bg-[#d9d9d9]" style={{ padding: '6px' }}>HARI</th>
               {periodDays.map(d => {
                 const shortDay = ["MG", "SN", "SL", "RB", "KM", "JM", "SB"][new Date(d.year, d.month - 1, d.dayNum).getDay()];
                 return (
-                  <th key={`print-hari-${d.dateStr}`} className={`border border-black p-1 font-normal ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
+                  <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`} style={{ padding: '6px' }}>
                     {shortDay}
                   </th>
                 );
@@ -895,16 +899,16 @@ export default function SchedulesClient() {
               <React.Fragment key={`print-row-${member}`}>
                 {/* JAM Row */}
                 <tr>
-                  <td className="border border-black p-1 bg-[#a9d08e] uppercase font-bold">JAM</td>
+                  <td className="border border-black bg-[#a9d08e] uppercase font-bold" style={{ padding: '6px' }}>JAM</td>
                   {periodDays.map(d => (
-                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black p-1 bg-[#a9d08e] font-normal">
+                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal" style={{ padding: '6px' }}>
                       {member.toLowerCase() === 'fikri' ? '10' : '9'}
                     </td>
                   ))}
                 </tr>
                 {/* MEMBER Row */}
                 <tr>
-                  <td className="border border-black p-1 uppercase font-bold bg-[#e2efda] text-[10px]">{member}</td>
+                  <td className="border border-black uppercase font-bold bg-[#e2efda] text-[10px]" style={{ padding: '6px' }}>{member}</td>
                   {periodDays.map(d => {
                     const s = getDaySchedule(member, d.dateStr);
                     const status = s ? s.status : (d.isHoliday ? "PH" : "M");
@@ -918,7 +922,7 @@ export default function SchedulesClient() {
                       bgClass = "bg-[#ffc000]";
                     }
                     return (
-                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black p-1 font-bold ${bgClass} ${textClass}`}>
+                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold ${bgClass} ${textClass}`} style={{ padding: '6px' }}>
                         {displayStatus}
                       </td>
                     );
@@ -930,16 +934,16 @@ export default function SchedulesClient() {
         </table>
 
         {/* Summary Table */}
-        <div className="flex justify-center mt-6">
-          <table className="border-collapse border border-black text-center text-[12px] w-2/3 max-w-2xl">
+        <div className="flex justify-center mt-8">
+          <table className="border-collapse border border-black text-center text-[12px] w-[60%]">
             <thead>
               <tr>
-                <th className="border border-black p-1.5 bg-[#b4c6e7]">NAMA</th>
-                <th className="border border-black p-1.5 bg-[#ffff00]">TOTAL MASUK</th>
-                <th className="border border-black p-1.5 bg-[#ffff00]">LIBUR</th>
-                <th className="border border-black p-1.5 bg-[#ffff00]">DP</th>
-                <th className="border border-black p-1.5 bg-[#ffff00]">CUTI</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] w-24">SAVE</th>
+                <th className="border border-black p-2 bg-[#b4c6e7]">NAMA</th>
+                <th className="border border-black p-2 bg-[#ffff00]">TOTAL MASUK</th>
+                <th className="border border-black p-2 bg-[#ffff00]">LIBUR</th>
+                <th className="border border-black p-2 bg-[#ffff00]">DP</th>
+                <th className="border border-black p-2 bg-[#ffff00]">CUTI</th>
+                <th className="border border-black p-2 bg-[#ffff00] w-28">SAVE</th>
               </tr>
             </thead>
             <tbody>
@@ -947,12 +951,12 @@ export default function SchedulesClient() {
                 const stats = getMemberStats(member);
                 return (
                   <tr key={`print-sum-${member}`}>
-                    <td className="border border-black p-1.5 bg-[#d9e1f2] font-bold uppercase">{member}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white">{stats.mCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white">{stats.lCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white">{stats.dpCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white">{stats.cCount}</td>
-                    <td className="border border-black p-1.5 bg-white"></td>
+                    <td className="border border-black p-2 bg-[#d9e1f2] font-bold uppercase">{member}</td>
+                    <td className="border border-black p-2 font-normal bg-white">{stats.mCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white">{stats.lCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white">{stats.dpCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white">{stats.cCount}</td>
+                    <td className="border border-black p-2 bg-white"></td>
                   </tr>
                 );
               })}
