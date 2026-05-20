@@ -562,22 +562,6 @@ export default function SchedulesClient() {
                     );
                   })}
 
-                  {/* Summary Columns */}
-                  <th className="w-12 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-emerald-400 uppercase tracking-wider">
-                    Tot M
-                  </th>
-                  <th className="w-12 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-amber-400 uppercase tracking-wider">
-                    Tot C
-                  </th>
-                  <th className="w-14 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-blue-400 uppercase tracking-wider">
-                    Tot DP
-                  </th>
-                  <th className="w-14 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-rose-400 uppercase tracking-wider">
-                    Tot PH
-                  </th>
-                  <th className="w-12 bg-background/55 p-2 text-center text-[10px] font-black text-purple-400 uppercase tracking-wider">
-                    Tot L
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -635,30 +619,6 @@ export default function SchedulesClient() {
                         </td>
                       );
                     })}
-
-                    {/* Render live real-time stats columns */}
-                    {(() => {
-                      const stats = getMemberStats(member);
-                      return (
-                        <>
-                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-emerald-400 bg-emerald-500/5">
-                            {stats.mCount}
-                          </td>
-                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-amber-400 bg-amber-500/5">
-                            {stats.cCount}
-                          </td>
-                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-blue-400 bg-blue-500/5">
-                            {stats.dpCount}
-                          </td>
-                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-rose-400 bg-rose-500/5" title="Total Hari PH dalam cutoff ini">
-                            {stats.phCount}
-                          </td>
-                          <td className="p-2 text-center align-middle font-black text-xs text-purple-400 bg-purple-500/5" title="Total Libur dalam cutoff ini">
-                            {stats.lCount}
-                          </td>
-                        </>
-                      );
-                    })()}
                   </tr>
                 ))}
               </tbody>
@@ -691,6 +651,49 @@ export default function SchedulesClient() {
           <div className="flex items-center gap-1.5 ml-auto text-[10px] text-amber-400/80 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse mr-1"></span>
             <span>Kolom Tanggal Kuning Emas menandakan Tanggal Merah Hari Besar Nasional otomatis (API)</span>
+          </div>
+        </div>
+
+        {/* Summary (Rekapitulasi) */}
+        <div className="p-4 border-t border-border bg-surface">
+          <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            Rekapitulasi Kehadiran
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {members.map(member => {
+              const stats = getMemberStats(member);
+              return (
+                <div key={`summary-${member}`} className="flex flex-col bg-background border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="font-bold text-sm mb-3 pb-2 border-b border-border flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">{member.charAt(0)}</div>
+                    {member}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1 text-center">
+                    <div className="flex flex-col items-center p-1 rounded-lg hover:bg-emerald-500/5 transition-colors">
+                      <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot M</span>
+                      <span className="text-sm font-black text-emerald-500">{stats.mCount}</span>
+                    </div>
+                    <div className="flex flex-col items-center p-1 rounded-lg hover:bg-amber-500/5 transition-colors">
+                      <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot C</span>
+                      <span className="text-sm font-black text-amber-500">{stats.cCount}</span>
+                    </div>
+                    <div className="flex flex-col items-center p-1 rounded-lg hover:bg-blue-500/5 transition-colors">
+                      <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot DP</span>
+                      <span className="text-sm font-black text-blue-500">{stats.dpCount}</span>
+                    </div>
+                    <div className="flex flex-col items-center p-1 rounded-lg hover:bg-rose-500/5 transition-colors">
+                      <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot PH</span>
+                      <span className="text-sm font-black text-rose-500">{stats.phCount}</span>
+                    </div>
+                    <div className="flex flex-col items-center p-1 rounded-lg hover:bg-purple-500/5 transition-colors">
+                      <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot L</span>
+                      <span className="text-sm font-black text-purple-500">{stats.lCount}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
