@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff, Users, UserPlus, Trash2 } from "lucide-react";
-import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount } from "./actions";
+import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff, Users, UserPlus, Trash2, Database, Download } from "lucide-react";
+import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount, generateDatabaseBackup } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 
@@ -17,9 +17,42 @@ interface SettingsClientProps {
 export default function SettingsClient({ user, userProfile, company, logs = [], usersList = [] }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState("profile"); // Switched default to profile since we are working on it
   const [loading, setLoading] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+
+  const handleDownloadBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      toast("Sedang mengumpulkan data database...", "success");
+      const result = await generateDatabaseBackup();
+      
+      if (result.error) {
+        toast(result.error, "error");
+        return;
+      }
+      
+      if (result.data) {
+        const jsonStr = JSON.stringify(result.data, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `Backup_Database_InventoryIT_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast("Backup berhasil diunduh!", "success");
+      }
+    } catch (err: any) {
+      toast("Gagal melakukan backup database.", "error");
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   const handleAddUser = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -549,6 +582,34 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Database Backup */}
+              <div className="p-8 mx-8 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-bold text-emerald-600 flex items-center gap-2">
+                    <Database className="w-4 h-4" />
+                    Backup Keseluruhan Data
+                  </h4>
+                  <p className="text-xs text-emerald-600/70 mt-1 max-w-sm">Unduh seluruh riwayat data inventaris, pengguna, dan transaksi dalam format JSON sebagai cadangan yang aman.</p>
+                </div>
+                <button 
+                  onClick={handleDownloadBackup}
+                  disabled={isBackingUp}
+                  className="px-5 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 whitespace-nowrap active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isBackingUp ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Memproses Data...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      Unduh Backup (JSON)
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Danger Zone Placeholder */}

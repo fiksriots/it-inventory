@@ -165,3 +165,86 @@ export async function deleteDailyLog(id: string) {
     return { error: "Terjadi kesalahan sistem internal." };
   }
 }
+
+export async function updateDailyLog(id: string, prevState: any, formData: FormData) {
+  try {
+    const { supabase } = await getActionClient();
+
+    const activityName = formData.get("activity_name") as string;
+    const details = formData.get("details") as string;
+    const status = formData.get("status") as string || "Selesai";
+    const date = formData.get("date") as string;
+    const technicianName = formData.get("technician_name") as string;
+    const imageFile = formData.get("image") as File | null;
+    const removeImage = formData.get("remove_image") === "true";
+
+    if (!activityName || !details) {
+      return { error: "Judul kegiatan dan rincian pekerjaan wajib diisi!" };
+    }
+
+    let imageUrl: string | null = undefined;
+
+    if (removeImage) {
+      imageUrl = null;
+      try {
+        const { data } = await supabase.from("it_daily_logs").select("image_url").eq("id", id).single();
+        if (data?.image_url) {
+          const localPath = path.join(process.cwd(), "public", data.image_url);
+          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+        }
+      } catch (e) {}
+    } else if (imageFile && imageFile.size > 0 && imageFile.name !== "undefined") {
+      try {
+        const bytes = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        const fileExt = imageFile.name.split('.').pop() || 'jpg';
+        const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.${fileExt}`;
+        const uploadDir = path.join(process.cwd(), "public", "uploads", "daily-logs");
+        
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+
+        imageUrl = `/uploads/daily-logs/${fileName}`;
+        
+        // delete old image
+        const { data } = await supabase.from("it_daily_logs").select("image_url").eq("id", id).single();
+        if (data?.image_url) {
+          const localPath = path.join(process.cwd(), "public", data.image_url);
+          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+        }
+      } catch (uploadErr: any) {
+        return { error: `Gagal menyimpan gambar di server: ${uploadErr.message}` };
+      }
+    }
+
+    const updatePayload: any = {
+      activity_name: activityName,
+      details,
+      status,
+    };
+    if (date) updatePayload.date = date;
+    if (technicianName) updatePayload.technician_name = technicianName;
+    if (imageUrl !== undefined) updatePayload.image_url = imageUrl;
+
+    const { data: log, error } = await supabase
+      .from("it_daily_logs")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      return { error: `Gagal memperbarui laporan: ${error.message}` };
+    }
+
+    revalidatePath("/daily-logs");
+    return { success: true, log };
+  } catch (err: any) {
+    return { error: "Terjadi kesalahan sistem internal." };
+  }
+}

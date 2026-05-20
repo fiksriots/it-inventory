@@ -8,7 +8,7 @@ import {
   Download, FileText, FileSpreadsheet, ChevronDown
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
-import { createDailyLog, deleteDailyLog } from "./actions";
+import { createDailyLog, deleteDailyLog, updateDailyLog } from "./actions";
 
 interface DailyLogsClientProps {
   initialLogs: any[];
@@ -23,6 +23,7 @@ export default function DailyLogsClient({ initialLogs, itemsList = [], locations
   const [selectedStatus, setSelectedStatus] = useState("Semua");
   const [selectedDate, setSelectedDate] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
@@ -39,6 +40,7 @@ export default function DailyLogsClient({ initialLogs, itemsList = [], locations
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [hasMaterialUsage, setHasMaterialUsage] = useState(false);
+  const [removeImage, setRemoveImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sqlCode = `-- Jalankan SQL ini di Supabase SQL Editor Anda untuk mengaktifkan tabel Laporan Harian:
@@ -77,6 +79,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
         return;
       }
       setSelectedImage(file);
+      setRemoveImage(false);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -88,18 +91,35 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
   const clearImage = () => {
     setSelectedImage(null);
     setImagePreview(null);
+    setRemoveImage(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const openCreateModal = () => {
+    setEditingLog(null);
     setActivityName("");
     setDetails("");
     setStatus("Selesai");
     setDate(new Date().toISOString().split("T")[0]);
     setTechnicianName("Tim IT Support");
     clearImage();
+    setRemoveImage(false);
+    setHasMaterialUsage(false);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (log: any) => {
+    setEditingLog(log);
+    setActivityName(log.activity_name);
+    setDetails(log.details);
+    setStatus(log.status);
+    setDate(log.date);
+    setTechnicianName(log.technician_name);
+    setSelectedImage(null);
+    setImagePreview(log.image_url || null);
+    setRemoveImage(false);
     setHasMaterialUsage(false);
     setIsModalOpen(true);
   };
@@ -132,15 +152,28 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
       if (selectedImage) {
         formData.append("image", selectedImage);
       }
+      if (removeImage) {
+        formData.append("remove_image", "true");
+      }
 
-      const res = await createDailyLog(null, formData);
+      let res;
+      if (editingLog) {
+        res = await updateDailyLog(editingLog.id, null, formData);
+      } else {
+        res = await createDailyLog(null, formData);
+      }
+
       if (res.error) {
         toast(res.error, "error");
       } else {
-        toast("Laporan harian berhasil disimpan!", "success");
+        toast(editingLog ? "Laporan harian berhasil diperbarui!" : "Laporan harian berhasil disimpan!", "success");
         setIsModalOpen(false);
         if (res.log) {
-          setLogs([res.log, ...logs]);
+          if (editingLog) {
+            setLogs(logs.map(l => l.id === res.log.id ? res.log : l));
+          } else {
+            setLogs([res.log, ...logs]);
+          }
         }
       }
     });
@@ -605,13 +638,22 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                           </button>
                         )}
                         {log.type !== "project" && (
-                          <button
-                            onClick={() => handleDelete(log.id, log.activity_name)}
-                            className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
-                            title="Hapus Laporan"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => openEditModal(log)}
+                              className="p-1.5 bg-background hover:bg-amber-500/10 text-text-muted/60 hover:text-amber-500 rounded-lg border border-border hover:border-amber-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
+                              title="Edit Laporan"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(log.id, log.activity_name)}
+                              className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
+                              title="Hapus Laporan"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -719,7 +761,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
             <div className="flex justify-between items-center px-6 py-4 border-b border-border">
               <h3 className="font-black text-base text-foreground flex items-center gap-2">
                 <ClipboardList className="w-5 h-5 text-primary" />
-                Buat Laporan Kerja Harian
+                {editingLog ? "Edit Laporan Kerja Harian" : "Buat Laporan Kerja Harian"}
               </h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -897,6 +939,8 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Menyimpan...
                     </>
+                  ) : editingLog ? (
+                    "Simpan Pembaruan"
                   ) : (
                     "Simpan Laporan"
                   )}

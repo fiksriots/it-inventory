@@ -359,3 +359,38 @@ export async function deleteUserAccount(userId: string): Promise<{ success: bool
   return { success: true };
 }
 
+export async function generateDatabaseBackup() {
+  const supabase = await createClient();
+  const tables = [
+    "items", "categories", "locations", "suppliers", 
+    "it_po", "it_po_items", "item_transfers", 
+    "infrastructure", "infrastructure_maintenance_logs", 
+    "computers", "computer_maintenance_logs", 
+    "it_daily_logs", "it_projects", "it_project_logs", "it_project_rab",
+    "it_services", "company_profile", "profiles"
+  ];
+
+  const backupData: Record<string, any[]> = {};
+  let hasErrors = false;
+  let errorMessage = "";
+
+  for (const table of tables) {
+    const { data, error } = await supabase.from(table).select("*");
+    if (error) {
+      if (error.code !== '42P01') { // Ignore undefined table errors
+        hasErrors = true;
+        errorMessage = `Gagal mem-backup tabel ${table}: ${error.message}`;
+        break;
+      }
+    } else {
+      backupData[table] = data || [];
+    }
+  }
+
+  if (hasErrors) {
+    return { error: errorMessage };
+  }
+
+  return { success: true, data: backupData };
+}
+
