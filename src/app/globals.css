@@ -86,7 +86,7 @@ body {
     page-break-inside: avoid;
   }
   @page {
-    margin: 1cm;
+    margin: 0;
     size: A4 portrait;
   }
   * {

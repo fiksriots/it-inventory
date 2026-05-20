@@ -865,12 +865,6 @@ export default function SchedulesClient() {
         className="hidden print:block bg-white text-black font-sans"
         style={{ width: '100%', maxWidth: 'none', padding: '0 5mm' }}
       >
-        <style dangerouslySetInnerHTML={{__html: `
-          @media print {
-            @page { margin: 0; size: landscape; }
-            body { padding: 1.5cm; }
-          }
-        `}} />
         <h2 className="text-center font-bold text-[16px] mb-6 uppercase tracking-wider">
           {getPrintTitle()}
         </h2>
