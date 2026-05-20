@@ -96,7 +96,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         <div className="flex flex-col items-center justify-center gap-1 animate-in fade-in duration-300">
           <p className="text-[9px] text-text-muted/50 font-black tracking-widest uppercase">OpsFlow IT Platform</p>
           <p className="text-[10.5px] text-text-muted font-bold flex items-center gap-1 justify-center">
-            Website ini dibuat oleh <span className="font-black text-primary hover:text-primary-hover transition-colors">FiksRiots</span>
+            Website ini dibuat oleh <a href="https://fikriots.id" target="_blank" rel="noopener noreferrer" className="font-black text-primary hover:text-primary-hover transition-colors cursor-pointer">FiksRiots</a>
           </p>
         </div>
       </div>
