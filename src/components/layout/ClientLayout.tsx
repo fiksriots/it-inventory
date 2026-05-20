@@ -66,9 +66,9 @@ export function ClientLayout({ children, user, userProfile, lowStockCount = 0, l
             maintenanceAlerts={maintenanceAlerts}
             isSidebarOpen={isOpen}
           />
-          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <main className="flex-1 p-4 sm:p-6 overflow-auto print:p-0">
             <Breadcrumbs />
-            <div className="max-w-7xl mx-auto w-full">
+            <div className="max-w-7xl mx-auto w-full print:max-w-none print:w-full">
               {children}
             </div>
           </main>

@@ -866,7 +866,7 @@ export default function SchedulesClient() {
         </h2>
         
         {/* Main Matrix */}
-        <table className="w-full border-collapse border border-black mb-10 text-center" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black mb-10 text-center">
           <thead>
             {/* TGL Row */}
             <tr>
