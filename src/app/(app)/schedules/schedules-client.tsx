@@ -46,11 +46,11 @@ export default function SchedulesClient() {
     dayNum: number;
     month: number;
     year: number;
-    currentStatus?: "M" | "C" | "DP" | "PH";
+    currentStatus?: "M" | "C" | "DP" | "PH" | "L";
     currentNotes?: string;
   } | null>(null);
 
-  const [selectedStatus, setSelectedStatus] = useState<"M" | "C" | "DP" | "PH" | "DELETE">("M");
+  const [selectedStatus, setSelectedStatus] = useState<"M" | "C" | "DP" | "PH" | "L" | "DELETE">("M");
   const [scheduleNotes, setScheduleNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -195,12 +195,13 @@ export default function SchedulesClient() {
     return schedules.find(s => s.member_name === memberName && s.schedule_date === dateStr);
   };
 
-  // Calculate real-time stats (Total M, C, DP, PH) for a member in the current period
+  // Calculate real-time stats (Total M, C, DP, PH, L) for a member in the current period
   const getMemberStats = (memberName: string) => {
     let mCount = 0;
     let cCount = 0;
     let dpCount = 0;
     let phCount = 0;
+    let lCount = 0;
 
     periodDays.forEach(dayObj => {
       const s = getDaySchedule(memberName, dayObj.dateStr);
@@ -209,9 +210,10 @@ export default function SchedulesClient() {
       else if (status === "C") cCount++;
       else if (status === "DP") dpCount++;
       else if (status === "PH") phCount++;
+      else if (status === "L") lCount++;
     });
 
-    return { mCount, cCount, dpCount, phCount };
+    return { mCount, cCount, dpCount, phCount, lCount };
   };
 
   // Handle month/year navigation
@@ -317,7 +319,7 @@ export default function SchedulesClient() {
   };
 
   // Badge rendering classes mapping
-  const getStatusBadgeClass = (status: "M" | "C" | "DP" | "PH") => {
+  const getStatusBadgeClass = (status: "M" | "C" | "DP" | "PH" | "L") => {
     switch (status) {
       case "M":
         return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30";
@@ -327,17 +329,20 @@ export default function SchedulesClient() {
         return "bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30";
       case "PH":
         return "bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30";
+      case "L":
+        return "bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30";
       default:
         return "";
     }
   };
 
-  const getStatusLabel = (status: "M" | "C" | "DP" | "PH") => {
+  const getStatusLabel = (status: "M" | "C" | "DP" | "PH" | "L") => {
     switch (status) {
       case "M": return "Masuk";
       case "C": return "Cuti";
       case "DP": return "Day Off";
       case "PH": return "Holiday";
+      case "L": return "Libur";
     }
   };
 
@@ -516,17 +521,20 @@ export default function SchedulesClient() {
                   })}
 
                   {/* Summary Columns */}
-                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-emerald-400 uppercase tracking-wider">
+                  <th className="w-12 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-emerald-400 uppercase tracking-wider">
                     Tot M
                   </th>
-                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                  <th className="w-12 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-amber-400 uppercase tracking-wider">
                     Tot C
                   </th>
-                  <th className="w-16 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-blue-400 uppercase tracking-wider">
+                  <th className="w-14 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-blue-400 uppercase tracking-wider">
                     Tot DP
                   </th>
-                  <th className="w-16 bg-background/55 p-2 text-center text-[10px] font-black text-rose-400 uppercase tracking-wider">
+                  <th className="w-14 bg-background/50 border-r border-border p-2 text-center text-[10px] font-black text-rose-400 uppercase tracking-wider">
                     Tot PH
+                  </th>
+                  <th className="w-12 bg-background/55 p-2 text-center text-[10px] font-black text-purple-400 uppercase tracking-wider">
+                    Tot L
                   </th>
                 </tr>
               </thead>
@@ -600,8 +608,11 @@ export default function SchedulesClient() {
                           <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-blue-400 bg-blue-500/5">
                             {stats.dpCount}
                           </td>
-                          <td className="p-2 text-center align-middle font-black text-xs text-rose-400 bg-rose-500/5" title="Total Hari PH dalam cutoff ini">
+                          <td className="p-2 border-r border-border text-center align-middle font-black text-xs text-rose-400 bg-rose-500/5" title="Total Hari PH dalam cutoff ini">
                             {stats.phCount}
+                          </td>
+                          <td className="p-2 text-center align-middle font-black text-xs text-purple-400 bg-purple-500/5" title="Total Libur dalam cutoff ini">
+                            {stats.lCount}
                           </td>
                         </>
                       );
@@ -630,6 +641,10 @@ export default function SchedulesClient() {
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center font-extrabold text-[10px]">PH</span>
             <span className="text-text-muted">Public Holiday / Libur Nasional (Selain Minggu)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center font-extrabold text-[10px]">L</span>
+            <span className="text-text-muted">Libur (Reguler/Biasa)</span>
           </div>
           <div className="flex items-center gap-1.5 ml-auto text-[10px] text-amber-400/80 bg-amber-500/5 px-2 py-1 rounded border border-amber-500/20">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse mr-1"></span>
@@ -718,6 +733,20 @@ export default function SchedulesClient() {
                   >
                     <span className="text-sm font-black">PH</span>
                     <span className="text-[10px]">Public Holiday</span>
+                  </button>
+
+                  {/* Status L */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatus("L")}
+                    className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all col-span-2 sm:col-span-1 ${
+                      selectedStatus === "L"
+                        ? "bg-purple-500/20 border-purple-500 text-purple-400 font-extrabold ring-1 ring-purple-500/20"
+                        : "border-border bg-background hover:bg-surface text-text-muted"
+                    }`}
+                  >
+                    <span className="text-sm font-black">L</span>
+                    <span className="text-[10px]">Libur (Reguler)</span>
                   </button>
                 </div>
               </div>

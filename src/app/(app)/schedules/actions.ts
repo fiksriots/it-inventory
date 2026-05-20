@@ -7,7 +7,7 @@ export interface Schedule {
   id: string;
   member_name: string;
   schedule_date: string;
-  status: "M" | "C" | "DP" | "PH";
+  status: "M" | "C" | "DP" | "PH" | "L";
   notes: string | null;
   created_at: string;
 }
@@ -41,7 +41,7 @@ export async function getSchedules(month: number, year: number) {
 export async function saveSchedule(
   memberName: string,
   scheduleDate: string,
-  status: "M" | "C" | "DP" | "PH",
+  status: "M" | "C" | "DP" | "PH" | "L",
   notes?: string
 ) {
   if (!memberName || !scheduleDate || !status) {
