@@ -871,24 +871,24 @@ export default function SchedulesClient() {
         
         {/* Main Matrix */}
         <div className="flex justify-center">
-          <table className="w-full max-w-full mx-auto border-collapse border border-black mb-8 text-center text-[10px]">
+          <table className="w-full max-w-full mx-auto border-collapse border border-black mb-8 text-center text-xs">
             <thead>
               {/* TGL Row */}
               <tr>
-                <th className="border border-black bg-[#ffff00] p-1 w-[50px] align-middle">TGL</th>
+                <th className="border border-black bg-[#ffff00] p-1.5 w-[60px] align-middle">TGL</th>
                 {periodDays.map(d => (
-                  <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal p-1 align-middle">
+                  <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal p-1.5 align-middle">
                   {d.dayNum}
                 </th>
               ))}
             </tr>
               {/* HARI Row */}
               <tr>
-                <th className="border border-black bg-[#d9d9d9] p-1 align-middle">HARI</th>
+                <th className="border border-black bg-[#d9d9d9] p-1.5 align-middle">HARI</th>
                 {periodDays.map(d => {
                   const shortDay = ["MG", "SN", "SL", "RB", "KM", "JM", "SB"][new Date(d.year, d.month - 1, d.dayNum).getDay()];
                   return (
-                    <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal p-1 align-middle ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
+                    <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal p-1.5 align-middle ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
                     {shortDay}
                   </th>
                 );
@@ -900,16 +900,16 @@ export default function SchedulesClient() {
               <React.Fragment key={`print-row-${member}`}>
                   {/* JAM Row */}
                   <tr>
-                    <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1 align-middle">JAM</td>
+                    <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1.5 align-middle">JAM</td>
                     {periodDays.map(d => (
-                      <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1 align-middle">
+                      <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle">
                       {member.toLowerCase() === 'fikri' ? '10' : '9'}
                     </td>
                   ))}
                 </tr>
                   {/* MEMBER Row */}
                   <tr>
-                    <td className="border border-black uppercase font-bold bg-[#e2efda] p-1 align-middle">{member}</td>
+                    <td className="border border-black uppercase font-bold bg-[#e2efda] p-1.5 align-middle">{member}</td>
                     {periodDays.map(d => {
                       const s = getDaySchedule(member, d.dateStr);
                       const status = s ? s.status : (d.isHoliday ? "PH" : "M");
@@ -923,7 +923,7 @@ export default function SchedulesClient() {
                         bgClass = "bg-[#ffc000]";
                       }
                       return (
-                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1 align-middle ${bgClass} ${textClass}`}>
+                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1.5 align-middle ${bgClass} ${textClass}`}>
                         {displayStatus}
                       </td>
                     );
@@ -936,16 +936,16 @@ export default function SchedulesClient() {
         </div>
 
         {/* Summary Table */}
-        <div className="flex justify-center mt-6">
-          <table className="border-collapse border border-black text-center text-[12px] w-[60%] mx-auto">
+        <div className="flex justify-center mt-8">
+          <table className="border-collapse border border-black text-center text-sm w-[70%] mx-auto">
             <thead>
               <tr>
-                <th className="border border-black p-1.5 bg-[#b4c6e7] align-middle">NAMA</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] align-middle">TOTAL MASUK</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] align-middle">LIBUR</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] align-middle">DP</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] align-middle">CUTI</th>
-                <th className="border border-black p-1.5 bg-[#ffff00] w-24 align-middle">SAVE</th>
+                <th className="border border-black p-2 bg-[#b4c6e7] align-middle">NAMA</th>
+                <th className="border border-black p-2 bg-[#ffff00] align-middle">TOTAL MASUK</th>
+                <th className="border border-black p-2 bg-[#ffff00] align-middle">LIBUR</th>
+                <th className="border border-black p-2 bg-[#ffff00] align-middle">DP</th>
+                <th className="border border-black p-2 bg-[#ffff00] align-middle">CUTI</th>
+                <th className="border border-black p-2 bg-[#ffff00] w-32 align-middle">SAVE</th>
               </tr>
             </thead>
             <tbody>
@@ -953,12 +953,12 @@ export default function SchedulesClient() {
                 const stats = getMemberStats(member);
                 return (
                   <tr key={`print-sum-${member}`}>
-                    <td className="border border-black p-1.5 bg-[#d9e1f2] font-bold uppercase align-middle">{member}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white align-middle">{stats.mCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white align-middle">{stats.lCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white align-middle">{stats.dpCount}</td>
-                    <td className="border border-black p-1.5 font-normal bg-white align-middle">{stats.cCount}</td>
-                    <td className="border border-black p-1.5 bg-white align-middle"></td>
+                    <td className="border border-black p-2 bg-[#d9e1f2] font-bold uppercase align-middle">{member}</td>
+                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.mCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.lCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.dpCount}</td>
+                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.cCount}</td>
+                    <td className="border border-black p-2 bg-white align-middle"></td>
                   </tr>
                 );
               })}
