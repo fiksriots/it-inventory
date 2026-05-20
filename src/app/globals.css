@@ -12,11 +12,11 @@
 }
 
 :root {
-  --background: #f8fafc;
-  --surface: #ffffff;
+  --background: #f1f5f9;
+  --surface: #f8fafc;
   --foreground: #0f172a;
-  --border: #e2e8f0;
-  --text-muted: #64748b;
+  --border: #cbd5e1;
+  --text-muted: #475569;
 }
 
 .dark {
