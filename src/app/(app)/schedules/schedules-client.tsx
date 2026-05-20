@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getSchedules, saveSchedule, deleteSchedule, getPublicHolidays, Schedule } from "./actions";
-import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Users, Check, Trash2, Info, X } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Users, Check, Trash2, Info, X, Printer } from "lucide-react";
 
 const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const monthNames = [
@@ -287,6 +287,27 @@ export default function SchedulesClient() {
     setMessage(null);
 
     try {
+      // Validasi Kuota Libur (L)
+      if (selectedStatus === "L" && activeCell.currentStatus !== "L") {
+        const totalSundays = periodDays.filter(d => d.isSunday).length;
+        const currentStats = getMemberStats(activeCell.memberName);
+        if (currentStats.lCount >= totalSundays) {
+          setMessage({ type: "error", text: `Maksimal kuota Libur (L) adalah ${totalSundays} hari (Sesuai jumlah hari Minggu pada periode ini).` });
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Validasi Kuota Cuti (C)
+      if (selectedStatus === "C" && activeCell.currentStatus !== "C") {
+        const currentStats = getMemberStats(activeCell.memberName);
+        if (currentStats.cCount >= 1) {
+          setMessage({ type: "error", text: `Maksimal kuota Cuti (C) hanya diperbolehkan 1 hari dalam 1 periode.` });
+          setSaving(false);
+          return;
+        }
+      }
+
       if (selectedStatus === "DELETE") {
         const res = await deleteSchedule(activeCell.memberName, activeCell.dateStr);
         if (res.error) {
@@ -348,8 +369,22 @@ export default function SchedulesClient() {
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 10mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden; }
+          #printable-schedule, #printable-schedule * { visibility: visible; }
+          #printable-schedule { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+          .overflow-x-auto { overflow: visible !important; }
+          table { width: 100% !important; font-size: 9px !important; }
+          th, td { padding: 4px !important; }
+          .sticky { position: static !important; }
+        }
+      `}</style>
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-6 rounded-xl border border-border">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface p-6 rounded-xl border border-border no-print">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
             <CalendarIcon className="w-6 h-6 text-primary" />
@@ -361,6 +396,13 @@ export default function SchedulesClient() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-medium text-sm"
+          >
+            <Printer className="w-4 h-4" />
+            Cetak
+          </button>
           <button
             onClick={() => setShowAddMember(!showAddMember)}
             className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors font-medium text-sm"
@@ -420,7 +462,7 @@ export default function SchedulesClient() {
       )}
 
       {/* Main Board Container */}
-      <div className="bg-surface rounded-xl border border-border flex flex-col overflow-hidden animate-in fade-in duration-200">
+      <div id="printable-schedule" className="bg-surface rounded-xl border border-border flex flex-col overflow-hidden animate-in fade-in duration-200">
         {/* Month Selector Header */}
         <div className="p-4 border-b border-border flex flex-col lg:flex-row justify-between items-center gap-4 bg-background/50">
           <div className="flex items-center gap-4">
@@ -430,7 +472,7 @@ export default function SchedulesClient() {
             </div>
             
             {/* Cutoff / Normal Period Mode Toggle */}
-            <div className="flex bg-background border border-border p-1 rounded-lg">
+            <div className="flex bg-background border border-border p-1 rounded-lg no-print">
               <button
                 type="button"
                 onClick={() => setIsCutoffMode(false)}
@@ -458,11 +500,11 @@ export default function SchedulesClient() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             {/* Period Range info display */}
-            <div className="text-xs px-3 py-1.5 rounded-lg bg-background border border-border text-text-muted font-medium">
+            <div className="text-xs px-3 py-1.5 rounded-lg bg-background border border-border text-text-muted font-medium print:border-none print:bg-transparent print:text-black">
               {getPeriodRangeLabel()}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 no-print">
               <button
                 onClick={handlePrevMonth}
                 className="p-1.5 rounded-lg bg-background hover:bg-surface border border-border text-text-muted hover:text-foreground transition-all"
