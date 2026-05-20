@@ -437,27 +437,26 @@ export default function POListClient({
 
                   {/* SUBTOTALS */}
                   <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
+                    <td colSpan={4} rowSpan={3} className="p-1.5 border border-black align-top">
+                      {po.notes && (
+                        <div className="text-left font-medium uppercase text-[9px] whitespace-pre-wrap leading-tight">
+                          {po.notes}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-1 border border-black text-right font-medium">Voucher :</td>
                     <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
                   </tr>
                   <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
                     <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
                     <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
                   </tr>
                   <tr>
-                    <td colSpan={4} className="border-none p-0"></td>
                     <td className="p-1 border border-black text-right font-bold">Total :</td>
                     <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
                   </tr>
                 </tbody>
               </table>
-
-              {/* KOTAK CATATAN (NOTES) TANPA BORDER */}
-              <div className="p-1.5 text-[10px] text-black mb-1 text-left">
-                {po.notes || "buat perbaikan"}
-              </div>
 
               {/* TANDA TANGAN (SIGNATURES) SEJAJAR LANGSUNG MEPET BAWAH CATATAN */}
               <div className="grid grid-cols-4 text-center text-[10px] text-black pt-1 pb-10">
