@@ -9,7 +9,7 @@ import {
   Printer, Download, ChevronDown, FileSpreadsheet, FileText
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem } from "../actions";
+import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem, updateProjectLog } from "../actions";
 
 interface ProjectDetailClientProps {
   project: any;
@@ -38,6 +38,15 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
   // Image Lightbox State
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit Log State
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [editProgressPercentAfter, setEditProgressPercentAfter] = useState(0);
+  const [editSelectedImage, setEditSelectedImage] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [editRemoveImage, setEditRemoveImage] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const formatRupiah = (value: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -119,6 +128,41 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
     }
   };
 
+  const openEditLogModal = (log: any) => {
+    setEditingLogId(log.id);
+    setEditContent(log.content);
+    setEditProgressPercentAfter(log.progress_percent_after);
+    setEditImagePreview(log.image_url || null);
+    setEditSelectedImage(null);
+    setEditRemoveImage(false);
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast("Ukuran gambar maksimal 5MB!", "error");
+        return;
+      }
+      setEditSelectedImage(file);
+      setEditRemoveImage(false);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearEditImage = () => {
+    setEditSelectedImage(null);
+    setEditImagePreview(null);
+    setEditRemoveImage(true);
+    if (editFileInputRef.current) {
+      editFileInputRef.current.value = "";
+    }
+  };
+
   const handleLogSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return toast("Catatan riwayat wajib diisi!", "error");
@@ -151,6 +195,39 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
           project.status = "Completed";
         } else if (progressPercentAfter > 0) {
           project.status = "In Progress";
+        }
+      }
+    });
+  };
+
+  const handleEditLogSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLogId) return;
+    if (!editContent.trim()) return toast("Catatan riwayat wajib diisi!", "error");
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.append("project_id", project.id);
+      formData.append("content", editContent);
+      formData.append("progress_percent_after", String(editProgressPercentAfter));
+      if (editSelectedImage) formData.append("image", editSelectedImage);
+      formData.append("remove_image", String(editRemoveImage));
+
+      const res = await updateProjectLog(editingLogId, null, formData);
+      if (res.error) {
+        toast(res.error, "error");
+      } else {
+        toast("Catatan riwayat berhasil diperbarui!", "success");
+        setEditingLogId(null);
+        
+        if (res.log) {
+          const updatedLogs = logs.map(l => l.id === editingLogId ? res.log : l);
+          setLogs(updatedLogs);
+          const latestProgress = updatedLogs.length > 0 ? updatedLogs[0].progress_percent_after : 0;
+          project.progress_percent = latestProgress;
+          if (latestProgress >= 100) project.status = "Completed";
+          else if (latestProgress > 0) project.status = "In Progress";
+          else project.status = "Planning";
         }
       }
     });
@@ -698,6 +775,14 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                             </span>
                             
                             <button
+                              onClick={() => openEditLogModal(log)}
+                              className="p-1 bg-surface hover:bg-primary/10 text-text-muted/75 hover:text-primary rounded border border-border/40 hover:border-primary/20 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Edit Log"
+                            >
+                              <FileText className="w-3 h-3" />
+                            </button>
+
+                            <button
                               onClick={() => handleDeleteLog(log.id)}
                               className="p-1 bg-surface hover:bg-rose-500/10 text-text-muted/75 hover:text-rose-500 rounded border border-border/40 hover:border-rose-500/20 transition-colors opacity-0 group-hover:opacity-100"
                               title="Hapus Log"
@@ -853,6 +938,135 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                     </>
                   ) : (
                     "Tambahkan RAB"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Log Modal */}
+      {editingLogId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-surface w-full max-w-lg rounded-2xl border border-border shadow-2xl relative my-8">
+            <div className="flex items-center justify-between p-6 border-b border-border/40">
+              <h3 className="font-extrabold text-sm text-foreground uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Edit Catatan Pengerjaan
+              </h3>
+              <button 
+                onClick={() => setEditingLogId(null)}
+                className="p-2 text-text-muted hover:text-foreground hover:bg-background rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditLogSubmit} className="p-6 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                  Detail Pekerjaan <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  required
+                  placeholder="Jelaskan apa yang sudah dikerjakan..."
+                  rows={4}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                  <span>Target Progres</span>
+                  <span className="text-primary font-black text-xs">{editProgressPercentAfter}%</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={editProgressPercentAfter}
+                    onChange={(e) => setEditProgressPercentAfter(parseInt(e.target.value))}
+                    className="flex-1 accent-primary h-2 bg-background border border-border/55 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editProgressPercentAfter}
+                    onChange={(e) => setEditProgressPercentAfter(Math.min(100, Math.max(0, parseInt(e.target.value || "0"))))}
+                    className="w-16 px-2 py-1.5 bg-background border border-border rounded-lg text-center text-xs font-bold focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Image className="w-3.5 h-3.5 text-primary" />
+                  Gambar Dokumentasi
+                </label>
+
+                {editImagePreview ? (
+                  <div className="relative group/preview rounded-xl overflow-hidden border border-border/50 max-w-sm">
+                    <img 
+                      src={editImagePreview} 
+                      alt="Preview Edit" 
+                      className="w-full h-40 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={clearEditImage}
+                        className="p-2 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-colors shadow-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 rounded-xl transition-all cursor-pointer group/upload">
+                    <FileImage className="w-6 h-6 text-text-muted/50 group-hover/upload:text-primary transition-colors mb-2" />
+                    <span className="text-[10px] font-bold text-text-muted group-hover/upload:text-primary uppercase tracking-wider">
+                      Pilih Foto Baru
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={editFileInputRef}
+                      onChange={handleEditImageChange}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-border/40 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingLogId(null)}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-background border border-border hover:border-primary/30 text-text-muted hover:text-foreground transition-all"
+                  disabled={isPending}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-5 py-2.5 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary-hover active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      Simpan Perubahan
+                    </>
                   )}
                 </button>
               </div>

@@ -225,6 +225,99 @@ export async function addProjectLog(prevState: any, formData: FormData) {
   }
 }
 
+export async function updateProjectLog(logId: string, prevState: any, formData: FormData) {
+  try {
+    const { supabase } = await getActionClient();
+
+    const projectId = formData.get("project_id") as string;
+    const content = formData.get("content") as string;
+    const progressPercentAfter = parseInt(formData.get("progress_percent_after") as string || "0");
+    const image = formData.get("image") as File | null;
+    const removeImage = formData.get("remove_image") === "true";
+
+    if (!content) {
+      return { error: "Catatan riwayat wajib diisi." };
+    }
+
+    let imageUrl: string | null | undefined = undefined;
+
+    if (removeImage) {
+      imageUrl = null;
+      try {
+        const { data } = await supabase.from("it_project_logs").select("image_url").eq("id", logId).single();
+        if (data?.image_url) {
+          const localPath = path.join(process.cwd(), "public", data.image_url);
+          if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+        }
+      } catch (e) {}
+    } else if (image && image.name && image.size > 0 && image.name !== "undefined") {
+      try {
+        const uploadDir = path.join(process.cwd(), "public", "uploads", "projects");
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        const buffer = Buffer.from(await image.arrayBuffer());
+        const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.jpg`;
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+        imageUrl = `/uploads/projects/${fileName}`;
+
+        // Delete old image
+        const { data } = await supabase.from("it_project_logs").select("image_url").eq("id", logId).single();
+        if (data?.image_url) {
+          const oldPath = path.join(process.cwd(), "public", data.image_url);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
+      } catch (uploadErr) {
+        return { error: "Gagal mengunggah gambar dokumentasi." };
+      }
+    }
+
+    const updatePayload: any = {
+      content,
+      progress_percent_after: progressPercentAfter,
+    };
+    if (imageUrl !== undefined) updatePayload.image_url = imageUrl;
+
+    const { data: updatedLog, error: logError } = await supabase
+      .from("it_project_logs")
+      .update(updatePayload)
+      .eq("id", logId)
+      .select()
+      .single();
+
+    if (logError) {
+      return { error: `Gagal memperbarui riwayat: ${logError.message}` };
+    }
+
+    // Update parent project progress based on latest log
+    const { data: latestLogs } = await supabase
+      .from("it_project_logs")
+      .select("progress_percent_after")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const latestProgress = latestLogs && latestLogs.length > 0 ? latestLogs[0].progress_percent_after : 0;
+    let statusUpdate = {};
+    if (latestProgress >= 100) statusUpdate = { status: "Completed" };
+    else if (latestProgress > 0) statusUpdate = { status: "In Progress" };
+    else statusUpdate = { status: "Planning" };
+
+    await supabase.from("it_projects").update({
+      progress_percent: latestProgress,
+      updated_at: new Date().toISOString(),
+      ...statusUpdate
+    }).eq("id", projectId);
+
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, log: updatedLog };
+  } catch (err: any) {
+    return { error: "Terjadi kesalahan sistem internal." };
+  }
+}
+
 export async function deleteProjectLog(logId: string, projectId: string) {
   try {
     const { supabase } = await getActionClient();

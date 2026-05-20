@@ -182,7 +182,7 @@ export async function updateDailyLog(id: string, prevState: any, formData: FormD
       return { error: "Judul kegiatan dan rincian pekerjaan wajib diisi!" };
     }
 
-    let imageUrl: string | null = undefined;
+    let imageUrl: string | null | undefined = undefined;
 
     if (removeImage) {
       imageUrl = null;
