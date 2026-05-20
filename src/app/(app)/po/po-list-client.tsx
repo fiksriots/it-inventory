@@ -52,21 +52,36 @@ export default function POListClient({
   status,
   error
 }: POListClientProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedPOs, setSelectedPOs] = useState<any[]>([]);
+  
+  // Load saved POs from sessionStorage
+  React.useEffect(() => {
+    const saved = sessionStorage.getItem("selectedPOsToPrint");
+    if (saved) {
+      try {
+        setSelectedPOs(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
 
-  const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(item => item !== id));
+  // Save POs to sessionStorage whenever it changes
+  React.useEffect(() => {
+    sessionStorage.setItem("selectedPOsToPrint", JSON.stringify(selectedPOs));
+  }, [selectedPOs]);
+
+  const selectedIds = selectedPOs.map(p => p.id);
+
+  const toggleSelect = (poObj: any) => {
+    if (selectedIds.includes(poObj.id)) {
+      setSelectedPOs(selectedPOs.filter(item => item.id !== poObj.id));
     } else {
-      if (selectedIds.length >= 3) {
+      if (selectedPOs.length >= 3) {
         alert("Maksimal pencetakan dalam 1 lembar kertas fisik adalah 3 dokumen form PO agar tersusun rapi.");
         return;
       }
-      setSelectedIds([...selectedIds, id]);
+      setSelectedPOs([...selectedPOs, poObj]);
     }
   };
-
-  const selectedPOs = pos.filter(p => selectedIds.includes(p.id));
 
   // Format angka identik dengan screenshot (contoh: 200.000 tanpa desimal)
   const formatSimpleCurr = (amount: number) => {
@@ -111,7 +126,7 @@ export default function POListClient({
             box-sizing: border-box;
             page-break-inside: avoid;
             padding: 0 !important;
-            margin-bottom: 3cm !important;
+            margin-bottom: 0 !important;
             overflow: hidden;
             font-family: Arial, Helvetica, sans-serif !important;
             color: #000 !important;
@@ -182,7 +197,7 @@ export default function POListClient({
         </div>
         {selectedIds.length > 0 && (
           <button 
-            onClick={() => setSelectedIds([])}
+            onClick={() => setSelectedPOs([])}
             className="text-[10px] bg-background hover:bg-surface text-text-muted px-2.5 py-1.5 rounded border border-border font-bold uppercase tracking-wider shrink-0"
           >
             Reset Pilihan
@@ -258,7 +273,7 @@ export default function POListClient({
                       <td className="px-4 py-4 text-center">
                         <button
                           type="button"
-                          onClick={() => toggleSelect(po.id)}
+                          onClick={() => toggleSelect(po)}
                           disabled={isDisabled}
                           className={`p-1 rounded transition-transform active:scale-90 ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'hover:text-primary'}`}
                         >
@@ -330,7 +345,7 @@ export default function POListClient({
 
       {/* WADAH CETAK SUSUNAN HEMAT KERTAS (REPLIKA IDENTIK SCREENSHOT) */}
       <div id="printable-multi-po" className="hidden print:block">
-        {selectedPOs.map((po) => {
+        {selectedPOs.map((po, index) => {
           const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
           const discountTotal = po.discount_amount || 0;
           const reqBy = po.requested_by || "fikri";
@@ -379,18 +394,18 @@ export default function POListClient({
               </div>
 
               {/* TABEL GRID BERSUSUN HEMAT SPACE */}
-              <table className="w-full text-[10px] text-black border-collapse border border-black mb-1.5">
+              <table className="w-full text-[10px] text-black border-collapse mb-1.5">
                 <thead>
-                  <tr className="border-b border-black font-bold text-left bg-white">
-                    <th className="p-1 border-r border-black w-8 text-center font-bold">No.</th>
-                    <th className="p-1 border-r border-black font-bold">Description</th>
-                    <th className="p-1 border-r border-black w-12 text-center font-bold">Unit</th>
-                    <th className="p-1 border-r border-black w-10 text-center font-bold">Qty</th>
-                    <th className="p-1 border-r border-black w-24 text-left font-bold">Unit Price</th>
-                    <th className="p-1 w-24 text-left font-bold">Amount</th>
+                  <tr className="font-bold text-left bg-white">
+                    <th className="p-1 border border-black w-8 text-center font-bold">No.</th>
+                    <th className="p-1 border border-black font-bold">Description</th>
+                    <th className="p-1 border border-black w-12 text-center font-bold">Unit</th>
+                    <th className="p-1 border border-black w-10 text-center font-bold">Qty</th>
+                    <th className="p-1 border border-black w-24 text-left font-bold">Unit Price</th>
+                    <th className="p-1 border border-black w-24 text-left font-bold">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black font-normal">
+                <tbody className="font-normal">
                   {po.items && po.items.length > 0 ? (
                     po.items.map((it: any, idx: number) => {
                       const name = it.item_id ? it.items?.name : it.custom_item_name;
@@ -399,24 +414,24 @@ export default function POListClient({
                       const amt = it.quantity * it.unit_price;
 
                       return (
-                        <tr key={idx} className="border-b border-black">
-                          <td className="p-1 border-r border-black text-center">{idx + 1}</td>
-                          <td className="p-1 border-r border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
-                          <td className="p-1 border-r border-black text-center">{it.unit || "PCS"}</td>
-                          <td className="p-1 border-r border-black text-center">{it.quantity}</td>
-                          <td className="p-1 border-r border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
-                          <td className="p-1 font-medium">Rp. {formatSimpleCurr(amt)}</td>
+                        <tr key={idx}>
+                          <td className="p-1 border border-black text-center">{idx + 1}</td>
+                          <td className="p-1 border border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
+                          <td className="p-1 border border-black text-center">{it.unit || "PCS"}</td>
+                          <td className="p-1 border border-black text-center">{it.quantity}</td>
+                          <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
+                          <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(amt)}</td>
                         </tr>
                       );
                     })
                   ) : (
-                    <tr className="border-b border-black">
-                      <td className="p-1 border-r border-black text-center">1</td>
-                      <td className="p-1 border-r border-black italic">Paket Inventaris Sarana</td>
-                      <td className="p-1 border-r border-black text-center">PCS</td>
-                      <td className="p-1 border-r border-black text-center">1</td>
-                      <td className="p-1 border-r border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                      <td className="p-1 font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                    <tr>
+                      <td className="p-1 border border-black text-center">1</td>
+                      <td className="p-1 border border-black italic">Paket Inventaris Sarana</td>
+                      <td className="p-1 border border-black text-center">PCS</td>
+                      <td className="p-1 border border-black text-center">1</td>
+                      <td className="p-1 border border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                      <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
                     </tr>
                   )}
 
@@ -439,18 +454,27 @@ export default function POListClient({
                 </tbody>
               </table>
 
-              {/* KOTAK CATATAN (NOTES) FULL BORDER */}
-              <div className="border border-black p-1.5 text-[10px] text-black mb-1 text-left">
+              {/* KOTAK CATATAN (NOTES) TANPA BORDER */}
+              <div className="p-1.5 text-[10px] text-black mb-1 text-left">
                 {po.notes || "buat perbaikan"}
               </div>
 
               {/* TANDA TANGAN (SIGNATURES) SEJAJAR LANGSUNG MEPET BAWAH CATATAN */}
-              <div className="grid grid-cols-4 text-center text-[10px] text-black pt-0.5">
+              <div className="grid grid-cols-4 text-center text-[10px] text-black pt-1 pb-10">
                 <span className="font-medium">Request By :</span>
                 <span className="font-medium">Created By :</span>
                 <span className="font-medium">Cheked By :</span>
                 <span className="font-medium">Approve By :</span>
               </div>
+
+              {/* Garis Potong (hanya tampil jika bukan elemen terakhir) */}
+              {index < selectedPOs.length - 1 && (
+                <div className="flex items-center justify-center my-6">
+                  <div className="border-t border-dashed border-gray-400 flex-grow"></div>
+                  <span className="px-4 text-[10px] text-gray-500 italic uppercase tracking-widest bg-white">✂ Gunting di sini ✂</span>
+                  <div className="border-t border-dashed border-gray-400 flex-grow"></div>
+                </div>
+              )}
             </div>
           );
         })}

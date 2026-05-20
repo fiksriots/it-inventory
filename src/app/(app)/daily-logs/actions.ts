@@ -49,9 +49,9 @@ export async function createDailyLog(prevState: any, formData: FormData) {
         fs.writeFileSync(filePath, buffer);
 
         imageUrl = `/uploads/daily-logs/${fileName}`;
-      } catch (uploadErr) {
+      } catch (uploadErr: any) {
         console.error("Error uploading physical file:", uploadErr);
-        // Fallback to null but don't crash
+        return { error: `Gagal menyimpan gambar di server: ${uploadErr.message}. Pastikan folder uploads memiliki izin tulis (chmod 777).` };
       }
     }
 
