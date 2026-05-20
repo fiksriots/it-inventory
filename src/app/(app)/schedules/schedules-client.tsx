@@ -539,11 +539,11 @@ export default function SchedulesClient() {
               <p className="text-sm">Memuat data jadwal...</p>
             </div>
           ) : (
-            <table className="w-full border-collapse text-left select-none table-fixed min-w-[1450px]">
+            <table className="w-full border-collapse text-left select-none table-fixed">
               <thead>
                 <tr className="bg-background/25 border-b border-border">
                   {/* Sticky First Column for Member Names */}
-                  <th className="sticky left-0 z-10 w-48 bg-surface border-r border-border p-3 text-xs font-bold text-text-muted uppercase tracking-wider">
+                  <th className="sticky left-0 z-10 w-32 sm:w-40 bg-surface border-r border-border p-3 text-xs font-bold text-text-muted uppercase tracking-wider">
                     Anggota Tim IT
                   </th>
                   
@@ -553,7 +553,7 @@ export default function SchedulesClient() {
                       <th
                         key={dayObj.dateStr}
                         title={dayObj.isHoliday ? `${dayObj.holidayName} (Tanggal Merah)` : undefined}
-                        className={`p-2 text-center text-[10px] font-bold border-r border-border min-w-[40px] max-w-[50px] transition-colors ${
+                        className={`p-1 sm:p-2 text-center text-[10px] font-bold border-r border-border transition-colors ${
                           dayObj.isHoliday
                             ? "text-amber-400 bg-amber-500/20 border-b-2 border-b-amber-500/50"
                             : dayObj.isSunday
@@ -562,7 +562,7 @@ export default function SchedulesClient() {
                         }`}
                       >
                         <div className="text-xs">{String(dayObj.dayNum).padStart(2, "0")}</div>
-                        <div className="font-medium text-[8px] uppercase">{dayObj.dayLabel}</div>
+                        <div className="font-medium text-[8px] uppercase hidden sm:block">{dayObj.dayLabel}</div>
                       </th>
                     );
                   })}
@@ -597,7 +597,7 @@ export default function SchedulesClient() {
                         <td
                           key={dayObj.dateStr}
                           onClick={() => handleCellClick(member, dayObj)}
-                          className={`p-1.5 text-center border-r border-border align-middle cursor-pointer transition-all hover:bg-background ${
+                          className={`p-1 sm:p-1.5 text-center border-r border-border align-middle cursor-pointer transition-all hover:bg-background ${
                             dayObj.isHoliday
                               ? "bg-amber-500/5 hover:bg-amber-500/10"
                               : dayObj.isSunday
@@ -605,9 +605,9 @@ export default function SchedulesClient() {
                               : ""
                           }`}
                         >
-                          <div className="w-full h-8 flex items-center justify-center">
+                          <div className="w-full h-7 sm:h-8 flex items-center justify-center">
                             <span
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold shadow-sm ${getStatusBadgeClass(
+                              className={`w-7 sm:w-8 h-7 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-extrabold shadow-sm ${getStatusBadgeClass(
                                 displayStatus
                               )} ${isDefault ? "opacity-75 border-dashed" : ""}`}
                               title={
