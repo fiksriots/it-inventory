@@ -362,10 +362,10 @@ export async function deleteUserAccount(userId: string): Promise<{ success: bool
 export async function generateDatabaseBackup() {
   const supabase = await createClient();
   const tables = [
-    "items", "categories", "locations", "suppliers", 
-    "it_po", "it_po_items", "item_transfers", 
-    "infrastructure", "infrastructure_maintenance_logs", 
-    "computers", "computer_maintenance_logs", 
+    "items", "categories", "locations", "suppliers",
+    "purchase_orders", "po_items", "item_stocks", "item_transfers", "inventory_logs",
+    "infrastructure", "infrastructure_maintenance_logs",
+    "computers", "computer_maintenance_logs",
     "it_daily_logs", "it_projects", "it_project_logs", "it_project_rab",
     "it_services", "company_profile", "profiles"
   ];
