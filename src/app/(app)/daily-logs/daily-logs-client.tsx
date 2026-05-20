@@ -405,8 +405,16 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <style type="text/css">
+        {`
+          @media print {
+            @page { margin: 0; }
+            body { padding: 1.5cm; }
+          }
+        `}
+      </style>
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
             <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
