@@ -860,30 +860,30 @@ export default function SchedulesClient() {
       </div>
 
       {/* PRINT ONLY LAYOUT */}
-      <div className="hidden print:block w-full bg-white text-black text-sm font-sans">
-        <h2 className="text-center font-bold text-xl mb-8 uppercase">
+      <div className="hidden print:block w-full bg-white text-black text-[11px] font-sans">
+        <h2 className="text-center font-bold text-lg mb-6 uppercase">
           {getPrintTitle()}
         </h2>
         
         {/* Main Matrix */}
-        <table className="w-full border-collapse border border-black mb-10 text-center">
+        <table className="w-full border-collapse border border-black mb-8 text-center" style={{ tableLayout: 'fixed' }}>
           <thead>
             {/* TGL Row */}
             <tr>
-              <th className="border border-black p-2 bg-[#ffff00] w-[80px]">TGL</th>
+              <th className="border border-black p-1 bg-[#ffff00] w-[50px]">TGL</th>
               {periodDays.map(d => (
-                <th key={`print-tgl-${d.dateStr}`} className="border border-black p-2 bg-[#ffff00] font-normal">
+                <th key={`print-tgl-${d.dateStr}`} className="border border-black p-1 bg-[#ffff00] font-normal">
                   {d.dayNum}
                 </th>
               ))}
             </tr>
             {/* HARI Row */}
             <tr>
-              <th className="border border-black p-2 bg-[#d9d9d9]">HARI</th>
+              <th className="border border-black p-1 bg-[#d9d9d9]">HARI</th>
               {periodDays.map(d => {
                 const shortDay = ["MG", "SN", "SL", "RB", "KM", "JM", "SB"][new Date(d.year, d.month - 1, d.dayNum).getDay()];
                 return (
-                  <th key={`print-hari-${d.dateStr}`} className={`border border-black p-2 font-normal ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
+                  <th key={`print-hari-${d.dateStr}`} className={`border border-black p-1 font-normal ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
                     {shortDay}
                   </th>
                 );
@@ -895,16 +895,16 @@ export default function SchedulesClient() {
               <React.Fragment key={`print-row-${member}`}>
                 {/* JAM Row */}
                 <tr>
-                  <td className="border border-black p-2 bg-[#a9d08e] uppercase font-bold">JAM</td>
+                  <td className="border border-black p-1 bg-[#a9d08e] uppercase font-bold">JAM</td>
                   {periodDays.map(d => (
-                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black p-2 bg-[#a9d08e] font-normal">
+                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black p-1 bg-[#a9d08e] font-normal">
                       {member.toLowerCase() === 'fikri' ? '10' : '9'}
                     </td>
                   ))}
                 </tr>
                 {/* MEMBER Row */}
                 <tr>
-                  <td className="border border-black p-2 uppercase font-bold bg-[#e2efda]">{member}</td>
+                  <td className="border border-black p-1 uppercase font-bold bg-[#e2efda] text-[10px]">{member}</td>
                   {periodDays.map(d => {
                     const s = getDaySchedule(member, d.dateStr);
                     const status = s ? s.status : (d.isHoliday ? "PH" : "M");
@@ -918,7 +918,7 @@ export default function SchedulesClient() {
                       bgClass = "bg-[#ffc000]";
                     }
                     return (
-                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black p-2 font-bold ${bgClass} ${textClass}`}>
+                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black p-1 font-bold ${bgClass} ${textClass}`}>
                         {displayStatus}
                       </td>
                     );
@@ -931,15 +931,15 @@ export default function SchedulesClient() {
 
         {/* Summary Table */}
         <div className="flex justify-center mt-6">
-          <table className="border-collapse border border-black text-center text-sm w-3/4 max-w-3xl">
+          <table className="border-collapse border border-black text-center text-[12px] w-2/3 max-w-2xl">
             <thead>
               <tr>
-                <th className="border border-black p-2.5 bg-[#b4c6e7]">NAMA</th>
-                <th className="border border-black p-2.5 bg-[#ffff00]">TOTAL MASUK</th>
-                <th className="border border-black p-2.5 bg-[#ffff00]">LIBUR</th>
-                <th className="border border-black p-2.5 bg-[#ffff00]">DP</th>
-                <th className="border border-black p-2.5 bg-[#ffff00]">CUTI</th>
-                <th className="border border-black p-2.5 bg-[#ffff00] w-32">SAVE</th>
+                <th className="border border-black p-1.5 bg-[#b4c6e7]">NAMA</th>
+                <th className="border border-black p-1.5 bg-[#ffff00]">TOTAL MASUK</th>
+                <th className="border border-black p-1.5 bg-[#ffff00]">LIBUR</th>
+                <th className="border border-black p-1.5 bg-[#ffff00]">DP</th>
+                <th className="border border-black p-1.5 bg-[#ffff00]">CUTI</th>
+                <th className="border border-black p-1.5 bg-[#ffff00] w-24">SAVE</th>
               </tr>
             </thead>
             <tbody>
@@ -947,12 +947,12 @@ export default function SchedulesClient() {
                 const stats = getMemberStats(member);
                 return (
                   <tr key={`print-sum-${member}`}>
-                    <td className="border border-black p-2.5 bg-[#d9e1f2] font-bold uppercase">{member}</td>
-                    <td className="border border-black p-2.5 font-normal bg-white">{stats.mCount}</td>
-                    <td className="border border-black p-2.5 font-normal bg-white">{stats.lCount}</td>
-                    <td className="border border-black p-2.5 font-normal bg-white">{stats.dpCount}</td>
-                    <td className="border border-black p-2.5 font-normal bg-white">{stats.cCount}</td>
-                    <td className="border border-black p-2.5 bg-white"></td>
+                    <td className="border border-black p-1.5 bg-[#d9e1f2] font-bold uppercase">{member}</td>
+                    <td className="border border-black p-1.5 font-normal bg-white">{stats.mCount}</td>
+                    <td className="border border-black p-1.5 font-normal bg-white">{stats.lCount}</td>
+                    <td className="border border-black p-1.5 font-normal bg-white">{stats.dpCount}</td>
+                    <td className="border border-black p-1.5 font-normal bg-white">{stats.cCount}</td>
+                    <td className="border border-black p-1.5 bg-white"></td>
                   </tr>
                 );
               })}
