@@ -935,36 +935,7 @@ export default function SchedulesClient() {
           </table>
         </div>
 
-        {/* Summary Table */}
-        <div className="flex justify-center mt-8">
-          <table className="border-collapse border border-black text-center text-sm w-[70%] mx-auto">
-            <thead>
-              <tr>
-                <th className="border border-black p-2 bg-[#b4c6e7] align-middle">NAMA</th>
-                <th className="border border-black p-2 bg-[#ffff00] align-middle">TOTAL MASUK</th>
-                <th className="border border-black p-2 bg-[#ffff00] align-middle">LIBUR</th>
-                <th className="border border-black p-2 bg-[#ffff00] align-middle">DP</th>
-                <th className="border border-black p-2 bg-[#ffff00] align-middle">CUTI</th>
-                <th className="border border-black p-2 bg-[#ffff00] w-32 align-middle">SAVE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map(member => {
-                const stats = getMemberStats(member);
-                return (
-                  <tr key={`print-sum-${member}`}>
-                    <td className="border border-black p-2 bg-[#d9e1f2] font-bold uppercase align-middle">{member}</td>
-                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.mCount}</td>
-                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.lCount}</td>
-                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.dpCount}</td>
-                    <td className="border border-black p-2 font-normal bg-white align-middle">{stats.cCount}</td>
-                    <td className="border border-black p-2 bg-white align-middle"></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+
       </div>
     </div>
   );
