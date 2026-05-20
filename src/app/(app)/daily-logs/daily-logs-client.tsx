@@ -4,7 +4,8 @@ import { useState, useTransition, useRef } from "react";
 import { 
   ClipboardList, Plus, Search, Users, Clock, Calendar, 
   Trash2, Image, FileImage, X, Loader2, CheckCircle2, 
-  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink, Printer, Eye
+  AlertTriangle, Maximize2, XCircle, Copy, Check, Filter, ExternalLink, Printer, Eye,
+  Download, FileText, FileSpreadsheet, ChevronDown
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { createDailyLog, deleteDailyLog } from "./actions";
@@ -200,6 +201,166 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
     return matchesSearch && matchesStatus && matchesDate;
   });
 
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  const generateExportHtml = (isWord = false) => {
+    // Group logs by date
+    const groupedLogs: Record<string, any[]> = {};
+    filteredLogs.forEach(log => {
+      const date = log.date || "Tanpa Tanggal";
+      if (!groupedLogs[date]) {
+        groupedLogs[date] = [];
+      }
+      groupedLogs[date].push(log);
+    });
+
+    const dates = Object.keys(groupedLogs).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    let htmlRows = '';
+    let no = 1;
+
+    dates.forEach(date => {
+      const dayLogs = groupedLogs[date];
+      const rowspan = dayLogs.length;
+
+      dayLogs.forEach((log, index) => {
+        htmlRows += '<tr>';
+        if (index === 0) {
+          htmlRows += `<td rowspan="${rowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${no}</td>`;
+          htmlRows += `<td rowspan="${rowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${date}</td>`;
+        }
+        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.technician_name || '-'}</td>`;
+        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.activity_name || '-'}</td>`;
+        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${(log.details || "").replace(/\n/g, "<br>")}</td>`;
+        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.status || '-'}</td>`;
+        htmlRows += '</tr>';
+      });
+      no++;
+    });
+
+    // Add empty rows for aesthetics (like in the image)
+    for(let i = 0; i < 4; i++) {
+       htmlRows += `<tr>
+          <td style="text-align: center; border: 1px solid #000; padding: 8px;">${no}</td>
+          <td style="border: 1px solid #000; padding: 8px;"></td>
+          <td style="border: 1px solid #000; padding: 8px;"></td>
+          <td style="border: 1px solid #000; padding: 8px;"></td>
+          <td style="border: 1px solid #000; padding: 8px;"></td>
+          <td style="border: 1px solid #000; padding: 8px;"></td>
+       </tr>`;
+       no++;
+    }
+
+    const dateStr = new Date().toLocaleDateString('id-ID');
+    const total = filteredLogs.length;
+
+    const commonStyles = `
+      body { font-family: 'Arial', sans-serif; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      th { border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; }
+      h1 { text-align: center; text-decoration: underline; font-weight: bold; }
+    `;
+
+    if (isWord) {
+      return `<html xmlns:w="urn:schemas-microsoft-com:office:word">
+        <head>
+          <meta charset="utf-8">
+          <title>Laporan Harian IT</title>
+          <style>${commonStyles}</style>
+        </head>
+        <body>
+          <h1>Laporan Kerja Harian IT</h1>
+          <br>
+          <p><strong>Diekspor pada:</strong> ${dateStr}</p>
+          <p><strong>Jumlah Laporan:</strong> ${total}</p>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Tanggal</th>
+                <th>Teknisi</th>
+                <th>Aktifitas</th>
+                <th>Detail /<br>Catatan</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${htmlRows}
+            </tbody>
+          </table>
+        </body>
+      </html>`;
+    }
+
+    return `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="utf-8">
+        <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>Laporan Harian IT</x:Name>
+        <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
+        <style>${commonStyles}</style>
+      </head>
+      <body>
+        <h1 colspan="6" style="text-align: center; text-decoration: underline; font-size: 24pt;">Laporan Kerja Harian IT</h1>
+        <br>
+        <table>
+          <tr>
+            <td colspan="2"><strong>Diekspor pada:</strong> ${dateStr}</td>
+          </tr>
+          <tr>
+            <td colspan="2"><strong>Jumlah Laporan:</strong> ${total}</td>
+          </tr>
+        </table>
+        
+        <table border="1">
+          <thead>
+            <tr>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">No.</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Tanggal</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Teknisi</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Aktifitas</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Detail /<br>Catatan</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${htmlRows}
+          </tbody>
+        </table>
+      </body>
+    </html>`;
+  };
+
+  const exportToExcel = () => {
+    const tableStr = generateExportHtml(false);
+    
+    const blob = new Blob([tableStr], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Laporan_Harian_IT_${new Date().toISOString().slice(0,10)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsExportMenuOpen(false);
+  };
+
+  const exportToWord = () => {
+    const docStr = generateExportHtml(true);
+
+    const blob = new Blob(['\ufeff', docStr], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Laporan_Harian_IT_${new Date().toISOString().slice(0,10)}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsExportMenuOpen(false);
+  };
+
   if (dbTableMissing) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto py-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -248,14 +409,43 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
           </p>
         </div>
         <div className="flex items-center gap-2 no-print">
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 shrink-0 text-xs shadow-sm"
-            title="Cetak Laporan / Simpan sbg PDF"
-          >
-            <Printer className="w-4.5 h-4.5" />
-            Cetak PDF
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 shrink-0 text-xs shadow-sm"
+              title="Ekspor Laporan"
+            >
+              <Download className="w-4.5 h-4.5" />
+              Ekspor Data
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <button
+                  onClick={() => { window.print(); setIsExportMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors border-b border-border"
+                >
+                  <Printer className="w-4 h-4 text-primary" />
+                  Cetak / Simpan PDF
+                </button>
+                <button
+                  onClick={exportToExcel}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors border-b border-border"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                  Ekspor ke Excel
+                </button>
+                <button
+                  onClick={exportToWord}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  Ekspor ke Word (Doc)
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={openCreateModal}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0 text-xs"

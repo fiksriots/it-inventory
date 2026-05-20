@@ -3,6 +3,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import fs from "fs";
+import path from "path";
 
 export async function createComputer(prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -218,9 +220,35 @@ export async function createComputerMaintenanceLog(computerId: string, formData:
   const performed_by = rawPerformedBy && rawPerformedBy.trim() !== "" ? rawPerformedBy.trim() : null;
   
   const status_after = formData.get("status_after") as string || "Aktif";
+  
+  const imageFile = formData.get("image") as File | null;
 
   if (!maintenance_date || !maintenance_title) {
     throw new Error("Tanggal Perawatan dan Judul wajib diisi.");
+  }
+
+  let imageUrl: string | null = null;
+  if (imageFile && imageFile.size > 0 && imageFile.name !== "undefined") {
+    try {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const fileExt = imageFile.name.split('.').pop() || 'jpg';
+      const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.${fileExt}`;
+
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "maintenance-logs");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      imageUrl = `/uploads/maintenance-logs/${fileName}`;
+    } catch (uploadErr: any) {
+      console.error("Error uploading physical file:", uploadErr);
+      throw new Error(`Gagal menyimpan gambar di server: ${uploadErr.message}`);
+    }
   }
 
   const replaced_item_id = formData.get("replaced_item_id") as string;
@@ -288,7 +316,8 @@ export async function createComputerMaintenanceLog(computerId: string, formData:
     maintenance_title,
     notes: (notes || "") + partReplacementNote,
     performed_by,
-    status_after
+    status_after,
+    image_url: imageUrl
   };
 
   const { error: logError } = await supabase
@@ -340,6 +369,24 @@ export async function createComputerMaintenanceLog(computerId: string, formData:
 export async function deleteComputerMaintenanceLog(id: string, computerId: string) {
   const supabase = await createClient();
 
+  // Optionally find file and delete it locally
+  try {
+    const { data } = await supabase
+      .from("computer_maintenance_logs")
+      .select("image_url")
+      .eq("id", id)
+      .single();
+      
+    if (data?.image_url) {
+      const localPath = path.join(process.cwd(), "public", data.image_url);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+      }
+    }
+  } catch (err) {
+    console.error("Error removing physical file:", err);
+  }
+
   const { error } = await supabase
     .from("computer_maintenance_logs")
     .delete()
@@ -355,3 +402,81 @@ export async function deleteComputerMaintenanceLog(id: string, computerId: strin
   return { success: true };
 }
 
+export async function updateComputerMaintenanceLog(logId: string, computerId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  const maintenance_title = formData.get("maintenance_title") as string;
+  const maintenance_date = formData.get("maintenance_date") as string;
+  const notes = formData.get("notes") as string;
+  const performed_by = formData.get("performed_by") as string;
+  const status_after = formData.get("status_after") as string;
+  
+  const imageFile = formData.get("image") as File | null;
+  const removeImage = formData.get("remove_image") === "true";
+
+  if (!maintenance_title || !maintenance_date) {
+    throw new Error("Tanggal Perawatan dan Judul wajib diisi.");
+  }
+
+  const payload: any = {
+    maintenance_title,
+    maintenance_date,
+    notes: notes || null,
+    performed_by: performed_by || null,
+    status_after: status_after || "Aktif",
+  };
+
+  // Handle image upload
+  if (imageFile && imageFile.size > 0 && imageFile.name !== "undefined") {
+    try {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const fileExt = imageFile.name.split('.').pop() || 'jpg';
+      const fileName = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}.${fileExt}`;
+
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "maintenance-logs");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      payload.image_url = `/uploads/maintenance-logs/${fileName}`;
+      
+      // Attempt to delete old file
+      const { data: oldData } = await supabase.from("computer_maintenance_logs").select("image_url").eq("id", logId).single();
+      if (oldData?.image_url) {
+        const oldPath = path.join(process.cwd(), "public", oldData.image_url);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+    } catch (uploadErr: any) {
+      console.error("Error uploading physical file:", uploadErr);
+      throw new Error(`Gagal menyimpan gambar di server: ${uploadErr.message}`);
+    }
+  } else if (removeImage) {
+    payload.image_url = null;
+    try {
+      const { data: oldData } = await supabase.from("computer_maintenance_logs").select("image_url").eq("id", logId).single();
+      if (oldData?.image_url) {
+        const oldPath = path.join(process.cwd(), "public", oldData.image_url);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+    } catch (err) {}
+  }
+
+  const { error } = await supabase
+    .from("computer_maintenance_logs")
+    .update(payload)
+    .eq("id", logId);
+
+  if (error) {
+    console.error("Update Log Error:", error);
+    throw new Error(`Gagal memperbarui log perawatan: ${error.message}`);
+  }
+
+  revalidatePath("/computers");
+  revalidatePath(`/computers/${computerId}`);
+  return { success: true };
+}

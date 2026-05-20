@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Loader2, CheckCircle2, AlertTriangle, PlusCircle, Users, Trash, Plus, Wrench, Copy, Check, Save } from "lucide-react";
-import { updateMaintenanceSchedule, createComputerMaintenanceLog, deleteComputerMaintenanceLog } from "../actions";
+import { Calendar, Loader2, CheckCircle2, AlertTriangle, PlusCircle, Users, Trash, Plus, Wrench, Copy, Check, Save, Image, FileImage, X, Eye, Pencil } from "lucide-react";
+import { updateMaintenanceSchedule, createComputerMaintenanceLog, deleteComputerMaintenanceLog, updateComputerMaintenanceLog } from "../actions";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useRef } from "react";
 
 interface MaintenanceScheduleUpdaterProps {
   computer: any;
@@ -19,11 +20,41 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isAddingLog, setIsAddingLog] = useState(false);
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [logLoading, setLogLoading] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
   const [hasPartReplacement, setHasPartReplacement] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast("Ukuran gambar maksimal 5MB!", "error");
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,15 +116,52 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
 
     try {
       const formData = new FormData(e.currentTarget);
+      if (selectedImage) {
+        formData.append("image", selectedImage);
+      }
       await createComputerMaintenanceLog(computer.id, formData);
       toast("Riwayat pemeliharaan berhasil dicatat!", "success");
       setIsAddingLog(false);
+      clearImage();
       router.refresh();
     } catch (error: any) {
       setError(error.message || "Gagal mencatat riwayat pemeliharaan");
     } finally {
       setLogLoading(false);
     }
+  };
+
+  const handleEditLogSubmit = async (e: React.FormEvent<HTMLFormElement>, logId: string) => {
+    e.preventDefault();
+    setLogLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      if (selectedImage) {
+        formData.append("image", selectedImage);
+      } else if (!imagePreview) {
+        formData.append("remove_image", "true");
+      }
+      await updateComputerMaintenanceLog(logId, computer.id, formData);
+      toast("Riwayat pemeliharaan berhasil diperbarui!", "success");
+      setEditingLogId(null);
+      clearImage();
+      router.refresh();
+    } catch (error: any) {
+      setError(error.message || "Gagal memperbarui riwayat pemeliharaan");
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  const openEditLog = (log: any) => {
+    setEditingLogId(log.id);
+    setImagePreview(log.image_url || null);
+    setSelectedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   };
 
   const handleDeleteLog = async (logId: string, logTitle: string) => {
@@ -278,6 +346,7 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
   notes TEXT,
   performed_by TEXT,
   status_after TEXT DEFAULT 'Aktif',
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 GRANT ALL ON TABLE public.computer_maintenance_logs TO anon, authenticated, service_role;
@@ -299,6 +368,7 @@ NOTIFY pgrst, 'reload schema';`}
   notes TEXT,
   performed_by TEXT,
   status_after TEXT DEFAULT 'Aktif',
+  image_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 GRANT ALL ON TABLE public.computer_maintenance_logs TO anon, authenticated, service_role;
@@ -455,12 +525,57 @@ NOTIFY pgrst, 'reload schema';`);
                       className="w-full p-3 bg-surface border border-border rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none resize-none"
                     ></textarea>
                   </div>
+
+                  {/* Upload Dokumentasi */}
+                  <div className="space-y-2 sm:col-span-2 pt-2 border-t border-border/50">
+                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                      <Image className="w-3.5 h-3.5 text-primary" />
+                      Bukti Dokumentasi (Opsional)
+                    </label>
+
+                    {!imagePreview ? (
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-border/80 hover:border-primary/50 rounded-xl p-4 text-center cursor-pointer bg-background hover:bg-surface/50 transition-all group"
+                      >
+                        <FileImage className="w-6 h-6 text-text-muted/50 mx-auto mb-1 group-hover:text-primary transition-colors" />
+                        <p className="text-xs font-bold text-text-muted">Pilih atau Seret Foto</p>
+                        <p className="text-[9px] text-text-muted/65 mt-0.5">JPEG, PNG, WEBP (Maks 5MB)</p>
+                      </div>
+                    ) : (
+                      <div className="relative rounded-xl border border-border overflow-hidden bg-background p-2 flex items-center gap-3">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview upload" 
+                          className="w-12 h-12 object-cover rounded-lg border border-border"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">{selectedImage?.name}</p>
+                          <p className="text-[9px] text-text-muted mt-0.5">{(selectedImage!.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={clearImage}
+                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors border border-rose-500/10 active:scale-95 animate-in"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsAddingLog(false)}
+                    onClick={() => { setIsAddingLog(false); clearImage(); }}
                     className="px-4 py-2 bg-background border border-border text-xs font-bold rounded-xl hover:bg-surface transition-all"
                   >
                     Batal
@@ -477,8 +592,156 @@ NOTIFY pgrst, 'reload schema';`);
               </form>
             )}
 
+            {/* Form Edit Log */}
+            {editingLogId && (
+              <form 
+                onSubmit={(e) => handleEditLogSubmit(e, editingLogId)} 
+                className="p-5 rounded-2xl border border-primary/30 bg-background space-y-4 animate-in fade-in slide-in-from-top-4 duration-300"
+              >
+                {(() => {
+                  const logToEdit = maintenanceLogs.find(l => l.id === editingLogId);
+                  if (!logToEdit) return null;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                        <h4 className="text-xs font-black uppercase text-primary tracking-wider flex items-center gap-1.5">
+                          <Pencil className="w-4 h-4" /> Edit Perawatan
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLogId(null); clearImage(); }}
+                          className="text-[10px] font-bold text-text-muted hover:text-foreground px-2 py-1 rounded bg-surface border border-border"
+                        >
+                          Batal
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-text-muted uppercase">Nama / Judul Kegiatan</label>
+                          <input
+                            type="text"
+                            name="maintenance_title"
+                            defaultValue={logToEdit.maintenance_title}
+                            required
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-text-muted uppercase">Tanggal Perawatan</label>
+                          <input
+                            type="date"
+                            name="maintenance_date"
+                            defaultValue={logToEdit.maintenance_date}
+                            required
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-text-muted uppercase">Teknisi / Pihak Vendor</label>
+                          <input
+                            type="text"
+                            name="performed_by"
+                            defaultValue={logToEdit.performed_by || ""}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-medium focus:ring-2 focus:ring-primary/20 outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-text-muted uppercase">Kondisi Setelah Perawatan</label>
+                          <select
+                            name="status_after"
+                            defaultValue={logToEdit.status_after}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
+                          >
+                            <option value="Aktif">Aktif (Beroperasi Normal)</option>
+                            <option value="Maintenance">Maintenance (Sedang Dipantau)</option>
+                            <option value="Rusak">Rusak (Butuh Perbaikan Lebih Lanjut)</option>
+                            <option value="Pensiun">Pensiun (Dihapus/Nonaktif)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[10px] font-bold text-text-muted uppercase">Catatan & Temuan Teknis</label>
+                          <textarea
+                            name="notes"
+                            rows={3}
+                            defaultValue={logToEdit.notes || ""}
+                            className="w-full p-3 bg-surface border border-border rounded-xl text-xs focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                          ></textarea>
+                        </div>
+
+                        {/* Upload Dokumentasi */}
+                        <div className="space-y-2 sm:col-span-2 pt-2 border-t border-border/50">
+                          <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                            <Image className="w-3.5 h-3.5 text-primary" />
+                            Bukti Dokumentasi
+                          </label>
+
+                          {!imagePreview ? (
+                            <div 
+                              onClick={() => fileInputRef.current?.click()}
+                              className="border-2 border-dashed border-border/80 hover:border-primary/50 rounded-xl p-4 text-center cursor-pointer bg-background hover:bg-surface/50 transition-all group"
+                            >
+                              <FileImage className="w-6 h-6 text-text-muted/50 mx-auto mb-1 group-hover:text-primary transition-colors" />
+                              <p className="text-xs font-bold text-text-muted">Pilih atau Seret Foto Baru</p>
+                            </div>
+                          ) : (
+                            <div className="relative rounded-xl border border-border overflow-hidden bg-background p-2 flex items-center gap-3">
+                              <img 
+                                src={imagePreview} 
+                                alt="Preview upload" 
+                                className="w-12 h-12 object-cover rounded-lg border border-border"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-foreground truncate">{selectedImage ? selectedImage.name : "Gambar tersimpan"}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={clearImage}
+                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg transition-colors border border-rose-500/10 active:scale-95 animate-in"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageChange}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLogId(null); clearImage(); }}
+                          className="px-4 py-2 bg-background border border-border text-xs font-bold rounded-xl hover:bg-surface transition-all"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={logLoading}
+                          className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-md transition-all disabled:opacity-50"
+                        >
+                          {logLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          Simpan Perubahan
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </form>
+            )}
+
             {/* Daftar Log Perawatan */}
-            {!isAddingLog && (
+            {!isAddingLog && !editingLogId && (
               <div className="space-y-4">
                 {maintenanceLogs.length > 0 ? (
                   <div className="relative border-l border-border ml-3 pl-6 space-y-5 py-2">
@@ -524,15 +787,36 @@ NOTIFY pgrst, 'reload schema';`);
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteLog(log.id, log.maintenance_title)}
-                                disabled={logLoading}
-                                className="p-1.5 rounded-lg text-text-muted hover:text-rose-500 hover:bg-rose-500/10 opacity-0 group-hover/item:opacity-100 transition-all disabled:opacity-50 shrink-0"
-                                title="Hapus Catatan Riwayat"
-                              >
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all">
+                                {log.image_url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedDocImage(log.image_url)}
+                                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all"
+                                    title="Lihat Bukti Dokumentasi"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openEditLog(log)}
+                                  disabled={logLoading}
+                                  className="p-1.5 rounded-lg text-text-muted hover:text-amber-500 hover:bg-amber-500/10 transition-all disabled:opacity-50 shrink-0"
+                                  title="Edit Catatan Riwayat"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteLog(log.id, log.maintenance_title)}
+                                  disabled={logLoading}
+                                  className="p-1.5 rounded-lg text-text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all disabled:opacity-50 shrink-0"
+                                  title="Hapus Catatan Riwayat"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             {log.notes && (
@@ -567,6 +851,31 @@ NOTIFY pgrst, 'reload schema';`);
           </>
         )}
       </div>
+
+      {/* Image Lightbox Modal Popup */}
+      {selectedDocImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4" 
+          onClick={() => setSelectedDocImage(null)}
+        >
+          <div 
+            className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={selectedDocImage} 
+              alt="Dokumentasi Full" 
+              className="max-w-full max-h-[85vh] rounded-2xl border border-white/10 shadow-2xl object-contain animate-in zoom-in-95 duration-200" 
+            />
+            <button 
+              onClick={() => setSelectedDocImage(null)}
+              className="absolute -top-12 right-0 p-2 text-white/80 hover:text-white bg-black/40 hover:bg-black/60 rounded-full transition-all border border-white/10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
