@@ -438,11 +438,7 @@ export default function POListClient({
                   {/* SUBTOTALS */}
                   <tr>
                     <td colSpan={4} rowSpan={3} className="p-1.5 border border-black align-top">
-                      {po.notes && (
-                        <div className="text-left font-medium uppercase text-[9px] whitespace-pre-wrap leading-tight">
-                          {po.notes}
-                        </div>
-                      )}
+                      {/* Ruang kosong di kiri bawah (di sebelah subtotals) */}
                     </td>
                     <td className="p-1 border border-black text-right font-medium">Voucher :</td>
                     <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
@@ -455,6 +451,17 @@ export default function POListClient({
                     <td className="p-1 border border-black text-right font-bold">Total :</td>
                     <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
                   </tr>
+                  {/* BARIS CATATAN BERGABUNG DI BAWAH TOTAL */}
+                  {po.notes && (
+                    <tr>
+                      <td colSpan={6} className="p-1.5 border border-black align-top text-left">
+                        <div className="font-bold text-[9px] mb-0.5">Catatan :</div>
+                        <div className="font-medium uppercase text-[10px] whitespace-pre-wrap leading-tight">
+                          {po.notes}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
 
