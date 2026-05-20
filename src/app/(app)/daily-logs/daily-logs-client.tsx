@@ -221,15 +221,25 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
 
     dates.forEach(date => {
       const dayLogs = groupedLogs[date];
-      const rowspan = dayLogs.length;
+      const dateRowspan = dayLogs.length;
+
+      const techRowspans = new Array(dayLogs.length).fill(1);
+      for (let i = dayLogs.length - 1; i > 0; i--) {
+        if (dayLogs[i].technician_name === dayLogs[i - 1].technician_name) {
+          techRowspans[i - 1] += techRowspans[i];
+          techRowspans[i] = 0;
+        }
+      }
 
       dayLogs.forEach((log, index) => {
         htmlRows += '<tr>';
         if (index === 0) {
-          htmlRows += `<td rowspan="${rowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${no}</td>`;
-          htmlRows += `<td rowspan="${rowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${date}</td>`;
+          htmlRows += `<td rowspan="${dateRowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${no}</td>`;
+          htmlRows += `<td rowspan="${dateRowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${date}</td>`;
         }
-        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.technician_name || '-'}</td>`;
+        if (techRowspans[index] > 0) {
+          htmlRows += `<td rowspan="${techRowspans[index]}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${log.technician_name || '-'}</td>`;
+        }
         htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.activity_name || '-'}</td>`;
         htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${(log.details || "").replace(/\n/g, "<br>")}</td>`;
         htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.status || '-'}</td>`;
@@ -641,18 +651,28 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
 
                 dates.forEach(date => {
                   const dayLogs = groupedLogs[date];
-                  const rowspan = dayLogs.length;
+                  const dateRowspan = dayLogs.length;
+
+                  const techRowspans = new Array(dayLogs.length).fill(1);
+                  for (let i = dayLogs.length - 1; i > 0; i--) {
+                    if (dayLogs[i].technician_name === dayLogs[i - 1].technician_name) {
+                      techRowspans[i - 1] += techRowspans[i];
+                      techRowspans[i] = 0;
+                    }
+                  }
 
                   dayLogs.forEach((log, index) => {
                     rows.push(
                       <tr key={log.id} className="print-break-inside-avoid">
                         {index === 0 && (
                           <>
-                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{no}</td>
-                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{date}</td>
+                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={dateRowspan}>{no}</td>
+                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={dateRowspan}>{date}</td>
                           </>
                         )}
-                        <td className="border border-black p-2 align-top text-center">{log.technician_name || '-'}</td>
+                        {techRowspans[index] > 0 && (
+                          <td className="border border-black p-2 align-middle text-center" rowSpan={techRowspans[index]}>{log.technician_name || '-'}</td>
+                        )}
                         <td className="border border-black p-2 align-top text-center font-bold">{log.activity_name || '-'}</td>
                         <td className="border border-black p-2 align-top text-center whitespace-pre-line">{log.details || '-'}</td>
                         <td className="border border-black p-2 align-top text-center uppercase text-[10px] font-bold">{log.status || '-'}</td>
