@@ -615,23 +615,69 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
           <table className="w-full text-xs border-collapse border border-black">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-black p-2 text-left w-24">Tanggal</th>
-                <th className="border border-black p-2 text-left w-32">Teknisi</th>
-                <th className="border border-black p-2 text-left w-48">Judul Pekerjaan</th>
-                <th className="border border-black p-2 text-left">Rincian & Keterangan</th>
+                <th className="border border-black p-2 text-center w-12">No.</th>
+                <th className="border border-black p-2 text-center w-24">Tanggal</th>
+                <th className="border border-black p-2 text-center w-32">Teknisi</th>
+                <th className="border border-black p-2 text-center w-48">Aktifitas</th>
+                <th className="border border-black p-2 text-center">Detail /<br/>Catatan</th>
                 <th className="border border-black p-2 text-center w-24">Status</th>
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="print-break-inside-avoid">
-                  <td className="border border-black p-2 align-top font-medium">{log.date}</td>
-                  <td className="border border-black p-2 align-top">{log.technician_name}</td>
-                  <td className="border border-black p-2 align-top font-bold">{log.activity_name}</td>
-                  <td className="border border-black p-2 align-top whitespace-pre-line">{log.details}</td>
-                  <td className="border border-black p-2 align-top text-center uppercase text-[10px] font-bold">{log.status}</td>
-                </tr>
-              ))}
+              {(() => {
+                const groupedLogs: Record<string, any[]> = {};
+                filteredLogs.forEach(log => {
+                  const date = log.date || "Tanpa Tanggal";
+                  if (!groupedLogs[date]) {
+                    groupedLogs[date] = [];
+                  }
+                  groupedLogs[date].push(log);
+                });
+
+                const dates = Object.keys(groupedLogs).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+                
+                let no = 1;
+                const rows: any[] = [];
+
+                dates.forEach(date => {
+                  const dayLogs = groupedLogs[date];
+                  const rowspan = dayLogs.length;
+
+                  dayLogs.forEach((log, index) => {
+                    rows.push(
+                      <tr key={log.id} className="print-break-inside-avoid">
+                        {index === 0 && (
+                          <>
+                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{no}</td>
+                            <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{date}</td>
+                          </>
+                        )}
+                        <td className="border border-black p-2 align-top text-center">{log.technician_name || '-'}</td>
+                        <td className="border border-black p-2 align-top text-center font-bold">{log.activity_name || '-'}</td>
+                        <td className="border border-black p-2 align-top text-center whitespace-pre-line">{log.details || '-'}</td>
+                        <td className="border border-black p-2 align-top text-center uppercase text-[10px] font-bold">{log.status || '-'}</td>
+                      </tr>
+                    );
+                  });
+                  no++;
+                });
+
+                for (let i = 0; i < 4; i++) {
+                  rows.push(
+                    <tr key={`empty-${i}`} className="print-break-inside-avoid">
+                      <td className="border border-black p-2 align-middle text-center font-medium h-8">{no}</td>
+                      <td className="border border-black p-2 align-middle text-center font-medium"></td>
+                      <td className="border border-black p-2 align-top text-center"></td>
+                      <td className="border border-black p-2 align-top text-center font-bold"></td>
+                      <td className="border border-black p-2 align-top text-center whitespace-pre-line"></td>
+                      <td className="border border-black p-2 align-top text-center uppercase text-[10px] font-bold"></td>
+                    </tr>
+                  );
+                  no++;
+                }
+
+                return rows;
+              })()}
             </tbody>
           </table>
         </div>
