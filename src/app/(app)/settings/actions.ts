@@ -364,33 +364,28 @@ export async function generateDatabaseBackup() {
   const tables = [
     "items", "categories", "locations", "suppliers",
     "purchase_orders", "po_items", "item_stocks", "item_transfers", "inventory_logs",
-    "infrastructure", "infrastructure_maintenance_logs",
+    "infrastructure_assets", "infrastructure_maintenance_logs",
     "computers", "computer_maintenance_logs",
     "it_daily_logs", "it_projects", "it_project_logs", "it_project_rab",
-    "it_services", "company_profile", "profiles"
+    "item_services", "company_profile", "profiles"
   ];
 
   const backupData: Record<string, any[]> = {};
-  let hasErrors = false;
-  let errorMessage = "";
+  const skippedTables: string[] = [];
 
   for (const table of tables) {
-    const { data, error } = await supabase.from(table).select("*");
-    if (error) {
-      if (error.code !== '42P01') { // Ignore undefined table errors
-        hasErrors = true;
-        errorMessage = `Gagal mem-backup tabel ${table}: ${error.message}`;
-        break;
+    try {
+      const { data, error } = await supabase.from(table).select("*");
+      if (error) {
+        skippedTables.push(table);
+      } else {
+        backupData[table] = data || [];
       }
-    } else {
-      backupData[table] = data || [];
+    } catch {
+      skippedTables.push(table);
     }
   }
 
-  if (hasErrors) {
-    return { error: errorMessage };
-  }
-
-  return { success: true, data: backupData };
+  return { success: true, data: backupData, skipped: skippedTables };
 }
 

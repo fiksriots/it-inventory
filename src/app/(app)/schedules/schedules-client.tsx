@@ -380,7 +380,7 @@ export default function SchedulesClient() {
     <div className="space-y-6">
       <style>{`
         @media print {
-          @page { size: A4 landscape !important; margin: 10mm !important; }
+          @page { size: A4 landscape !important; margin: 0 !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
           .max-w-7xl { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         }

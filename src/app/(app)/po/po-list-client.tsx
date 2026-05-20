@@ -134,7 +134,7 @@ export default function POListClient({
           }
           @page {
             size: A4 portrait;
-            margin: 8mm;
+            margin: 0;
           }
         }
       `}} />
