@@ -627,9 +627,9 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
           })}
         </div>
 
-        {/* Print-Only Table View */}
-        <div className="hidden print:block w-full">
-          <h2 className="text-xl font-bold mb-4 text-center pb-2 border-b-2 border-black">Rekapan Laporan Kerja Harian IT</h2>
+      {/* Print-Only Table View */}
+      <div className="hidden print:block w-full p-10">
+        <h2 className="text-xl font-bold mb-4 text-center pb-2 border-b-2 border-black">Rekapan Laporan Kerja Harian IT</h2>
           <table className="w-full text-xs border-collapse border border-black">
             <thead>
               <tr className="bg-gray-100">

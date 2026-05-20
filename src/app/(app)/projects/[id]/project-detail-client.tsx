@@ -5,7 +5,8 @@ import imageCompression from "browser-image-compression";
 import Link from "next/link";
 import { 
   ArrowLeft, Calendar, Clock, Plus, Trash2, Image, FileImage, 
-  X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, Maximize2, FolderKanban, Coins
+  X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, Maximize2, FolderKanban, Coins,
+  Printer, Download, ChevronDown, FileSpreadsheet, FileText
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem } from "../actions";
@@ -219,10 +220,159 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
     }
   };
 
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  const generateExportHtml = (isWord = false) => {
+    // Group logs by date
+    const groupedLogs: Record<string, any[]> = {};
+    logs.forEach(log => {
+      const date = formatDateShort(log.created_at);
+      if (!groupedLogs[date]) {
+        groupedLogs[date] = [];
+      }
+      groupedLogs[date].push(log);
+    });
+
+    const dates = Object.keys(groupedLogs);
+    
+    let htmlRows = '';
+    let no = 1;
+
+    dates.forEach(date => {
+      const dayLogs = groupedLogs[date];
+      const dateRowspan = dayLogs.length;
+
+      dayLogs.forEach((log, index) => {
+        htmlRows += '<tr>';
+        if (index === 0) {
+          htmlRows += `<td rowspan="${dateRowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${no}</td>`;
+          htmlRows += `<td rowspan="${dateRowspan}" style="text-align: center; vertical-align: middle; border: 1px solid #000; padding: 8px;">${date}</td>`;
+        }
+        htmlRows += `<td style="text-align: center; border: 1px solid #000; padding: 8px;">${log.progress_percent_after}%</td>`;
+        htmlRows += `<td style="text-align: left; border: 1px solid #000; padding: 8px;">${(log.content || "").replace(/\n/g, "<br>")}</td>`;
+        htmlRows += '</tr>';
+      });
+      no++;
+    });
+
+    const dateStr = new Date().toLocaleDateString('id-ID');
+
+    const commonStyles = `
+      body { font-family: 'Arial', sans-serif; }
+      table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      th { border: 1px solid #000; padding: 8px; text-align: center; font-weight: bold; }
+      h1 { text-align: center; text-decoration: underline; font-weight: bold; }
+    `;
+
+    if (isWord) {
+      return `<html xmlns:w="urn:schemas-microsoft-com:office:word">
+        <head>
+          <meta charset="utf-8">
+          <title>Laporan Progres Project</title>
+          <style>${commonStyles}</style>
+        </head>
+        <body>
+          <h1>Laporan Progres Project</h1>
+          <br>
+          <p><strong>Nama Project:</strong> ${project.name}</p>
+          <p><strong>Status:</strong> ${project.status}</p>
+          <p><strong>Progres Saat Ini:</strong> ${project.progress_percent}%</p>
+          <p><strong>Diekspor pada:</strong> ${dateStr}</p>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Tanggal</th>
+                <th>Progres</th>
+                <th>Detail Pekerjaan</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${htmlRows}
+            </tbody>
+          </table>
+        </body>
+      </html>`;
+    }
+
+    return `<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="utf-8">
+        <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+        <x:Name>Laporan Project</x:Name>
+        <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+        </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
+        <style>${commonStyles}</style>
+      </head>
+      <body>
+        <h1 colspan="4" style="text-align: center; text-decoration: underline; font-size: 24pt;">Laporan Progres Project</h1>
+        <br>
+        <table>
+          <tr><td colspan="2"><strong>Nama Project:</strong></td><td colspan="2">${project.name}</td></tr>
+          <tr><td colspan="2"><strong>Status:</strong></td><td colspan="2">${project.status}</td></tr>
+          <tr><td colspan="2"><strong>Progres Saat Ini:</strong></td><td colspan="2">${project.progress_percent}%</td></tr>
+          <tr><td colspan="2"><strong>Diekspor pada:</strong></td><td colspan="2">${dateStr}</td></tr>
+        </table>
+        
+        <table border="1">
+          <thead>
+            <tr>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">No.</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Tanggal</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Progres</th>
+              <th style="font-weight: bold; text-align: center; border: 1px solid #000;">Detail Pekerjaan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${htmlRows}
+          </tbody>
+        </table>
+      </body>
+    </html>`;
+  };
+
+  const exportToExcel = () => {
+    const tableStr = generateExportHtml(false);
+    
+    const blob = new Blob([tableStr], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Laporan_Project_${project.name.replace(/\\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsExportMenuOpen(false);
+  };
+
+  const exportToWord = () => {
+    const docStr = generateExportHtml(true);
+
+    const blob = new Blob(['\ufeff', docStr], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Laporan_Project_${project.name.replace(/\\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsExportMenuOpen(false);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+      <style type="text/css">
+        {`
+          @media print {
+            @page { margin: 0; }
+            body { padding: 1.5cm; }
+          }
+        `}
+      </style>
+      
       {/* Navigation Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/30 pb-4 print:hidden">
         <div className="flex items-center gap-3">
           <Link
             href="/projects"
@@ -243,6 +393,46 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
               </span>
             </div>
             <h1 className="text-2xl font-black text-foreground mt-0.5">{project.name}</h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 no-print">
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 shrink-0 text-xs shadow-sm"
+              title="Ekspor Laporan Project"
+            >
+              <Download className="w-4.5 h-4.5" />
+              Ekspor Data
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <button
+                  onClick={() => { window.print(); setIsExportMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors border-b border-border"
+                >
+                  <Printer className="w-4 h-4 text-primary" />
+                  Cetak / Simpan PDF
+                </button>
+                <button
+                  onClick={exportToExcel}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors border-b border-border"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                  Ekspor ke Excel
+                </button>
+                <button
+                  onClick={exportToWord}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-text-muted hover:text-foreground hover:bg-surface transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  Ekspor ke Word (Doc)
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -575,7 +765,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
 
       {/* Modal: Add RAB Item */}
       {isRabModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setIsRabModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:hidden" onClick={() => setIsRabModalOpen(false)}>
           <div className="bg-surface border border-border w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center px-6 py-4 border-b border-border">
               <h3 className="font-black text-base text-foreground flex items-center gap-2">
@@ -670,6 +860,69 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
           </div>
         </div>
       )}
+
+      {/* Print-Only Table View */}
+      <div className="hidden print:block w-full p-10">
+        <h2 className="text-xl font-bold mb-4 text-center pb-2 border-b-2 border-black underline">Laporan Progres Project</h2>
+        
+        <div className="mb-6 space-y-1">
+          <div className="flex text-sm"><strong className="w-32">Nama Project:</strong> <span>{project.name}</span></div>
+          <div className="flex text-sm"><strong className="w-32">Status:</strong> <span>{project.status}</span></div>
+          <div className="flex text-sm"><strong className="w-32">Progres Saat Ini:</strong> <span>{project.progress_percent}%</span></div>
+          <div className="flex text-sm"><strong className="w-32">Diekspor pada:</strong> <span>{new Date().toLocaleDateString('id-ID')}</span></div>
+        </div>
+
+        <table className="w-full text-xs border-collapse border border-black">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border border-black p-2 text-center w-12 font-bold">No.</th>
+              <th className="border border-black p-2 text-center w-28 font-bold">Tanggal</th>
+              <th className="border border-black p-2 text-center w-24 font-bold">Progres</th>
+              <th className="border border-black p-2 text-center font-bold">Detail Pekerjaan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(() => {
+              const groupedLogs: Record<string, any[]> = {};
+              logs.forEach(log => {
+                const date = formatDateShort(log.created_at);
+                if (!groupedLogs[date]) {
+                  groupedLogs[date] = [];
+                }
+                groupedLogs[date].push(log);
+              });
+
+              const dates = Object.keys(groupedLogs);
+              
+              let no = 1;
+              const rows: any[] = [];
+
+              dates.forEach(date => {
+                const dayLogs = groupedLogs[date];
+                const rowspan = dayLogs.length;
+
+                dayLogs.forEach((log, index) => {
+                  rows.push(
+                    <tr key={log.id} className="print-break-inside-avoid">
+                      {index === 0 && (
+                        <>
+                          <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{no}</td>
+                          <td className="border border-black p-2 align-middle text-center font-medium" rowSpan={rowspan}>{date}</td>
+                        </>
+                      )}
+                      <td className="border border-black p-2 align-top text-center">{log.progress_percent_after}%</td>
+                      <td className="border border-black p-2 align-top text-left whitespace-pre-line">{log.content || '-'}</td>
+                    </tr>
+                  );
+                });
+                no++;
+              });
+
+              return rows;
+            })()}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
