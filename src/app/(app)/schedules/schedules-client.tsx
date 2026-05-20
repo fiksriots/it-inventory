@@ -865,29 +865,29 @@ export default function SchedulesClient() {
         className="hidden print:block bg-white text-black font-sans"
         style={{ width: '100%', maxWidth: 'none', padding: '0 5mm' }}
       >
-        <h2 className="text-center font-bold text-[18px] mb-8 uppercase tracking-wider">
+        <h2 className="text-center font-bold text-[16px] mb-6 uppercase tracking-wider">
           {getPrintTitle()}
         </h2>
         
         {/* Main Matrix */}
-        <table className="w-full border-collapse border border-black mb-10 text-center text-[11px]" style={{ tableLayout: 'fixed' }}>
+        <table className="w-full border-collapse border border-black mb-8 text-center text-[10px]">
           <thead>
             {/* TGL Row */}
             <tr>
-              <th className="border border-black bg-[#ffff00]" style={{ padding: '6px', width: '60px' }}>TGL</th>
+              <th className="border border-black bg-[#ffff00] p-1 w-[50px]">TGL</th>
               {periodDays.map(d => (
-                <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal" style={{ padding: '6px' }}>
+                <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal p-1">
                   {d.dayNum}
                 </th>
               ))}
             </tr>
             {/* HARI Row */}
             <tr>
-              <th className="border border-black bg-[#d9d9d9]" style={{ padding: '6px' }}>HARI</th>
+              <th className="border border-black bg-[#d9d9d9] p-1">HARI</th>
               {periodDays.map(d => {
                 const shortDay = ["MG", "SN", "SL", "RB", "KM", "JM", "SB"][new Date(d.year, d.month - 1, d.dayNum).getDay()];
                 return (
-                  <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`} style={{ padding: '6px' }}>
+                  <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal p-1 ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
                     {shortDay}
                   </th>
                 );
@@ -899,16 +899,16 @@ export default function SchedulesClient() {
               <React.Fragment key={`print-row-${member}`}>
                 {/* JAM Row */}
                 <tr>
-                  <td className="border border-black bg-[#a9d08e] uppercase font-bold" style={{ padding: '6px' }}>JAM</td>
+                  <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1">JAM</td>
                   {periodDays.map(d => (
-                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal" style={{ padding: '6px' }}>
+                    <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1">
                       {member.toLowerCase() === 'fikri' ? '10' : '9'}
                     </td>
                   ))}
                 </tr>
                 {/* MEMBER Row */}
                 <tr>
-                  <td className="border border-black uppercase font-bold bg-[#e2efda] text-[10px]" style={{ padding: '6px' }}>{member}</td>
+                  <td className="border border-black uppercase font-bold bg-[#e2efda] p-1">{member}</td>
                   {periodDays.map(d => {
                     const s = getDaySchedule(member, d.dateStr);
                     const status = s ? s.status : (d.isHoliday ? "PH" : "M");
@@ -922,7 +922,7 @@ export default function SchedulesClient() {
                       bgClass = "bg-[#ffc000]";
                     }
                     return (
-                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold ${bgClass} ${textClass}`} style={{ padding: '6px' }}>
+                      <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1 ${bgClass} ${textClass}`}>
                         {displayStatus}
                       </td>
                     );
