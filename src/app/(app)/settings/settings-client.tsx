@@ -28,8 +28,8 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
       toast("Sedang mengumpulkan data database...", "success");
       const result = await generateDatabaseBackup();
       
-      if (result.error) {
-        toast(result.error, "error");
+      if (!result.success) {
+        toast("Gagal melakukan backup database", "error");
         return;
       }
       
