@@ -205,7 +205,7 @@ export default function SchedulesClient() {
 
     periodDays.forEach(dayObj => {
       const s = getDaySchedule(memberName, dayObj.dateStr);
-      const status = s ? s.status : "M"; // Default is "M"
+      const status = s ? s.status : (dayObj.isHoliday ? "PH" : "M"); // Match visual default
       if (status === "M") mCount++;
       else if (status === "C") cCount++;
       else if (status === "DP") dpCount++;
