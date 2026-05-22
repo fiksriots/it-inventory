@@ -141,12 +141,16 @@ export default function ReportsClient({
     const list: any[] = [];
     items.forEach(item => {
       const totalQty = item.item_stocks?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+      const goodQty = item.item_stocks?.filter((s: any) => s.condition !== "Rusak").reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+      const badQty = item.item_stocks?.filter((s: any) => s.condition === "Rusak").reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
       const locNames = Array.from(new Set(item.item_stocks?.map((s: any) => s.locations?.name).filter(Boolean))).join(", ");
       list.push({
         sku: item.sku || "-",
         name: item.name,
         category: item.categories?.name || "-",
         quantity: totalQty,
+        goodQuantity: goodQty,
+        badQuantity: badQty,
         unit: item.unit || "PCS",
         locations: locNames || "Gudang Utama"
       });
@@ -430,6 +434,71 @@ export default function ReportsClient({
         })}
       </div>
 
+      {/* Rangkuman Cepat Barang Rusak & Aktif (Summary Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-text-muted text-xs font-semibold uppercase">Stok Barang Bagus</span>
+            <h3 className="text-2xl font-black text-emerald-500 mt-1">
+              {formatNum(
+                items.reduce((acc, item) => {
+                  const goodQty = item.item_stocks?.filter((s: any) => s.condition !== "Rusak").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                  return acc + goodQty;
+                }, 0)
+              )}
+              <span className="text-xs font-normal text-text-muted ml-1">Unit</span>
+            </h3>
+          </div>
+          <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
+            <Package className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-text-muted text-xs font-semibold uppercase">Stok Barang Rusak</span>
+            <h3 className="text-2xl font-black text-rose-500 mt-1">
+              {formatNum(
+                items.reduce((acc, item) => {
+                  const badQty = item.item_stocks?.filter((s: any) => s.condition === "Rusak").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                  return acc + badQty;
+                }, 0)
+              )}
+              <span className="text-xs font-normal text-text-muted ml-1">Unit</span>
+            </h3>
+          </div>
+          <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-text-muted text-xs font-semibold uppercase">Komputer Rusak</span>
+            <h3 className="text-2xl font-black text-purple-500 mt-1">
+              {formatNum(computers.filter(pc => pc.status?.toLowerCase().includes("rusak")).length)}
+              <span className="text-xs font-normal text-text-muted ml-1">Unit</span>
+            </h3>
+          </div>
+          <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl">
+            <Monitor className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex items-center justify-between">
+          <div>
+            <span className="text-text-muted text-xs font-semibold uppercase">Infrastruktur Rusak</span>
+            <h3 className="text-2xl font-black text-amber-500 mt-1">
+              {formatNum(infrastructureAssets.filter(inf => inf.status?.toLowerCase().includes("rusak")).length)}
+              <span className="text-xs font-normal text-text-muted ml-1">Aset</span>
+            </h3>
+          </div>
+          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+            <Wrench className="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
       {/* Drawer Live Customizer Kop & TTD */}
       {showCustomizer && (
         <div className="bg-surface border-2 border-primary/40 rounded-xl p-6 no-print space-y-6 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xl">
@@ -668,6 +737,8 @@ export default function ReportsClient({
                   <th className="p-3">SKU</th>
                   <th className="p-3">Nama Barang</th>
                   <th className="p-3">Kategori</th>
+                  <th className="p-3 text-center">Stok Bagus</th>
+                  <th className="p-3 text-center">Stok Rusak</th>
                   <th className="p-3 text-center">Total Stok</th>
                   <th className="p-3">Lokasi / Distribusi</th>
                 </tr>
@@ -678,6 +749,8 @@ export default function ReportsClient({
                     <td className="p-3 font-mono">{row.sku}</td>
                     <td className="p-3 font-bold">{row.name}</td>
                     <td className="p-3 text-text-muted">{row.category}</td>
+                    <td className="p-3 text-center font-bold text-emerald-500">{formatNum(row.goodQuantity)} {row.unit}</td>
+                    <td className="p-3 text-center font-bold text-rose-500">{formatNum(row.badQuantity)} {row.unit}</td>
                     <td className="p-3 text-center font-bold text-primary">{formatNum(row.quantity)} {row.unit}</td>
                     <td className="p-3 text-text-muted">{row.locations}</td>
                   </tr>
@@ -720,44 +793,72 @@ export default function ReportsClient({
           )}
 
           {activeTab === "rusak" && (
-            <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
-                <tr>
-                  <th className="p-3">Kelompok</th>
-                  <th className="p-3">Kode / Referensi</th>
-                  <th className="p-3">Nama Perangkat / Aset</th>
-                  <th className="p-3">Lokasi</th>
-                  <th className="p-3">Keterangan Kerusakan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {damagedReportData.length > 0 ? (
-                  damagedReportData.map((row, i) => (
-                    <tr key={i} className="hover:bg-background/30">
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          row.type === 'Barang Inventaris' ? 'bg-blue-500/10 text-blue-500' :
-                          row.type === 'Unit Komputer' ? 'bg-purple-500/10 text-purple-500' :
-                          'bg-amber-500/10 text-amber-500'
-                        }`}>
-                          {row.type}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono">{row.code}</td>
-                      <td className="p-3 font-bold text-rose-500">{row.name}</td>
-                      <td className="p-3 text-text-muted">{row.location}</td>
-                      <td className="p-3 italic text-text-muted">{row.detail}</td>
-                    </tr>
-                  ))
-                ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-background/40 p-4 rounded-xl border border-border">
+                <div className="space-y-1">
+                  <span className="text-text-muted text-[10px] font-bold uppercase">Total Barang Inventaris Rusak</span>
+                  <p className="text-lg font-black text-rose-500">
+                    {formatNum(
+                      items.reduce((acc, item) => {
+                        const badQty = item.item_stocks?.filter((s: any) => s.condition === "Rusak").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                        return acc + badQty;
+                      }, 0)
+                    )} Unit
+                  </p>
+                </div>
+                <div className="space-y-1 border-t sm:border-t-0 sm:border-x border-border/60 sm:px-4">
+                  <span className="text-text-muted text-[10px] font-bold uppercase">Total Komputer Rusak</span>
+                  <p className="text-lg font-black text-purple-500">
+                    {formatNum(computers.filter(pc => pc.status?.toLowerCase().includes("rusak")).length)} Unit
+                  </p>
+                </div>
+                <div className="space-y-1 sm:pl-2">
+                  <span className="text-text-muted text-[10px] font-bold uppercase">Total Infrastruktur Rusak</span>
+                  <p className="text-lg font-black text-amber-500">
+                    {formatNum(infrastructureAssets.filter(inf => inf.status?.toLowerCase().includes("rusak")).length)} Aset
+                  </p>
+                </div>
+              </div>
+
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-background/80 border-b border-border sticky top-0 uppercase text-[10px] text-text-muted font-bold">
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-text-muted">
-                      🎉 Luar biasa! Tidak ada catatan barang atau aset fisik yang berstatus rusak saat ini.
-                    </td>
+                    <th className="p-3">Kelompok</th>
+                    <th className="p-3">Kode / Referensi</th>
+                    <th className="p-3">Nama Perangkat / Aset</th>
+                    <th className="p-3">Lokasi</th>
+                    <th className="p-3">Keterangan Kerusakan</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {damagedReportData.length > 0 ? (
+                    damagedReportData.map((row, i) => (
+                      <tr key={i} className="hover:bg-background/30">
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            row.type === 'Barang Inventaris' ? 'bg-blue-500/10 text-blue-500' :
+                            row.type === 'Unit Komputer' ? 'bg-purple-500/10 text-purple-500' :
+                            'bg-amber-500/10 text-amber-500'
+                          }`}>
+                            {row.type}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono">{row.code}</td>
+                        <td className="p-3 font-bold text-rose-500">{row.name}</td>
+                        <td className="p-3 text-text-muted">{row.location}</td>
+                        <td className="p-3 italic text-text-muted">{row.detail}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-text-muted">
+                        🎉 Luar biasa! Tidak ada catatan barang atau aset fisik yang berstatus rusak saat ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {activeTab === "lokasi" && (
@@ -980,11 +1081,13 @@ export default function ReportsClient({
             <thead>
               <tr>
                 <th style={{ width: "40px" }}>No.</th>
-                <th style={{ width: "100px" }}>Kode SKU</th>
+                <th style={{ width: "90px" }}>Kode SKU</th>
                 <th>Nama Barang Inventaris</th>
-                <th style={{ width: "120px" }}>Kategori</th>
+                <th style={{ width: "100px" }}>Kategori</th>
+                <th style={{ width: "80px" }}>Stok Bagus</th>
+                <th style={{ width: "80px" }}>Stok Rusak</th>
                 <th style={{ width: "80px" }}>Total Stok</th>
-                <th style={{ width: "140px" }}>Distribusi Lokasi</th>
+                <th style={{ width: "120px" }}>Distribusi Lokasi</th>
               </tr>
             </thead>
             <tbody>
@@ -994,6 +1097,8 @@ export default function ReportsClient({
                   <td style={{ fontFamily: "monospace" }}>{row.sku}</td>
                   <td style={{ fontWeight: "bold" }}>{row.name}</td>
                   <td>{row.category}</td>
+                  <td className="text-center" style={{ fontWeight: "bold", color: "#10b981" }}>{formatNum(row.goodQuantity)} {row.unit}</td>
+                  <td className="text-center" style={{ fontWeight: "bold", color: "#ef4444" }}>{formatNum(row.badQuantity)} {row.unit}</td>
                   <td className="text-center" style={{ fontWeight: "bold" }}>{formatNum(row.quantity)} {row.unit}</td>
                   <td>{row.locations}</td>
                 </tr>
@@ -1032,37 +1137,63 @@ export default function ReportsClient({
         )}
 
         {activeTab === "rusak" && (
-          <table className="report-table">
-            <thead>
-              <tr>
-                <th style={{ width: "40px" }}>No.</th>
-                <th style={{ width: "120px" }}>Kelompok Aset</th>
-                <th style={{ width: "110px" }}>Kode Referensi</th>
-                <th>Nama Perangkat / Fasilitas Rusak</th>
-                <th style={{ width: "120px" }}>Lokasi Terakhir</th>
-                <th style={{ width: "180px" }}>Keterangan & Indikasi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {damagedReportData.map((row, idx) => (
-                <tr key={idx}>
-                  <td className="text-center">{idx + 1}</td>
-                  <td style={{ fontWeight: "bold" }}>{row.type}</td>
-                  <td style={{ fontFamily: "monospace" }}>{row.code}</td>
-                  <td style={{ fontWeight: "bold" }}>{row.name}</td>
-                  <td>{row.location}</td>
-                  <td style={{ fontStyle: "italic" }}>{row.detail}</td>
-                </tr>
-              ))}
-              {damagedReportData.length === 0 && (
+          <div>
+            <div style={{ display: "flex", gap: "20px", marginBottom: "15px", padding: "10px", border: "1px solid black", background: "#f9f9f9" }}>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", display: "block" }}>Total Barang Inventaris Rusak:</span>
+                <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+                  {items.reduce((acc, item) => {
+                    const badQty = item.item_stocks?.filter((s: any) => s.condition === "Rusak").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                    return acc + badQty;
+                  }, 0)} Unit
+                </span>
+              </div>
+              <div style={{ flex: 1, borderLeft: "1px solid black", paddingLeft: "20px" }}>
+                <span style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", display: "block" }}>Total Komputer Rusak:</span>
+                <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+                  {computers.filter(pc => pc.status?.toLowerCase().includes("rusak")).length} Unit
+                </span>
+              </div>
+              <div style={{ flex: 1, borderLeft: "1px solid black", paddingLeft: "20px" }}>
+                <span style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", display: "block" }}>Total Infrastruktur Rusak:</span>
+                <span style={{ fontSize: "14px", fontWeight: "bold" }}>
+                  {infrastructureAssets.filter(inf => inf.status?.toLowerCase().includes("rusak")).length} Aset
+                </span>
+              </div>
+            </div>
+
+            <table className="report-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="text-center" style={{ padding: "15px !important", fontStyle: "italic" }}>
-                    - Nihil Catatan Kerusakan Sarana maupun Perangkat Komputer -
-                  </td>
+                  <th style={{ width: "40px" }}>No.</th>
+                  <th style={{ width: "120px" }}>Kelompok Aset</th>
+                  <th style={{ width: "110px" }}>Kode Referensi</th>
+                  <th>Nama Perangkat / Fasilitas Rusak</th>
+                  <th style={{ width: "120px" }}>Lokasi Terakhir</th>
+                  <th style={{ width: "180px" }}>Keterangan & Indikasi</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {damagedReportData.map((row, idx) => (
+                  <tr key={idx}>
+                    <td className="text-center">{idx + 1}</td>
+                    <td style={{ fontWeight: "bold" }}>{row.type}</td>
+                    <td style={{ fontFamily: "monospace" }}>{row.code}</td>
+                    <td style={{ fontWeight: "bold" }}>{row.name}</td>
+                    <td>{row.location}</td>
+                    <td style={{ fontStyle: "italic" }}>{row.detail}</td>
+                  </tr>
+                ))}
+                {damagedReportData.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center" style={{ padding: "15px !important", fontStyle: "italic" }}>
+                      - Nihil Catatan Kerusakan Sarana maupun Perangkat Komputer -
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {activeTab === "lokasi" && (
