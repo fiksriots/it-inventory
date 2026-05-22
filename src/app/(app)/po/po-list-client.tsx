@@ -320,9 +320,10 @@ export default function POListClient({
                 <th className="px-6 py-4 font-bold">Tanggal</th>
                 <th className="px-6 py-4 font-bold">Supplier</th>
                 <th className="px-6 py-4 font-bold">Departemen</th>
-                <th className="px-6 py-4 font-bold">Barang & Keterangan</th>
+                <th className="px-6 py-4 font-bold">Barang &amp; Keterangan</th>
                 <th className="px-6 py-4 font-bold text-right">Total Nilai</th>
                 <th className="px-6 py-4 font-bold text-center">Status</th>
+                <th className="px-6 py-4 font-bold">Keterangan PO</th>
                 <th className="px-6 py-4 font-bold text-right">Aksi</th>
               </tr>
             </thead>
@@ -402,6 +403,15 @@ export default function POListClient({
                           {po.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4 max-w-[200px]">
+                        {po.notes ? (
+                          <p className="text-xs text-text-muted leading-relaxed line-clamp-3" title={po.notes}>
+                            {po.notes}
+                          </p>
+                        ) : (
+                          <span className="text-xs text-text-muted/50 italic">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <Link 
                           href={`/po/${po.id}`}
@@ -416,7 +426,7 @@ export default function POListClient({
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-20 text-center text-text-muted bg-background/20">
+                  <td colSpan={10} className="px-6 py-20 text-center text-text-muted bg-background/20">
                     <div className="flex flex-col items-center justify-center">
                       <ShoppingCart className="w-16 h-16 mb-4 opacity-10 text-primary" />
                       <p className="text-lg font-medium text-foreground/50">Tidak ada data ditemukan</p>
