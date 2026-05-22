@@ -116,20 +116,29 @@ export default function POListClient({
             margin: 1cm !important;
           }
           
-          /* Netralkan warna background dan border dari dark mode */
-          html, body, main, #root, [__next], .layout, .page-wrapper {
+          /* Netralkan warna background dan hilangkan border dari semua wrapper/parent */
+          html, body {
             background: white !important;
             background-color: white !important;
             color: black !important;
             border: none !important;
+            border-width: 0 !important;
             box-shadow: none !important;
+            outline: none !important;
             margin: 0 !important;
             padding: 0 !important;
           }
 
+          /* Hilangkan semua border & shadow dari seluruh elemen anak body secara umum */
           body * {
+            border: none !important;
+            border-width: 0 !important;
+            box-shadow: none !important;
+            outline: none !important;
             visibility: hidden;
           }
+
+          /* Tampilkan kembali wadah cetak PO */
           #printable-multi-po, #printable-multi-po * {
             visibility: visible;
           }
@@ -162,13 +171,21 @@ export default function POListClient({
             box-shadow: none !important;
             background: white !important;
           }
-          /* Paksa border tabel tetap hitam padat */
-          #printable-multi-po table,
+          /* Pulihkan khusus border tabel PO tetap hitam solid */
+          #printable-multi-po table {
+            border-collapse: collapse !important;
+            border: 1px solid black !important;
+          }
           #printable-multi-po th,
           #printable-multi-po td {
+            border: 1px solid black !important;
             border-color: black !important;
             color: black !important;
             background-color: white !important;
+          }
+          /* Pulihkan khusus garis potong putus-putus */
+          #printable-multi-po .border-t {
+            border-top: 1px dashed #9ca3af !important;
           }
           .print-page {
             page-break-after: always !important;
