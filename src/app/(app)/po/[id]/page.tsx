@@ -14,7 +14,9 @@ import {
   Globe,
   MapPin,
   Store,
-  Edit
+  Edit,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { updatePOStatus } from "../actions";
 import POClientView from "./po-client-view";
@@ -32,6 +34,24 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
     .single();
 
   if (!po) notFound();
+
+  // Fetch previous PO (older)
+  const { data: prevPo } = await supabase
+    .from("purchase_orders")
+    .select("id, po_number")
+    .lt("created_at", po.created_at)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Fetch next PO (newer)
+  const { data: nextPo } = await supabase
+    .from("purchase_orders")
+    .select("id, po_number")
+    .gt("created_at", po.created_at)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   // Fetch PO Items
   const { data: items } = await supabase
@@ -60,7 +80,25 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
             <ArrowLeft className="w-5 h-5 text-text-muted" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Detail Purchase Order</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">Detail Purchase Order</h1>
+              <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-0.5 no-print shadow-sm">
+                <Link 
+                  href={prevPo ? `/po/${prevPo.id}` : '#'}
+                  className={`p-1.5 hover:bg-surface rounded-md transition-all ${!prevPo ? 'opacity-35 pointer-events-none text-text-muted' : 'text-primary hover:text-primary-hover'}`}
+                  title={prevPo ? `PO Sebelumnya: ${prevPo.po_number}` : "Tidak ada PO sebelumnya"}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Link>
+                <Link 
+                  href={nextPo ? `/po/${nextPo.id}` : '#'}
+                  className={`p-1.5 hover:bg-surface rounded-md transition-all ${!nextPo ? 'opacity-35 pointer-events-none text-text-muted' : 'text-primary hover:text-primary-hover'}`}
+                  title={nextPo ? `PO Selanjutnya: ${nextPo.po_number}` : "Tidak ada PO selanjutnya"}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-text-muted">{po.po_number}</span>
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${statusColors[po.status]}`}>

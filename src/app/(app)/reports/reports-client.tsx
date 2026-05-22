@@ -1010,6 +1010,7 @@ export default function ReportsClient({
                   <th className="p-3">Tanggal</th>
                   <th className="p-3">Supplier</th>
                   <th className="p-3">Departemen</th>
+                  <th className="p-3 w-1/3">Rincian Barang & Catatan</th>
                   <th className="p-3 text-right">Total Transaksi</th>
                   <th className="p-3 text-center">Status</th>
                 </tr>
@@ -1022,6 +1023,24 @@ export default function ReportsClient({
                       <td className="p-3 text-text-muted">{formatDate(row.created_at)}</td>
                       <td className="p-3 font-medium">{row.supplier_name || "-"}</td>
                       <td className="p-3 text-text-muted">{row.department || "-"}</td>
+                      <td className="p-3">
+                        {row.items && row.items.length > 0 ? (
+                          <div className="space-y-1">
+                            {row.items.map((it: any, idx: number) => (
+                              <div key={idx} className="font-medium text-white/90">
+                                • {it.items?.name || it.custom_item_name} <span className="text-[10px] text-text-muted">({it.quantity} {it.unit || 'PCS'})</span>
+                              </div>
+                            ))}
+                            {row.notes && (
+                              <div className="text-[10px] text-text-muted italic bg-background/30 px-1.5 py-0.5 rounded mt-1 border border-border/30 inline-block max-w-full truncate" title={row.notes}>
+                                Keterangan: {row.notes}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-text-muted italic">Tidak ada rincian barang</span>
+                        )}
+                      </td>
                       <td className="p-3 text-right font-mono font-bold">{formatCurr(row.total_amount)}</td>
                       <td className="p-3 text-center">
                         <span className="px-2 py-0.5 rounded text-[10px] bg-surface border border-border font-bold">
@@ -1032,7 +1051,7 @@ export default function ReportsClient({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-text-muted">
+                    <td colSpan={7} className="p-8 text-center text-text-muted">
                       Tidak ada dokumen Purchase Order dalam rentang tanggal yang dipilih.
                     </td>
                   </tr>
@@ -1348,11 +1367,12 @@ export default function ReportsClient({
               <thead>
                 <tr>
                   <th style={{ width: "40px" }}>No.</th>
-                  <th style={{ width: "130px" }}>Nomor PO</th>
+                  <th style={{ width: "110px" }}>Nomor PO</th>
                   <th style={{ width: "90px" }}>Tanggal</th>
                   <th>Pemasok / Supplier</th>
-                  <th style={{ width: "120px" }}>Departemen</th>
-                  <th style={{ width: "110px" }}>Total Nilai</th>
+                  <th style={{ width: "110px" }}>Departemen</th>
+                  <th style={{ width: "220px" }}>Rincian Barang & Catatan</th>
+                  <th style={{ width: "100px" }}>Total Nilai</th>
                 </tr>
               </thead>
               <tbody>
@@ -1363,6 +1383,24 @@ export default function ReportsClient({
                     <td className="text-center">{formatDate(row.created_at)}</td>
                     <td>{row.supplier_name || "-"}</td>
                     <td>{row.department || "-"}</td>
+                    <td>
+                      {row.items && row.items.length > 0 ? (
+                        <div style={{ fontSize: "10px", lineHeight: "1.3" }}>
+                          {row.items.map((it: any, idx: number) => (
+                            <div key={idx}>
+                              • {it.items?.name || it.custom_item_name} ({it.quantity} {it.unit || 'PCS'})
+                            </div>
+                          ))}
+                          {row.notes && (
+                            <div style={{ fontStyle: "italic", fontSize: "9px", color: "#444", marginTop: "3px", backgroundColor: "#f9f9f9", padding: "2px", border: "1px dashed #ccc" }}>
+                              Keterangan: {row.notes}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontStyle: "italic", color: "#888" }}>Tidak ada rincian barang</span>
+                      )}
+                    </td>
                     <td className="text-right" style={{ fontFamily: "monospace", fontWeight: "bold" }}>
                       {formatCurr(row.total_amount)}
                     </td>
@@ -1370,7 +1408,7 @@ export default function ReportsClient({
                 ))}
                 {poReportData.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center" style={{ fontStyle: "italic" }}>
+                    <td colSpan={7} className="text-center" style={{ fontStyle: "italic" }}>
                       Nihil transaksi Purchase Order pada periode tanggal yang dipilih.
                     </td>
                   </tr>
