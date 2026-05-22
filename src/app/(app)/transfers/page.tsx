@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Plus, PackageX, ArrowDownLeft, ArrowUpRight, Calendar, Search } from "lucide-react";
+import { ArrowRightLeft, Plus, PackageX, ArrowDownLeft, ArrowUpRight, Calendar, Search, Wrench } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 
@@ -82,6 +82,10 @@ export default async function TransfersPage() {
           <Link href="/transfers/new-transfer" className="bg-surface border border-border hover:bg-background px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium shadow-sm">
             <ArrowRightLeft className="w-5 h-5" />
             Transfer Barang
+          </Link>
+          <Link href="/transfers/new-replacement" className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 border border-rose-500/20 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium shadow-sm">
+            <Wrench className="w-5 h-5" />
+            Penggantian Unit Rusak
           </Link>
         </div>
       </div>
