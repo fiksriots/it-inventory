@@ -37,8 +37,10 @@ interface POListClientProps {
   currentPage: number;
   totalPages: number;
   statuses: any[];
+  departments: string[];
   q?: string;
   status?: string;
+  department?: string;
   error?: any;
 }
 
@@ -48,8 +50,10 @@ export default function POListClient({
   currentPage,
   totalPages,
   statuses,
+  departments,
   q,
   status,
+  department,
   error
 }: POListClientProps) {
   const [selectedPOs, setSelectedPOs] = useState<any[]>([]);
@@ -211,7 +215,7 @@ export default function POListClient({
         <div className="p-4 border-b border-border flex flex-col md:flex-row gap-4 justify-between items-center bg-surface/50">
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <POSearch />
-            <POFilter />
+            <POFilter departments={departments} />
             <ExcelImportExport
               exportAction={getAllPurchaseOrdersForExport}
               importAction={importPurchaseOrdersBulk}
@@ -231,13 +235,13 @@ export default function POListClient({
               <span className="font-medium">Halaman <span className="text-white">{currentPage}</span> dari {totalPages || 1}</span>
               <div className="flex items-center border-l border-border pl-3 gap-1">
                 <Link 
-                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), page: Math.max(1, currentPage - 1) } }}
+                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), ... (department ? {department} : {}), page: Math.max(1, currentPage - 1) } }}
                   className={`p-1 rounded hover:bg-surface transition-colors ${currentPage <= 1 ? 'opacity-30 pointer-events-none' : ''}`}
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Link>
                 <Link 
-                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), page: Math.min(totalPages, currentPage + 1) } }}
+                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), ... (department ? {department} : {}), page: Math.min(totalPages, currentPage + 1) } }}
                   className={`p-1 rounded hover:bg-surface transition-colors ${currentPage >= totalPages ? 'opacity-30 pointer-events-none' : ''}`}
                 >
                   <ChevronRight className="w-4 h-4" />

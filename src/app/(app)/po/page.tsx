@@ -5,12 +5,20 @@ import POListClient from "./po-list-client";
 export default async function PurchaseOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; department?: string; page?: string }>;
 }) {
-  const { q, status, page } = await searchParams;
+  const { q, status, department, page } = await searchParams;
   const currentPage = parseInt(page || "1");
   const pageSize = 5;
   const supabase = await createClient();
+
+  // Fetch unique departments list from purchase_orders for filtering
+  const { data: deptRaw } = await supabase
+    .from("purchase_orders")
+    .select("department");
+  const departments = Array.from(
+    new Set((deptRaw || []).map((d) => d.department).filter(Boolean))
+  ).sort();
 
   let query = supabase
     .from("purchase_orders_view")
@@ -19,6 +27,10 @@ export default async function PurchaseOrdersPage({
 
   if (status) {
     query = query.eq("status", status);
+  }
+
+  if (department) {
+    query = query.eq("department", department);
   }
 
   if (q) {
@@ -67,8 +79,10 @@ export default async function PurchaseOrdersPage({
         currentPage={currentPage}
         totalPages={totalPages || 1}
         statuses={statuses}
+        departments={departments}
         q={q}
         status={status}
+        department={department}
         error={error}
       />
     </div>

@@ -116,6 +116,7 @@ export default function ReportsClient({
 
   const [startDate, setStartDate] = useState<string>(firstDayStr);
   const [endDate, setEndDate] = useState<string>(todayStr);
+  const [poDepartment, setPoDepartment] = useState<string>("");
 
   // Format Angka Rupiah / Kuantitas
   const formatNum = (num: number) => {
@@ -299,16 +300,22 @@ export default function ReportsClient({
     }));
   }, [computers]);
 
-  // 6. DATA PO RENTANG TANGGAL
+  // Extract unique departments for PO report filter
+  const poDepartments = useMemo(() => {
+    return Array.from(new Set(pos.map(po => po.department).filter(Boolean))).sort();
+  }, [pos]);
+
+  // 6. DATA PO RENTANG TANGGAL & DEPARTEMEN
   const poReportData = useMemo(() => {
     return pos.filter(po => {
       if (!po.created_at) return false;
       const poDate = po.created_at.split('T')[0];
       const startOk = startDate ? poDate >= startDate : true;
       const endOk = endDate ? poDate <= endDate : true;
-      return startOk && endOk;
+      const departmentOk = poDepartment ? po.department === poDepartment : true;
+      return startOk && endOk && departmentOk;
     });
-  }, [pos, startDate, endDate]);
+  }, [pos, startDate, endDate, poDepartment]);
 
   // Memicu Print
   const handlePrint = () => {
@@ -696,30 +703,52 @@ export default function ReportsClient({
         )}
 
         {activeTab === "po" && (
-          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-4 animate-in fade-in duration-200 justify-between">
-            <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
-              <Calendar className="w-4 h-4" />
-              <span>Filter Rentang Tanggal PO:</span>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted">Mulai:</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
-                />
+          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col md:flex-row items-start md:items-center gap-4 animate-in fade-in duration-200 justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full justify-between">
+              {/* Rentang Tanggal */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+                  <Calendar className="w-4 h-4" />
+                  <span>Filter Rentang Tanggal PO:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted">Mulai:</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted">Sampai:</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-text-muted">Sampai:</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-background border border-border rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:border-primary"
-                />
+
+              {/* Filter Departemen */}
+              <div className="flex items-center gap-3 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-border">
+                <div className="flex items-center gap-2 font-bold text-sm text-primary shrink-0">
+                  <Building2 className="w-4 h-4" />
+                  <span>Filter Departemen:</span>
+                </div>
+                <select
+                  value={poDepartment}
+                  onChange={(e) => setPoDepartment(e.target.value)}
+                  className="bg-background border border-border rounded-lg px-3 py-2 text-xs font-medium w-full sm:w-48 focus:outline-none focus:border-primary text-amber-500 font-bold"
+                >
+                  <option value="">Semua Departemen</option>
+                  {poDepartments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
