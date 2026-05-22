@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { PWARegister } from "@/components/pwa-register";
+import { PWARegister, PWAInstallBanner } from "@/components/pwa-register";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,11 +22,16 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.svg", type: "image/svg+xml" }
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" }
-    ]
+      { url: "/icon-152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+    other: [
+      { rel: "apple-touch-icon", url: "/icon-192x192.png" },
+    ],
   }
 };
 
@@ -56,6 +61,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <PWARegister />
+          <PWAInstallBanner />
           {children}
         </ThemeProvider>
       </body>
