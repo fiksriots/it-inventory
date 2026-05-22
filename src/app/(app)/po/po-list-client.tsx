@@ -110,10 +110,10 @@ export default function POListClient({
       {/* Embedded CSS Print Styling Khusus Susunan Hemat Kertas (Maks 3 PO per Halaman Fisik) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          /* Hapus margin default & watermark header/footer */
+          /* Hapus margin default & watermark header/footer dengan set margin ke 0 */
           @page {
             size: A4 portrait;
-            margin: 1cm !important;
+            margin: 0 !important;
           }
           
           /* Paksa variabel warna tema untuk cetak agar selalu terang */
@@ -192,6 +192,8 @@ export default function POListClient({
             border: none !important;
             box-shadow: none !important;
             background: white !important;
+            /* Simulasikan margin 1cm untuk semua sisi */
+            padding: 1cm !important;
           }
           .print-page:last-child {
             page-break-after: avoid !important;
