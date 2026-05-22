@@ -228,7 +228,7 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
               <table className="w-full text-sm text-left">
                 <thead className="bg-background/80 text-text-muted text-[10px] uppercase tracking-widest border-b border-border">
                   <tr>
-                    <th className="px-6 py-4 font-bold">Barang</th>
+                    <th className="px-6 py-4 font-bold w-1/3">Barang & Keterangan</th>
                     <th className="px-6 py-4 font-bold text-center w-24">Satuan</th>
                     <th className="px-6 py-4 font-bold text-center w-24">Jumlah</th>
                     <th className="px-6 py-4 font-bold">Harga Satuan</th>
@@ -240,7 +240,10 @@ export default async function PODetailsPage({ params }: { params: Promise<{ id: 
                     <tr key={item.id} className="hover:bg-background/30 transition-colors">
                       <td className="px-6 py-4">
                         <p className="font-bold">{item.item_id ? item.items?.name : item.custom_item_name}</p>
-                        <p className="text-[10px] text-text-muted flex items-center gap-1">
+                        {item.item_id && item.items?.description && (
+                          <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{item.items.description}</p>
+                        )}
+                        <p className="text-[10px] text-text-muted flex items-center gap-1 mt-1.5">
                           {item.item_id ? (
                             <span className="bg-surface border border-border px-1.5 py-0.5 rounded tracking-tighter">{item.items?.sku}</span>
                           ) : (

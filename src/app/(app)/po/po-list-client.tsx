@@ -257,6 +257,7 @@ export default function POListClient({
                 <th className="px-6 py-4 font-bold">Tanggal</th>
                 <th className="px-6 py-4 font-bold">Supplier</th>
                 <th className="px-6 py-4 font-bold">Departemen</th>
+                <th className="px-6 py-4 font-bold">Barang & Keterangan</th>
                 <th className="px-6 py-4 font-bold text-right">Total Nilai</th>
                 <th className="px-6 py-4 font-bold text-center">Status</th>
                 <th className="px-6 py-4 font-bold text-right">Aksi</th>
@@ -300,6 +301,32 @@ export default function POListClient({
                         <div className="flex items-center gap-1.5 text-text-muted">
                           <Building2 className="w-3.5 h-3.5" />
                           <span className="text-xs">{po.department || "-"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1.5 min-w-[200px]">
+                          {po.items && po.items.length > 0 ? (
+                            <>
+                              {po.items.slice(0, 2).map((it: any, i: number) => {
+                                const name = it.item_id ? it.items?.name : it.custom_item_name;
+                                const desc = it.item_id ? it.items?.description : "";
+                                return (
+                                  <div key={i} className="text-xs border-l-2 border-border pl-2">
+                                    <div className="font-semibold text-foreground truncate max-w-[200px]" title={name}>{name}</div>
+                                    {desc && <div className="text-text-muted text-[10px] truncate max-w-[200px]" title={desc}>{desc}</div>}
+                                    <div className="text-[10px] text-primary font-medium mt-0.5">{it.quantity} {it.unit}</div>
+                                  </div>
+                                );
+                              })}
+                              {po.items.length > 2 && (
+                                <div className="text-[10px] font-bold text-primary bg-primary/10 w-fit px-2 py-0.5 rounded mt-1">
+                                  +{po.items.length - 2} barang lainnya
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-text-muted italic">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-right">Rp. {formatSimpleCurr(po.total_amount)}</td>
