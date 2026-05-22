@@ -258,19 +258,47 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
     }
 
     if (rusakLocation) {
-      // 2. Kurangi dari source location
-      const { data: sourceStock } = await supabase.from("item_stocks").select("quantity").eq("item_id", replaced_item_id).eq("location_id", source_location_id).single();
-      if (!sourceStock || sourceStock.quantity < replaced_quantity) {
-        throw new Error("Stok suku cadang di gudang sumber tidak mencukupi untuk pergantian.");
-      }
-      await supabase.from("item_stocks").update({ quantity: sourceStock.quantity - replaced_quantity, last_updated: new Date().toISOString() }).eq("item_id", replaced_item_id).eq("location_id", source_location_id);
+      // 2. Kurangi dari source location (cari yang kondisinya non-Rusak)
+      const { data: sourceStocks } = await supabase
+        .from("item_stocks")
+        .select("condition, quantity")
+        .eq("item_id", replaced_item_id)
+        .eq("location_id", source_location_id)
+        .neq("condition", "Rusak");
 
-      // 3. Tambah di Gudang Rusak
-      const { data: rusakStock } = await supabase.from("item_stocks").select("quantity").eq("item_id", replaced_item_id).eq("location_id", rusakLocation.id).single();
+      const sourceStock = sourceStocks?.find(s => s.quantity >= replaced_quantity);
+      if (!sourceStock) {
+        throw new Error("Stok suku cadang aktif (non-Rusak) di gudang sumber tidak mencukupi untuk pergantian.");
+      }
+      const sourceCondition = sourceStock.condition || "Normal";
+
+      await supabase
+        .from("item_stocks")
+        .update({ quantity: sourceStock.quantity - replaced_quantity, last_updated: new Date().toISOString() })
+        .eq("item_id", replaced_item_id)
+        .eq("location_id", source_location_id)
+        .eq("condition", sourceCondition);
+
+      // 3. Tambah di Gudang Rusak dengan kondisi 'Rusak'
+      const { data: rusakStock } = await supabase
+        .from("item_stocks")
+        .select("quantity")
+        .eq("item_id", replaced_item_id)
+        .eq("location_id", rusakLocation.id)
+        .eq("condition", "Rusak")
+        .maybeSingle();
+
       if (rusakStock) {
-        await supabase.from("item_stocks").update({ quantity: rusakStock.quantity + replaced_quantity, last_updated: new Date().toISOString() }).eq("item_id", replaced_item_id).eq("location_id", rusakLocation.id);
+        await supabase
+          .from("item_stocks")
+          .update({ quantity: rusakStock.quantity + replaced_quantity, last_updated: new Date().toISOString() })
+          .eq("item_id", replaced_item_id)
+          .eq("location_id", rusakLocation.id)
+          .eq("condition", "Rusak");
       } else {
-        await supabase.from("item_stocks").insert([{ item_id: replaced_item_id, location_id: rusakLocation.id, quantity: replaced_quantity }]);
+        await supabase
+          .from("item_stocks")
+          .insert([{ item_id: replaced_item_id, location_id: rusakLocation.id, quantity: replaced_quantity, condition: "Rusak" }]);
       }
 
       // 4. Catat ke inventory_logs
@@ -282,7 +310,7 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
           location_id: source_location_id,
           mutation_type: "OUTBOUND",
           quantity: replaced_quantity,
-          notes: `Pergantian suku cadang untuk pemeliharaan infrastruktur (ID: ${assetId})`,
+          notes: `Suku cadang bagus (${sourceCondition}) digunakan untuk pemeliharaan infrastruktur. Catatan: ${notes || '-'}`,
           user_id: userId
         },
         {
@@ -290,13 +318,13 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
           location_id: rusakLocation.id,
           mutation_type: "INBOUND",
           quantity: replaced_quantity,
-          notes: `Sisa komponen rusak dari pemeliharaan infrastruktur (ID: ${assetId})`,
+          notes: `Komponen rusak diganti dari pemeliharaan infrastruktur. Alasan kerusakan: ${notes || '-'}`,
           user_id: userId
         }
       ]);
 
       const { data: itemData } = await supabase.from("items").select("name").eq("id", replaced_item_id).single();
-      partReplacementNote = `\n\n[Sistem] Pergantian Part: ${itemData?.name || 'Item'} (x${replaced_quantity}). Part lama dimasukkan ke Gudang Rusak.`;
+      partReplacementNote = `\n\n[Sistem] Pergantian Part: ${itemData?.name || 'Item'} (x${replaced_quantity}). Part lama dimasukkan ke Gudang Rusak dengan status Rusak.`;
     }
   }
 
