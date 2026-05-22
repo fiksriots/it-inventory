@@ -79,13 +79,17 @@ export default function POListClient({
     if (selectedIds.includes(poObj.id)) {
       setSelectedPOs(selectedPOs.filter(item => item.id !== poObj.id));
     } else {
-      if (selectedPOs.length >= 3) {
-        alert("Maksimal pencetakan dalam 1 lembar kertas fisik adalah 3 dokumen form PO agar tersusun rapi.");
-        return;
-      }
       setSelectedPOs([...selectedPOs, poObj]);
     }
   };
+
+  const poChunks = React.useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < selectedPOs.length; i += 3) {
+      chunks.push(selectedPOs.slice(i, i + 3));
+    }
+    return chunks;
+  }, [selectedPOs]);
 
   // Format angka identik dengan screenshot (contoh: 200.000 tanpa desimal)
   const formatSimpleCurr = (amount: number) => {
@@ -106,6 +110,23 @@ export default function POListClient({
       {/* Embedded CSS Print Styling Khusus Susunan Hemat Kertas (Maks 3 PO per Halaman Fisik) */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
+          /* Hapus margin default & watermark header/footer */
+          @page {
+            size: A4 portrait;
+            margin: 1cm !important;
+          }
+          
+          /* Netralkan warna background dan border dari dark mode */
+          html, body, main, #root, [__next], .layout, .page-wrapper {
+            background: white !important;
+            background-color: white !important;
+            color: black !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           body * {
             visibility: hidden;
           }
@@ -119,9 +140,11 @@ export default function POListClient({
             width: 100%;
             margin: 0;
             padding: 0;
-            background: white;
-            color: black;
-            display: block !important; /* FIX: Paksa tampil menimpa class hidden */
+            background: white !important;
+            color: black !important;
+            border: none !important;
+            box-shadow: none !important;
+            display: block !important;
           }
           .no-print {
             display: none !important;
@@ -135,10 +158,29 @@ export default function POListClient({
             font-family: Arial, Helvetica, sans-serif !important;
             color: #000 !important;
             line-height: 1.25 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 0;
+          /* Paksa border tabel tetap hitam padat */
+          #printable-multi-po table,
+          #printable-multi-po th,
+          #printable-multi-po td {
+            border-color: black !important;
+            color: black !important;
+            background-color: white !important;
+          }
+          .print-page {
+            page-break-after: always !important;
+            break-after: page !important;
+            box-sizing: border-box;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+          }
+          .print-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
           }
         }
       `}} />
@@ -163,7 +205,7 @@ export default function POListClient({
             title="Cetak susunan hemat kertas hingga 3 PO sekaligus dalam 1 lembar fisik"
           >
             <Printer className="w-5 h-5" />
-            <span>Cetak Form PO Terpilih ({selectedPOs.length}/3)</span>
+            <span>Cetak Form PO Terpilih ({selectedPOs.length})</span>
           </button>
 
           <Link 
@@ -191,10 +233,10 @@ export default function POListClient({
         <div className="flex items-center gap-3 text-blue-500 text-xs font-bold">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
-            <span>💡 <strong>Hemat Kertas:</strong> Centang hingga 3 dokumen PO pada tabel di bawah untuk mencetaknya bersusun secara padat ke dalam 1 lembar kertas fisik yang sama!</span>
+            <span>💡 <strong>Hemat Kertas:</strong> Centang dokumen PO pada tabel di bawah untuk mencetaknya secara hemat kertas bersusun (A4 menampung 3 form PO per halaman)!</span>
             {selectedIds.length > 0 && (
               <span className="block mt-0.5 text-amber-500 font-black">
-                Terpilih saat ini: {selectedIds.length} dari maksimal 3 PO per lembar cetak.
+                Terpilih saat ini: {selectedIds.length} dokumen PO (akan dicetak menjadi {Math.ceil(selectedIds.length / 3)} lembar A4).
               </span>
             )}
           </div>
@@ -271,7 +313,6 @@ export default function POListClient({
               {pos && pos.length > 0 ? (
                 pos.map((po: any) => {
                   const isChecked = selectedIds.includes(po.id);
-                  const isDisabled = !isChecked && selectedIds.length >= 3;
 
                   return (
                     <tr key={po.id} className={`hover:bg-background/50 transition-all group ${isChecked ? 'bg-primary/5' : ''}`}>
@@ -279,8 +320,7 @@ export default function POListClient({
                         <button
                           type="button"
                           onClick={() => toggleSelect(po)}
-                          disabled={isDisabled}
-                          className={`p-1 rounded transition-transform active:scale-90 ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'hover:text-primary'}`}
+                          className="p-1 rounded transition-transform active:scale-90 hover:text-primary"
                         >
                           {isChecked ? (
                             <CheckSquare className="w-5 h-5 text-amber-500 fill-amber-500/20" />
@@ -376,145 +416,149 @@ export default function POListClient({
 
       {/* WADAH CETAK SUSUNAN HEMAT KERTAS (REPLIKA IDENTIK SCREENSHOT) */}
       <div id="printable-multi-po" className="hidden print:block">
-        {selectedPOs.map((po, index) => {
-          const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
-          const discountTotal = po.discount_amount || 0;
-          const reqBy = po.requested_by || "fikri";
-          const dept = po.department || "bay arena";
-          const supplierName = po.supplier_name || po.suppliers?.name || "TRILOGI";
-          const dateStr = new Date(po.created_at).toLocaleDateString("id-ID", {
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric'
-          });
+        {poChunks.map((chunk, chunkIdx) => (
+          <div key={chunkIdx} className="print-page">
+            {chunk.map((po, index) => {
+              const adminFeeTotal = (po.admin_fee || 0) + (po.shipping_fee || 0);
+              const discountTotal = po.discount_amount || 0;
+              const reqBy = po.requested_by || "fikri";
+              const dept = po.department || "bay arena";
+              const supplierName = po.supplier_name || po.suppliers?.name || "TRILOGI";
+              const dateStr = new Date(po.created_at).toLocaleDateString("id-ID", {
+                day: 'numeric',
+                month: 'numeric',
+                year: 'numeric'
+              });
 
-          return (
-            <div key={po.id} className="compact-po-form">
-              {/* JUDUL IDENTIK */}
-              <div className="text-[14px] font-black text-black mb-1.5 tracking-wide">PURCHASING ORDER</div>
+              return (
+                <div key={po.id} className="compact-po-form">
+                  {/* JUDUL IDENTIK */}
+                  <div className="text-[14px] font-black text-black mb-1.5 tracking-wide">PURCHASING ORDER</div>
 
-              {/* KOP METADATA TANPA BORDER BAWAH */}
-              <div className="flex justify-between text-[10px] text-black mb-1.5">
-                {/* Bagian Kiri */}
-                <div className="w-[45%] space-y-0.5">
-                  <div className="flex">
-                    <span className="w-20 inline-block font-normal">Request by</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{reqBy}</span>
+                  {/* KOP METADATA TANPA BORDER BAWAH */}
+                  <div className="flex justify-between text-[10px] text-black mb-1.5">
+                    {/* Bagian Kiri */}
+                    <div className="w-[45%] space-y-0.5">
+                      <div className="flex">
+                        <span className="w-20 inline-block font-normal">Request by</span>
+                        <span className="w-3">:</span>
+                        <span className="flex-1 font-medium">{reqBy}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-20 inline-block font-normal">Departement</span>
+                        <span className="w-3">:</span>
+                        <span className="flex-1 font-medium">{dept}</span>
+                      </div>
+                    </div>
+
+                    {/* Bagian Kanan */}
+                    <div className="w-[45%] space-y-0.5">
+                      <div className="flex">
+                        <span className="w-20 inline-block font-normal">Date Number</span>
+                        <span className="w-3">:</span>
+                        <span className="flex-1 font-medium">{dateStr}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="w-20 inline-block font-normal">Supplier</span>
+                        <span className="w-3">:</span>
+                        <span className="flex-1 font-medium">{supplierName}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex">
-                    <span className="w-20 inline-block font-normal">Departement</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{dept}</span>
-                  </div>
-                </div>
 
-                {/* Bagian Kanan */}
-                <div className="w-[45%] space-y-0.5">
-                  <div className="flex">
-                    <span className="w-20 inline-block font-normal">Date Number</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{dateStr}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="w-20 inline-block font-normal">Supplier</span>
-                    <span className="w-3">:</span>
-                    <span className="flex-1 font-medium">{supplierName}</span>
-                  </div>
-                </div>
-              </div>
+                  {/* TABEL GRID BERSUSUN HEMAT SPACE */}
+                  <table className="w-full text-[10px] text-black border-collapse mb-1.5">
+                    <thead>
+                      <tr className="font-bold text-left bg-white">
+                        <th className="p-1 border border-black w-8 text-center font-bold">No.</th>
+                        <th className="p-1 border border-black font-bold">Description</th>
+                        <th className="p-1 border border-black w-12 text-center font-bold">Unit</th>
+                        <th className="p-1 border border-black w-10 text-center font-bold">Qty</th>
+                        <th className="p-1 border border-black w-24 text-left font-bold">Unit Price</th>
+                        <th className="p-1 border border-black w-24 text-left font-bold">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-normal">
+                      {po.items && po.items.length > 0 ? (
+                        po.items.map((it: any, idx: number) => {
+                          const name = it.item_id ? it.items?.name : it.custom_item_name;
+                          const desc = it.item_id ? it.items?.description : "";
+                          const fullDesc = desc ? `${name} (${desc})` : name;
+                          const amt = it.quantity * it.unit_price;
 
-              {/* TABEL GRID BERSUSUN HEMAT SPACE */}
-              <table className="w-full text-[10px] text-black border-collapse mb-1.5">
-                <thead>
-                  <tr className="font-bold text-left bg-white">
-                    <th className="p-1 border border-black w-8 text-center font-bold">No.</th>
-                    <th className="p-1 border border-black font-bold">Description</th>
-                    <th className="p-1 border border-black w-12 text-center font-bold">Unit</th>
-                    <th className="p-1 border border-black w-10 text-center font-bold">Qty</th>
-                    <th className="p-1 border border-black w-24 text-left font-bold">Unit Price</th>
-                    <th className="p-1 border border-black w-24 text-left font-bold">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="font-normal">
-                  {po.items && po.items.length > 0 ? (
-                    po.items.map((it: any, idx: number) => {
-                      const name = it.item_id ? it.items?.name : it.custom_item_name;
-                      const desc = it.item_id ? it.items?.description : "";
-                      const fullDesc = desc ? `${name} (${desc})` : name;
-                      const amt = it.quantity * it.unit_price;
-
-                      return (
-                        <tr key={idx}>
-                          <td className="p-1 border border-black text-center">{idx + 1}</td>
-                          <td className="p-1 border border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
-                          <td className="p-1 border border-black text-center">{it.unit || "PCS"}</td>
-                          <td className="p-1 border border-black text-center">{it.quantity}</td>
-                          <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
-                          <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(amt)}</td>
+                          return (
+                            <tr key={idx}>
+                              <td className="p-1 border border-black text-center">{idx + 1}</td>
+                              <td className="p-1 border border-black truncate max-w-[160px]">{fullDesc || "-"}</td>
+                              <td className="p-1 border border-black text-center">{it.unit || "PCS"}</td>
+                              <td className="p-1 border border-black text-center">{it.quantity}</td>
+                              <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(it.unit_price)}</td>
+                              <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(amt)}</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td className="p-1 border border-black text-center">1</td>
+                          <td className="p-1 border border-black italic">Paket Inventaris Sarana</td>
+                          <td className="p-1 border border-black text-center">PCS</td>
+                          <td className="p-1 border border-black text-center">1</td>
+                          <td className="p-1 border border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                          <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
                         </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td className="p-1 border border-black text-center">1</td>
-                      <td className="p-1 border border-black italic">Paket Inventaris Sarana</td>
-                      <td className="p-1 border border-black text-center">PCS</td>
-                      <td className="p-1 border border-black text-center">1</td>
-                      <td className="p-1 border border-black">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                      <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                    </tr>
+                      )}
+
+                      {/* SUBTOTALS */}
+                      <tr>
+                        <td colSpan={4} rowSpan={3} className="p-1.5 border border-black align-top">
+                          {/* Ruang kosong di kiri bawah (di sebelah subtotals) */}
+                        </td>
+                        <td className="p-1 border border-black text-right font-medium">Voucher :</td>
+                        <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
+                      </tr>
+                      <tr>
+                        <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
+                        <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
+                      </tr>
+                      <tr>
+                        <td className="p-1 border border-black text-right font-bold">Total :</td>
+                        <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
+                      </tr>
+                      {/* BARIS CATATAN BERGABUNG DI BAWAH TOTAL */}
+                      {po.notes && (
+                        <tr>
+                          <td colSpan={6} className="p-1.5 border border-black align-top text-left">
+                            <div className="font-bold text-[9px] mb-0.5">Catatan :</div>
+                            <div className="font-medium uppercase text-[10px] whitespace-pre-wrap leading-tight">
+                              {po.notes}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* TANDA TANGAN (SIGNATURES) SEJAJAR LANGSUNG MEPET BAWAH CATATAN */}
+                  <div className="grid grid-cols-4 text-center text-[10px] text-black pt-1 pb-10">
+                    <span className="font-medium">Request By :</span>
+                    <span className="font-medium">Created By :</span>
+                    <span className="font-medium">Cheked By :</span>
+                    <span className="font-medium">Approve By :</span>
+                  </div>
+
+                  {/* Garis Potong (hanya tampil jika bukan elemen terakhir dalam chunk) */}
+                  {index < chunk.length - 1 && (
+                    <div className="flex items-center justify-center my-6">
+                      <div className="border-t border-dashed border-gray-400 flex-grow"></div>
+                      <span className="px-4 text-[10px] text-gray-500 italic uppercase tracking-widest bg-white">✂ Gunting di sini ✂</span>
+                      <div className="border-t border-dashed border-gray-400 flex-grow"></div>
+                    </div>
                   )}
-
-                  {/* SUBTOTALS */}
-                  <tr>
-                    <td colSpan={4} rowSpan={3} className="p-1.5 border border-black align-top">
-                      {/* Ruang kosong di kiri bawah (di sebelah subtotals) */}
-                    </td>
-                    <td className="p-1 border border-black text-right font-medium">Voucher :</td>
-                    <td className="p-1 border border-black font-medium">- Rp. {formatSimpleCurr(discountTotal)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-black text-right font-medium">Biaya Admin :</td>
-                    <td className="p-1 border border-black font-medium">Rp. {formatSimpleCurr(adminFeeTotal)}</td>
-                  </tr>
-                  <tr>
-                    <td className="p-1 border border-black text-right font-bold">Total :</td>
-                    <td className="p-1 border border-black font-bold">Rp. {formatSimpleCurr(po.total_amount)}</td>
-                  </tr>
-                  {/* BARIS CATATAN BERGABUNG DI BAWAH TOTAL */}
-                  {po.notes && (
-                    <tr>
-                      <td colSpan={6} className="p-1.5 border border-black align-top text-left">
-                        <div className="font-bold text-[9px] mb-0.5">Catatan :</div>
-                        <div className="font-medium uppercase text-[10px] whitespace-pre-wrap leading-tight">
-                          {po.notes}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-
-              {/* TANDA TANGAN (SIGNATURES) SEJAJAR LANGSUNG MEPET BAWAH CATATAN */}
-              <div className="grid grid-cols-4 text-center text-[10px] text-black pt-1 pb-10">
-                <span className="font-medium">Request By :</span>
-                <span className="font-medium">Created By :</span>
-                <span className="font-medium">Cheked By :</span>
-                <span className="font-medium">Approve By :</span>
-              </div>
-
-              {/* Garis Potong (hanya tampil jika bukan elemen terakhir) */}
-              {index < selectedPOs.length - 1 && (
-                <div className="flex items-center justify-center my-6">
-                  <div className="border-t border-dashed border-gray-400 flex-grow"></div>
-                  <span className="px-4 text-[10px] text-gray-500 italic uppercase tracking-widest bg-white">✂ Gunting di sini ✂</span>
-                  <div className="border-t border-dashed border-gray-400 flex-grow"></div>
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
