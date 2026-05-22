@@ -14,7 +14,8 @@ import {
   Server,
   Globe,
   Smartphone,
-  Shield
+  Shield,
+  Wrench
 } from "lucide-react";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteComputer } from "../actions";
@@ -115,6 +116,16 @@ export default async function ComputerDetailsPage({ params }: { params: Promise<
         
         {/* Quick Actions */}
         <div className="flex items-center gap-2">
+          {(computer.status === 'Rusak' || computer.status === 'Maintenance') && (
+            <a
+              href={`/services/new?prefill=pc&prefill_id=${computer.id}&prefill_name=${encodeURIComponent(computer.name)}&prefill_asset_number=${encodeURIComponent(computer.asset_number || '')}`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 transition-all active:scale-95"
+              title="Kirim PC Ini ke Service"
+            >
+              <Wrench className="w-4 h-4" />
+              Kirim ke Service
+            </a>
+          )}
           <DeleteButton id={computer.id} label={`komputer ${computer.name}`} onDelete={deleteComputer} />
         </div>
       </div>

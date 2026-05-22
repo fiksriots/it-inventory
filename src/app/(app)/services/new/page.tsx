@@ -1,16 +1,26 @@
 "use client";
 
-import { Save, ArrowLeft, Loader2, Wrench, Store, MapPin, Package, FileText, UploadCloud, Calendar, User } from "lucide-react";
+import { Save, ArrowLeft, Loader2, Wrench, Store, MapPin, Package, FileText, UploadCloud, Calendar, User, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createService } from "../actions";
 import { createClient } from "@/utils/supabase/client";
 
 export default function NewServicePage() {
   const [state, formAction, isPending] = useActionState(createService, null);
+  const searchParams = useSearchParams();
+  const prefillType = searchParams.get("prefill"); // 'pc' | 'infrastructure'
+  const prefillId = searchParams.get("prefill_id");
+  const prefillName = searchParams.get("prefill_name") || "";
+  const prefillAssetNumber = searchParams.get("prefill_asset_number") || "";
+
   const [items, setItems] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [computers, setComputers] = useState<any[]>([]);
+  const [infrastructureAssets, setInfrastructureAssets] = useState<any[]>([]);
+  const [itemType, setItemType] = useState<string>(prefillType === "pc" ? "pc" : prefillType === "infrastructure" ? "infrastructure" : "master");
   const [isLoading, setIsLoading] = useState(true);
   const [autoPo, setAutoPo] = useState(true);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -18,14 +28,19 @@ export default function NewServicePage() {
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
-      const [itemsRes, locationsRes, suppliersRes] = await Promise.all([
+      const [itemsRes, locationsRes, suppliersRes, computersRes, infraRes] = await Promise.all([
         supabase.from("items").select("id, name, sku, price").order("name"),
         supabase.from("locations").select("id, name").order("name"),
-        supabase.from("suppliers").select("id, name").order("name")
+        supabase.from("suppliers").select("id, name").order("name"),
+        // Hanya tampilkan PC/Infra yang statusnya Rusak atau Service
+        supabase.from("computers").select("id, name, asset_number, status").in("status", ["Rusak", "Service"]).order("name"),
+        supabase.from("infrastructure_assets").select("id, name, asset_number, status").in("status", ["Rusak", "Service"]).order("name")
       ]);
       setItems(itemsRes.data || []);
       setLocations(locationsRes.data || []);
       setSuppliers(suppliersRes.data || []);
+      setComputers(computersRes.data || []);
+      setInfrastructureAssets(infraRes.data || []);
       setIsLoading(false);
     };
     fetchData();
@@ -99,22 +114,134 @@ export default function NewServicePage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-primary" />
-                Pilih Barang Rusak <span className="text-rose-500">*</span>
-              </label>
-              <select 
-                name="item_id" 
-                required 
-                disabled={isLoading}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:opacity-50 transition-all font-medium"
-              >
-                <option value="">-- Pilih Perangkat --</option>
-                {items.map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({item.sku})</option>
-                ))}
-              </select>
+              <label className="text-xs font-medium text-text-muted uppercase tracking-wider block">Tipe Barang Yang Diservice</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setItemType("master")}
+                  className={`py-2 px-3 text-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    itemType === "master"
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-background border-border text-text-muted hover:bg-background/80"
+                  }`}
+                >
+                  Master Barang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemType("pc")}
+                  className={`py-2 px-3 text-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    itemType === "pc"
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-background border-border text-text-muted hover:bg-background/80"
+                  }`}
+                >
+                  Komputer (PC)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemType("infrastructure")}
+                  className={`py-2 px-3 text-center text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    itemType === "infrastructure"
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-background border-border text-text-muted hover:bg-background/80"
+                  }`}
+                >
+                  Infrastruktur
+                </button>
+              </div>
+              <input type="hidden" name="item_type" value={itemType} />
             </div>
+
+            {itemType === "master" && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-primary" />
+                  Pilih Barang Rusak <span className="text-rose-500">*</span>
+                </label>
+                <select 
+                  name="item_id" 
+                  required 
+                  disabled={isLoading}
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:opacity-50 transition-all font-medium"
+                >
+                  <option value="">-- Pilih Perangkat --</option>
+                  {items.map(item => (
+                    <option key={item.id} value={item.id}>{item.name} ({item.sku})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {itemType === "pc" && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-primary" />
+                  Pilih Komputer (PC) Rusak <span className="text-rose-500">*</span>
+                </label>
+                {prefillId && prefillType === "pc" && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs font-bold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Dipilih otomatis: {prefillName} ({prefillAssetNumber})
+                  </div>
+                )}
+                {!isLoading && computers.length === 0 && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Tidak ada PC dengan status Rusak saat ini.
+                  </div>
+                )}
+                <select 
+                  name="computer_id" 
+                  required 
+                  disabled={isLoading || computers.length === 0}
+                  defaultValue={prefillType === "pc" ? (prefillId || "") : ""}
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:opacity-50 transition-all font-medium"
+                >
+                  <option value="">-- Pilih Komputer (PC) --</option>
+                  {computers.map(comp => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name} ({comp.asset_number}) {comp.status === "Rusak" ? "🔴" : "🟡"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {itemType === "infrastructure" && (
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-primary" />
+                  Pilih Aset Infrastruktur Rusak <span className="text-rose-500">*</span>
+                </label>
+                {prefillId && prefillType === "infrastructure" && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs font-bold">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Dipilih otomatis: {prefillName} ({prefillAssetNumber})
+                  </div>
+                )}
+                {!isLoading && infrastructureAssets.length === 0 && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 text-xs font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    Tidak ada Infrastruktur dengan status Rusak saat ini.
+                  </div>
+                )}
+                <select 
+                  name="infrastructure_asset_id" 
+                  required 
+                  disabled={isLoading || infrastructureAssets.length === 0}
+                  defaultValue={prefillType === "infrastructure" ? (prefillId || "") : ""}
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none disabled:opacity-50 transition-all font-medium"
+                >
+                  <option value="">-- Pilih Aset Infrastruktur --</option>
+                  {infrastructureAssets.map(infra => (
+                    <option key={infra.id} value={infra.id}>
+                      {infra.name} ({infra.asset_number}) {infra.status === "Rusak" ? "🔴" : "🟡"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-xs font-medium text-text-muted uppercase tracking-wider flex items-center gap-1.5">

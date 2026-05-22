@@ -33,7 +33,11 @@ export async function createService(prevState: any, formData: FormData) {
   const { supabase, normalClient } = await getActionClient();
   const { data: { user } } = await normalClient.auth.getUser();
 
-  const itemId = formData.get("item_id") as string;
+  const itemType = formData.get("item_type") as string || "master";
+  const itemId = itemType === "master" ? (formData.get("item_id") as string) : null;
+  const computerId = itemType === "pc" ? (formData.get("computer_id") as string) : null;
+  const infrastructureAssetId = itemType === "infrastructure" ? (formData.get("infrastructure_asset_id") as string) : null;
+
   const locationId = formData.get("location_id") as string;
   const supplierId = formData.get("supplier_id") as string;
   const quantity = parseInt(formData.get("quantity") as string || "1");
@@ -46,8 +50,17 @@ export async function createService(prevState: any, formData: FormData) {
   
   let serviceNumber = formData.get("service_number") as string;
 
-  if (!itemId || !supplierId) {
-    return { error: "Barang rusak dan Vendor Service wajib dipilih." };
+  if (itemType === "master" && !itemId) {
+    return { error: "Barang rusak wajib dipilih." };
+  }
+  if (itemType === "pc" && !computerId) {
+    return { error: "Komputer (PC) rusak wajib dipilih." };
+  }
+  if (itemType === "infrastructure" && !infrastructureAssetId) {
+    return { error: "Aset Infrastruktur rusak wajib dipilih." };
+  }
+  if (!supplierId) {
+    return { error: "Vendor Service wajib dipilih." };
   }
 
   if (isNaN(quantity) || quantity <= 0) {
@@ -123,7 +136,6 @@ export async function createService(prevState: any, formData: FormData) {
       }
     } catch (uploadErr: any) {
       console.error("Gagal memproses dokumen service:", uploadErr);
-      // Tetap lanjutkan penyimpanan record meskipun gagal upload
     }
   }
 
@@ -134,7 +146,9 @@ export async function createService(prevState: any, formData: FormData) {
     .from("item_services")
     .insert([{
       service_number: serviceNumber,
-      item_id: itemId,
+      item_id: itemId || null,
+      computer_id: computerId || null,
+      infrastructure_asset_id: infrastructureAssetId || null,
       location_id: locationId || null,
       supplier_id: supplierId,
       quantity,
@@ -158,9 +172,25 @@ export async function createService(prevState: any, formData: FormData) {
     return { error: `Gagal menyimpan data service: ${insertError.message}` };
   }
 
+  // Update status perangkat ke 'Service'
+  if (itemType === "pc" && computerId) {
+    await supabase.from("computers").update({ status: "Service" }).eq("id", computerId);
+  } else if (itemType === "infrastructure" && infrastructureAssetId) {
+    await supabase.from("infrastructure_assets").update({ status: "Service" }).eq("id", infrastructureAssetId);
+  }
+
   // Tambahkan ke laporan harian otomatis
-  const { data: itemData } = await supabase.from("items").select("name").eq("id", itemId).single();
-  const itemName = itemData?.name || "Barang";
+  let itemName = "Barang";
+  if (itemType === "master" && itemId) {
+    const { data: itemData } = await supabase.from("items").select("name").eq("id", itemId).single();
+    itemName = itemData?.name || "Barang";
+  } else if (itemType === "pc" && computerId) {
+    const { data: compData } = await supabase.from("computers").select("name, asset_number").eq("id", computerId).single();
+    itemName = compData ? `PC: ${compData.name} (${compData.asset_number})` : "Komputer";
+  } else if (itemType === "infrastructure" && infrastructureAssetId) {
+    const { data: infraData } = await supabase.from("infrastructure_assets").select("name, asset_number").eq("id", infrastructureAssetId).single();
+    itemName = infraData ? `Infra: ${infraData.name} (${infraData.asset_number})` : "Infrastruktur";
+  }
 
   await supabase.from("it_daily_logs").insert({
     activity_name: `Pengiriman Service: ${itemName}`,
@@ -249,9 +279,26 @@ export async function completeService(id: string, formData: FormData) {
     return { error: `Gagal menyelesaikan service: ${updateError.message}` };
   }
 
-  // Tambahkan ke laporan harian otomatis
-  const { data: serviceData } = await supabase.from("item_services").select("service_number, items(name)").eq("id", id).single();
-  const itemName = serviceData?.items?.name || "Barang";
+  // Tarik data service lengkap untuk diproses status asetnya
+  const { data: serviceData } = await supabase
+    .from("item_services")
+    .select("service_number, item_id, computer_id, infrastructure_asset_id, items(name), computers(name, asset_number), infrastructure_assets(name, asset_number)")
+    .eq("id", id)
+    .single();
+
+  let itemName = "Barang";
+  if (serviceData?.items) {
+    itemName = serviceData.items.name;
+  } else if (serviceData?.computers) {
+    itemName = `PC: ${serviceData.computers.name} (${serviceData.computers.asset_number})`;
+    // Kembalikan status komputer ke Aktif
+    await supabase.from("computers").update({ status: "Aktif" }).eq("id", serviceData.computer_id);
+  } else if (serviceData?.infrastructure_assets) {
+    itemName = `Infra: ${serviceData.infrastructure_assets.name} (${serviceData.infrastructure_assets.asset_number})`;
+    // Kembalikan status infrastruktur ke Aktif
+    await supabase.from("infrastructure_assets").update({ status: "Aktif" }).eq("id", serviceData.infrastructure_asset_id);
+  }
+
   const serviceNumber = serviceData?.service_number || id;
   
   await supabase.from("it_daily_logs").insert({
@@ -269,6 +316,13 @@ export async function completeService(id: string, formData: FormData) {
 
 export async function updateServiceStatus(id: string, status: string) {
   const { supabase } = await getActionClient();
+  
+  const { data: serviceData } = await supabase
+    .from("item_services")
+    .select("computer_id, infrastructure_asset_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("item_services")
     .update({ status })
@@ -278,6 +332,17 @@ export async function updateServiceStatus(id: string, status: string) {
     return { error: `Gagal mengubah status: ${error.message}` };
   }
 
+  // Jika dibatalkan atau selesai, kembalikan status aset ke 'Aktif'
+  const isPending = status === 'Proses Service';
+  const assetStatus = isPending ? 'Service' : 'Aktif';
+
+  if (serviceData?.computer_id) {
+    await supabase.from("computers").update({ status: assetStatus }).eq("id", serviceData.computer_id);
+  }
+  if (serviceData?.infrastructure_asset_id) {
+    await supabase.from("infrastructure_assets").update({ status: assetStatus }).eq("id", serviceData.infrastructure_asset_id);
+  }
+
   revalidatePath("/services");
   revalidatePath(`/services/${id}`);
   return { success: true };
@@ -285,6 +350,13 @@ export async function updateServiceStatus(id: string, status: string) {
 
 export async function deleteService(id: string) {
   const { supabase } = await getActionClient();
+  
+  const { data: serviceData } = await supabase
+    .from("item_services")
+    .select("computer_id, infrastructure_asset_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("item_services")
     .delete()
@@ -292,6 +364,14 @@ export async function deleteService(id: string) {
 
   if (error) {
     return { error: `Gagal menghapus data service: ${error.message}` };
+  }
+
+  // Kembalikan status aset ke 'Aktif' ketika service dihapus
+  if (serviceData?.computer_id) {
+    await supabase.from("computers").update({ status: "Aktif" }).eq("id", serviceData.computer_id);
+  }
+  if (serviceData?.infrastructure_asset_id) {
+    await supabase.from("infrastructure_assets").update({ status: "Aktif" }).eq("id", serviceData.infrastructure_asset_id);
   }
 
   revalidatePath("/services");

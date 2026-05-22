@@ -249,6 +249,16 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
         </div>
 
         <div className="flex items-center gap-2">
+          {(asset.status === 'Rusak' || asset.status === 'Maintenance') && (
+            <a
+              href={`/services/new?prefill=infrastructure&prefill_id=${asset.id}&prefill_name=${encodeURIComponent(asset.name)}&prefill_asset_number=${encodeURIComponent(asset.asset_number || '')}`}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 transition-all active:scale-95"
+              title="Kirim Aset Ini ke Service"
+            >
+              <Wrench className="w-4 h-4" />
+              Kirim ke Service
+            </a>
+          )}
           <button
             onClick={() => setIsEditing(!isEditing)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all ${isEditing ? "bg-amber-500 text-white" : "bg-background border border-border text-foreground hover:bg-surface"

@@ -30,7 +30,7 @@ export default async function ServicesPage({
 
   let query = supabase
     .from("item_services")
-    .select("*, items(name, sku), locations(name), suppliers(name)", { count: "exact" })
+    .select("*, items(name, sku), computers(name, asset_number), infrastructure_assets(name, asset_number), locations(name), suppliers(name)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (q) {
@@ -117,13 +117,48 @@ export default async function ServicesPage({
                       <span className="font-bold group-hover:text-primary transition-colors">{service.service_number}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-bold text-foreground">{service.items?.name || "Perangkat Terhapus"}</p>
-                      <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
-                        <span className="bg-background border border-border px-1.5 py-0.5 rounded text-[10px] font-mono">
-                          {service.items?.sku || "N/A"}
-                        </span>
-                        <span className="text-[10px] text-rose-500 font-medium">({service.initial_condition})</span>
-                      </p>
+                      {service.items && (
+                        <>
+                          <p className="font-bold text-foreground">{service.items.name}</p>
+                          <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
+                            <span className="bg-background border border-border px-1.5 py-0.5 rounded text-[10px] font-mono">
+                              {service.items.sku || "N/A"}
+                            </span>
+                            <span className="text-[10px] text-rose-500 font-medium">({service.initial_condition})</span>
+                          </p>
+                        </>
+                      )}
+                      {service.computers && (
+                        <>
+                          <p className="font-bold text-foreground">{service.computers.name}</p>
+                          <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
+                            <span className="bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                              Komputer
+                            </span>
+                            <span className="bg-background border border-border px-1.5 py-0.5 rounded text-[10px] font-mono">
+                              {service.computers.asset_number || "N/A"}
+                            </span>
+                            <span className="text-[10px] text-rose-500 font-medium">({service.initial_condition})</span>
+                          </p>
+                        </>
+                      )}
+                      {service.infrastructure_assets && (
+                        <>
+                          <p className="font-bold text-foreground">{service.infrastructure_assets.name}</p>
+                          <p className="text-xs text-text-muted flex items-center gap-1 mt-0.5">
+                            <span className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                              Infrastruktur
+                            </span>
+                            <span className="bg-background border border-border px-1.5 py-0.5 rounded text-[10px] font-mono">
+                              {service.infrastructure_assets.asset_number || "N/A"}
+                            </span>
+                            <span className="text-[10px] text-rose-500 font-medium">({service.initial_condition})</span>
+                          </p>
+                        </>
+                      )}
+                      {!service.items && !service.computers && !service.infrastructure_assets && (
+                        <p className="font-bold text-text-muted">Perangkat Terhapus</p>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-text-muted">
                       <div className="flex items-center gap-1.5">

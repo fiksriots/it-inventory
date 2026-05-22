@@ -39,7 +39,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
   const { data: service } = await supabase
     .from("item_services")
-    .select("*, items(name, sku, description), locations(name), suppliers(*)")
+    .select("*, items(name, sku, description), computers(name, asset_number, description), infrastructure_assets(name, asset_number, description), locations(name), suppliers(*)")
     .eq("id", id)
     .single();
 
@@ -191,15 +191,50 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
               <h2 className="font-semibold text-sm">Informasi Perangkat IT</h2>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <span className="text-[10px] bg-surface border border-border px-2 py-0.5 rounded font-mono font-bold text-text-muted">
-                  {service.items?.sku || "SKU-N/A"}
-                </span>
-                <h3 className="text-lg font-bold text-foreground mt-1">{service.items?.name || "Perangkat telah dihapus dari sistem"}</h3>
-                {service.items?.description && (
-                  <p className="text-xs text-text-muted mt-1">{service.items.description}</p>
-                )}
-              </div>
+              {service.items && (
+                <div>
+                  <span className="text-[10px] bg-surface border border-border px-2 py-0.5 rounded font-mono font-bold text-text-muted">
+                    {service.items.sku || "SKU-N/A"}
+                  </span>
+                  <h3 className="text-lg font-bold text-foreground mt-1">{service.items.name}</h3>
+                  {service.items.description && (
+                    <p className="text-xs text-text-muted mt-1">{service.items.description}</p>
+                  )}
+                </div>
+              )}
+              {service.computers && (
+                <div>
+                  <span className="text-[10px] bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+                    Komputer
+                  </span>
+                  <span className="ml-2 text-[10px] bg-surface border border-border px-2 py-0.5 rounded font-mono font-bold text-text-muted">
+                    {service.computers.asset_number || "N/A"}
+                  </span>
+                  <h3 className="text-lg font-bold text-foreground mt-1">{service.computers.name}</h3>
+                  {service.computers.description && (
+                    <p className="text-xs text-text-muted mt-1">{service.computers.description}</p>
+                  )}
+                </div>
+              )}
+              {service.infrastructure_assets && (
+                <div>
+                  <span className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
+                    Infrastruktur
+                  </span>
+                  <span className="ml-2 text-[10px] bg-surface border border-border px-2 py-0.5 rounded font-mono font-bold text-text-muted">
+                    {service.infrastructure_assets.asset_number || "N/A"}
+                  </span>
+                  <h3 className="text-lg font-bold text-foreground mt-1">{service.infrastructure_assets.name}</h3>
+                  {service.infrastructure_assets.description && (
+                    <p className="text-xs text-text-muted mt-1">{service.infrastructure_assets.description}</p>
+                  )}
+                </div>
+              )}
+              {!service.items && !service.computers && !service.infrastructure_assets && (
+                <div>
+                  <h3 className="text-lg font-bold text-text-muted">Perangkat telah dihapus dari sistem</h3>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/50">
                 <div>
