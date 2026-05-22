@@ -1,4 +1,4 @@
-import { Plus, MapPin, PackageX, Edit, ShoppingCart } from "lucide-react";
+import { Plus, MapPin, PackageX, Edit, ShoppingCart, Monitor, Cctv } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import DeleteButton from "@/components/ui/DeleteButton";
@@ -19,7 +19,7 @@ export default async function LocationsPage({
 
   let query = supabase
     .from("locations")
-    .select("*, item_stocks(quantity)", { count: "exact" })
+    .select("*, item_stocks(quantity), computers(id), infrastructure_assets(id)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (q) {
@@ -60,9 +60,11 @@ export default async function LocationsPage({
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] text-text-muted uppercase tracking-widest bg-background/80 border-b border-border">
               <tr>
-                <th className="px-6 py-4 font-bold w-1/3">Nama Departemen / Lokasi</th>
+                <th className="px-6 py-4 font-bold w-1/4">Nama Departemen / Lokasi</th>
                 <th className="px-6 py-4 font-bold">Alamat / Detail</th>
                 <th className="px-6 py-4 font-bold text-center">Total Barang</th>
+                <th className="px-6 py-4 font-bold text-center">Komputer</th>
+                <th className="px-6 py-4 font-bold text-center">Infrastruktur</th>
                 <th className="px-6 py-4 font-bold text-right w-24">Aksi</th>
               </tr>
             </thead>
@@ -86,6 +88,24 @@ export default async function LocationsPage({
                         totalItems={location.item_stocks?.reduce((acc: number, curr: any) => acc + curr.quantity, 0) || 0}
                       />
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      <Link 
+                        href={`/computers?location=${location.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-primary/40 hover:text-primary transition-all text-xs font-bold font-mono"
+                      >
+                        <Monitor className="w-3.5 h-3.5 text-primary" />
+                        <span>{location.computers?.length || 0} Unit</span>
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Link 
+                        href={`/infrastructure`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-blue-500/40 hover:text-blue-500 transition-all text-xs font-bold font-mono"
+                      >
+                        <Cctv className="w-3.5 h-3.5 text-blue-500" />
+                        <span>{location.infrastructure_assets?.length || 0} Unit</span>
+                      </Link>
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Link 
@@ -102,7 +122,7 @@ export default async function LocationsPage({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-20 text-center text-text-muted bg-background/20">
+                  <td colSpan={6} className="px-6 py-20 text-center text-text-muted bg-background/20">
                     <div className="flex flex-col items-center justify-center">
                       <ShoppingCart className="w-16 h-16 mb-4 opacity-10 text-primary" />
                       <p className="text-lg font-medium text-foreground/50">Tidak ada data ditemukan</p>
