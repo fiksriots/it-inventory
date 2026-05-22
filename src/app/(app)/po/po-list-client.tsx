@@ -116,17 +116,15 @@ export default function POListClient({
             margin: 1cm !important;
           }
           
-          /* Netralkan warna background dan hilangkan border dari semua wrapper/parent */
-          html, body {
+          /* Paksa variabel warna tema untuk cetak agar selalu terang */
+          :root, .dark, html, html.dark, body, body.dark {
+            --background: #ffffff !important;
+            --surface: #ffffff !important;
+            --foreground: #000000 !important;
+            --border: #000000 !important;
             background: white !important;
             background-color: white !important;
             color: black !important;
-            border: none !important;
-            border-width: 0 !important;
-            box-shadow: none !important;
-            outline: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
           }
 
           /* Hilangkan semua border & shadow dari seluruh elemen anak body secara umum */
