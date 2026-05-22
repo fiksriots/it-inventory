@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
 import { getAllInfrastructureForExport, importInfrastructureBulk } from "@/app/(app)/services/import-export-actions";
@@ -40,9 +41,12 @@ interface InfrastructureClientProps {
 }
 
 export default function InfrastructureClient({ assets, locations }: InfrastructureClientProps) {
+  const searchParams = useSearchParams();
+  const locationParam = searchParams?.get("location");
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [selectedLocation, setSelectedLocation] = useState("Semua");
+  const [selectedLocation, setSelectedLocation] = useState(locationParam || "Semua");
   const { toast } = useToast();
 
   // Ambil kategori unik yang ada di database + kategori default
@@ -82,16 +86,27 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
-              <Cctv className="w-7 h-7" />
-            </div>
-            Infrastruktur & Fasilitas Fisik
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            Pantau dan jadwalkan pemeliharaan berkala untuk CCTV, DVR, Portal Gate, serta perangkat fasilitas gedung lainnya.
-          </p>
+        <div className="flex items-center gap-3">
+          {locationParam && (
+            <Link
+              href="/locations"
+              className="p-2.5 bg-surface hover:bg-background border border-border/80 hover:border-primary/30 rounded-xl text-text-muted hover:text-primary transition-all active:scale-95 shadow-sm flex items-center justify-center shrink-0"
+              title="Kembali ke Departemen & Lokasi"
+            >
+              <ArrowLeft className="w-5.5 h-5.5" />
+            </Link>
+          )}
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                <Cctv className="w-7 h-7" />
+              </div>
+              Infrastruktur & Fasilitas Fisik
+            </h1>
+            <p className="text-sm text-text-muted mt-1">
+              Pantau dan jadwalkan pemeliharaan berkala untuk CCTV, DVR, Portal Gate, serta perangkat fasilitas gedung lainnya.
+            </p>
+          </div>
         </div>
         <Link
           href="/infrastructure/new"

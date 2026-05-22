@@ -1,4 +1,4 @@
-import { Plus, Monitor, Calendar, Eye, MapPin, HardDrive, Cpu, AlertTriangle } from "lucide-react";
+import { Plus, Monitor, Calendar, Eye, MapPin, HardDrive, Cpu, AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import SearchInput from "@/components/ui/SearchInput";
@@ -108,12 +108,23 @@ export default async function ComputersPage({
     <div className="space-y-6 max-w-7xl mx-auto pb-10 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Monitor className="w-6 h-6 text-primary animate-pulse" />
-            Data Aset Komputer
-          </h1>
-          <p className="text-text-muted mt-1">Pemetaan spesifikasi PC/Laptop dan jadwal maintenance berkala.</p>
+        <div className="flex items-center gap-3">
+          {location && (
+            <Link
+              href="/locations"
+              className="p-2 bg-surface hover:bg-background border border-border rounded-xl text-text-muted hover:text-primary transition-all shadow-sm active:scale-95 flex items-center justify-center shrink-0"
+              title="Kembali ke Departemen & Lokasi"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Monitor className="w-6 h-6 text-primary animate-pulse" />
+              Data Aset Komputer
+            </h1>
+            <p className="text-text-muted mt-1">Pemetaan spesifikasi PC/Laptop dan jadwal maintenance berkala.</p>
+          </div>
         </div>
         <Link href="/computers/new" className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl flex items-center gap-2 transition-all font-bold shadow-lg shadow-primary/20 active:scale-95">
           <Plus className="w-5 h-5" />

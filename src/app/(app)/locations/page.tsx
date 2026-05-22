@@ -99,7 +99,7 @@ export default async function LocationsPage({
                     </td>
                     <td className="px-6 py-4 text-center">
                       <Link 
-                        href={`/infrastructure`}
+                        href={`/infrastructure?location=${location.id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-blue-500/40 hover:text-blue-500 transition-all text-xs font-bold font-mono"
                       >
                         <Cctv className="w-3.5 h-3.5 text-blue-500" />
