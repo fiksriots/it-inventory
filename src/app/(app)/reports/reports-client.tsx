@@ -20,6 +20,7 @@ import {
   ChevronUp,
   RotateCcw
 } from "lucide-react";
+import { formatStock } from "@/utils/unit";
 
 interface ReportsClientProps {
   items: any[];
@@ -152,6 +153,9 @@ export default function ReportsClient({
         goodQuantity: goodQty,
         badQuantity: badQty,
         unit: item.unit || "PCS",
+        has_conversion: item.has_conversion,
+        conversion_unit: item.conversion_unit,
+        conversion_rate: item.conversion_rate,
         locations: locNames || "Gudang Utama"
       });
     });
@@ -185,7 +189,7 @@ export default function ReportsClient({
             code: item.sku || "-",
             name: item.name,
             location: st.locations?.name || "-",
-            detail: `Kondisi: ${st.condition} (${st.quantity} ${item.unit || "PCS"})`
+            detail: `Kondisi: ${st.condition} (${formatStock(st.quantity, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)})`
           });
         }
       });
@@ -239,7 +243,10 @@ export default function ReportsClient({
             name: item.name,
             category: item.categories?.name || "-",
             quantity: qty,
-            unit: item.unit || "PCS"
+            unit: item.unit || "PCS",
+            has_conversion: item.has_conversion,
+            conversion_unit: item.conversion_unit,
+            conversion_rate: item.conversion_rate
           });
         }
       });
@@ -749,9 +756,9 @@ export default function ReportsClient({
                     <td className="p-3 font-mono">{row.sku}</td>
                     <td className="p-3 font-bold">{row.name}</td>
                     <td className="p-3 text-text-muted">{row.category}</td>
-                    <td className="p-3 text-center font-bold text-emerald-500">{formatNum(row.goodQuantity)} {row.unit}</td>
-                    <td className="p-3 text-center font-bold text-rose-500">{formatNum(row.badQuantity)} {row.unit}</td>
-                    <td className="p-3 text-center font-bold text-primary">{formatNum(row.quantity)} {row.unit}</td>
+                    <td className="p-3 text-center font-bold text-emerald-500">{formatStock(row.goodQuantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
+                    <td className="p-3 text-center font-bold text-rose-500">{formatStock(row.badQuantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
+                    <td className="p-3 text-center font-bold text-primary">{formatStock(row.quantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
                     <td className="p-3 text-text-muted">{row.locations}</td>
                   </tr>
                 ))}
@@ -885,7 +892,7 @@ export default function ReportsClient({
                             <td className="p-2 font-mono">{it.sku}</td>
                             <td className="p-2 font-medium">{it.name}</td>
                             <td className="p-2 text-text-muted">{it.category}</td>
-                            <td className="p-2 text-center font-bold text-primary">{it.quantity} {it.unit}</td>
+                            <td className="p-2 text-center font-bold text-primary">{formatStock(it.quantity, it.unit, it.has_conversion, it.conversion_unit, it.conversion_rate)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1097,9 +1104,9 @@ export default function ReportsClient({
                   <td style={{ fontFamily: "monospace" }}>{row.sku}</td>
                   <td style={{ fontWeight: "bold" }}>{row.name}</td>
                   <td>{row.category}</td>
-                  <td className="text-center" style={{ fontWeight: "bold", color: "#10b981" }}>{formatNum(row.goodQuantity)} {row.unit}</td>
-                  <td className="text-center" style={{ fontWeight: "bold", color: "#ef4444" }}>{formatNum(row.badQuantity)} {row.unit}</td>
-                  <td className="text-center" style={{ fontWeight: "bold" }}>{formatNum(row.quantity)} {row.unit}</td>
+                  <td className="text-center" style={{ fontWeight: "bold", color: "#10b981" }}>{formatStock(row.goodQuantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
+                  <td className="text-center" style={{ fontWeight: "bold", color: "#ef4444" }}>{formatStock(row.badQuantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
+                  <td className="text-center" style={{ fontWeight: "bold" }}>{formatStock(row.quantity, row.unit, row.has_conversion, row.conversion_unit, row.conversion_rate)}</td>
                   <td>{row.locations}</td>
                 </tr>
               ))}
@@ -1221,7 +1228,7 @@ export default function ReportsClient({
                         <td style={{ fontFamily: "monospace" }}>{it.sku}</td>
                         <td>{it.name}</td>
                         <td>{it.category}</td>
-                        <td className="text-center" style={{ fontWeight: "bold" }}>{it.quantity} {it.unit}</td>
+                        <td className="text-center" style={{ fontWeight: "bold" }}>{formatStock(it.quantity, it.unit, it.has_conversion, it.conversion_unit, it.conversion_rate)}</td>
                       </tr>
                     ))}
                     {locationReportData.items.length === 0 && (

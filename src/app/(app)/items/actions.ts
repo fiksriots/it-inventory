@@ -12,6 +12,12 @@ export async function createItem(prevState: any, formData: FormData) {
   const price = formData.get("price") as string;
   const description = formData.get("description") as string;
 
+  const unit = (formData.get("unit") as string) || "PCS";
+  const has_conversion = formData.get("has_conversion") === "on" || formData.get("has_conversion") === "true";
+  const conversion_unit = formData.get("conversion_unit") as string || null;
+  const conversion_rate_str = formData.get("conversion_rate") as string;
+  const conversion_rate = conversion_rate_str ? parseFloat(conversion_rate_str) : 1;
+
   if (!name || !sku) {
     return { error: "Nama barang dan SKU wajib diisi." };
   }
@@ -60,7 +66,11 @@ export async function createItem(prevState: any, formData: FormData) {
       category_id: category_id || null, 
       condition: condition || 'Baru',
       price: price ? parseFloat(price) : 0,
-      description 
+      description,
+      unit,
+      has_conversion,
+      conversion_unit: has_conversion ? conversion_unit : null,
+      conversion_rate: has_conversion ? conversion_rate : 1
     }])
     .select()
     .single();
@@ -76,11 +86,16 @@ export async function createItem(prevState: any, formData: FormData) {
   // Handle Initial Stock
   const initialStock = formData.get("initial_stock") as string;
   const locationId = formData.get("location_id") as string;
-  const stockQty = parseInt(initialStock);
+  let stockQty = parseInt(initialStock);
 
   if (!isNaN(stockQty) && stockQty > 0 && locationId) {
     const { data: { user } } = await userPromise;
     
+    // Convert to smallest/base unit if conversion is enabled
+    if (has_conversion && conversion_rate > 0) {
+      stockQty = Math.round(stockQty * conversion_rate);
+    }
+
     // Jalankan operasi insert stock dan log secara paralel menggunakan Promise.all
     await Promise.all([
       supabase.from("item_stocks").insert([{
@@ -127,6 +142,15 @@ export async function logItemUsage(formData: FormData) {
     throw new Error("Data pemakaian tidak valid.");
   }
 
+  // Fetch item details to know unit labels
+  const { data: item } = await supabase
+    .from("items")
+    .select("unit, has_conversion, conversion_unit")
+    .eq("id", itemId)
+    .single();
+
+  const unitLabel = item && item.has_conversion && item.conversion_unit ? item.conversion_unit : (item?.unit || "PCS");
+
   // 1. Cek ketersediaan stok
   const { data: stock } = await supabase
     .from("item_stocks")
@@ -136,7 +160,7 @@ export async function logItemUsage(formData: FormData) {
     .single();
 
   if (!stock || stock.quantity < quantity) {
-    throw new Error(`Stok tidak mencukupi. Sisa stok di lokasi ini hanya ${stock?.quantity || 0}.`);
+    throw new Error(`Stok tidak mencukupi. Sisa stok di lokasi ini hanya ${stock?.quantity || 0} ${unitLabel}.`);
   }
 
   // 2. Kurangi stok
@@ -158,7 +182,7 @@ export async function logItemUsage(formData: FormData) {
     user_id: user?.id,
     mutation_type: "OUTBOUND",
     quantity: quantity,
-    notes: `[Pemakaian] ${notes}`
+    notes: `[Pemakaian] ${notes} (${quantity} ${unitLabel})`
   }]);
 
   if (logError) {

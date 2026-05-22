@@ -8,6 +8,13 @@ export default function ItemForm({ categories, locations }: { categories: any[];
   const [state, formAction, isPending] = useActionState(createItem, null);
   const [sku, setSku] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  
+  // Unit conversion state variables
+  const [unit, setUnit] = useState("PCS");
+  const [hasConversion, setHasConversion] = useState(false);
+  const [conversionUnit, setConversionUnit] = useState("");
+  const [conversionRate, setConversionRate] = useState(1);
+  const [initialStock, setInitialStock] = useState("");
 
   // Auto-generate SKU logic
   useEffect(() => {
@@ -88,6 +95,38 @@ export default function ItemForm({ categories, locations }: { categories: any[];
           </select>
         </div>
 
+        {/* Satuan Utama */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Satuan Barang Utama</label>
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              name="unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              required
+              className="flex-1 bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold" 
+              placeholder="PCS, ROLL, PACK" 
+            />
+            <div className="flex gap-1">
+              {["PCS", "ROLL", "PACK"].map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setUnit(u)}
+                  className={`px-3 py-2 border rounded-lg text-xs font-bold transition-all ${
+                    unit.toUpperCase() === u.toUpperCase()
+                      ? "bg-primary border-primary text-white"
+                      : "border-border hover:bg-background text-text-muted"
+                  }`}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <label className="text-sm font-medium">Harga (Rp)</label>
           <div className="relative group">
@@ -112,14 +151,68 @@ export default function ItemForm({ categories, locations }: { categories: any[];
           </div>
         </div>
 
+        {/* Konversi Satuan */}
+        <div className="md:col-span-2 border border-border/65 bg-background/20 rounded-xl p-4 space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              name="has_conversion" 
+              checked={hasConversion}
+              onChange={(e) => setHasConversion(e.target.checked)}
+              className="w-4.5 h-4.5 mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+            />
+            <div>
+              <p className="text-sm font-bold text-foreground">Aktifkan Konversi Satuan</p>
+              <p className="text-xs text-text-muted mt-0.5">Contoh: Kabel dibeli dalam Roll, tapi dikurangi/dipakai dalam Meter. RJ-45 dibeli dalam Pack, tapi dipakai dalam Pcs.</p>
+            </div>
+          </label>
+
+          {hasConversion && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/40 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-text-muted">Satuan Pemakaian / Satuan Terkecil</label>
+                <input 
+                  type="text" 
+                  name="conversion_unit"
+                  value={conversionUnit}
+                  onChange={(e) => setConversionUnit(e.target.value)}
+                  required={hasConversion}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-medium" 
+                  placeholder="Contoh: METER, PCS" 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-text-muted">Faktor Konversi (1 {unit} = ... {conversionUnit || "Satuan Terkecil"})</label>
+                <input 
+                  type="number" 
+                  name="conversion_rate"
+                  value={conversionRate}
+                  onChange={(e) => setConversionRate(parseInt(e.target.value) || 1)}
+                  min="1"
+                  required={hasConversion}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-primary" 
+                  placeholder="Contoh: 300" 
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
-          <label className="text-sm font-medium">Stok Awal</label>
+          <label className="text-sm font-medium">Stok Awal {hasConversion ? `(dalam ${unit})` : ""}</label>
           <input 
             type="number" 
             name="initial_stock"
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
+            value={initialStock}
+            onChange={(e) => setInitialStock(e.target.value)}
+            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold" 
             placeholder="0" 
           />
+          {hasConversion && initialStock && !isNaN(parseInt(initialStock)) && (
+            <p className="text-xs text-emerald-500 font-bold mt-1">
+              = {parseInt(initialStock) * (conversionRate || 1)} {conversionUnit || "Satuan Terkecil"} (Disimpan ke database)
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

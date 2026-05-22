@@ -12,6 +12,7 @@ import {
   Calendar
 } from "lucide-react";
 import ItemUsageForm from "./item-usage-form";
+import { formatStock } from "@/utils/unit";
 
 export default async function ItemDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -84,6 +85,8 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
     }).format(date);
   };
 
+  const unitLabel = item.has_conversion && item.conversion_unit ? item.conversion_unit : (item.unit || "PCS");
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -110,9 +113,11 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Package className="w-6 h-6 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm text-text-muted">Total Stok Tersedia</p>
-                <p className="text-3xl font-bold">{totalStock}</p>
+                <p className="text-lg font-black text-foreground break-words mt-1 leading-snug">
+                  {formatStock(totalStock, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)}
+                </p>
               </div>
             </div>
             <div className="pt-4 border-t border-border space-y-3">
@@ -126,7 +131,7 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
           </div>
 
           {/* Form Pemakaian Barang */}
-          <ItemUsageForm itemId={id} stocks={stocks || []} />
+          <ItemUsageForm item={item} stocks={stocks || []} />
 
           {/* Stock Distribution */}
           <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
@@ -137,13 +142,13 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
             <div className="divide-y divide-border">
               {stocks && stocks.length > 0 ? (
                 stocks.map((s: any) => (
-                  <div key={s.id} className="p-4 flex justify-between items-center">
+                  <div key={s.id} className="p-4 flex justify-between items-center gap-4">
                     <div>
-                      <p className="font-medium text-sm">{s.locations?.name}</p>
-                      <p className="text-xs text-text-muted">Terakhir update: {new Date(s.last_updated).toLocaleDateString("id-ID")}</p>
+                      <p className="font-bold text-sm text-foreground">{s.locations?.name}</p>
+                      <p className="text-[10px] text-text-muted mt-0.5">Terakhir update: {new Date(s.last_updated).toLocaleDateString("id-ID")}</p>
                     </div>
-                    <span className="px-3 py-1 bg-background border border-border rounded-lg font-bold text-sm">
-                      {s.quantity}
+                    <span className="px-3 py-1 bg-background border border-border rounded-lg font-extrabold text-xs text-primary text-right whitespace-nowrap">
+                      {formatStock(s.quantity, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)}
                     </span>
                   </div>
                 ))
@@ -202,11 +207,11 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
                         <div className="text-sm">
                           {h.isTransfer ? (
                             <p>
-                              Pemindahan <span className="font-bold text-foreground">{h.quantity} unit</span> dari <span className="font-medium text-foreground">{h.from}</span> ke <span className="font-medium text-foreground">{h.to}</span>.
+                              Pemindahan <span className="font-bold text-foreground">{h.quantity} {unitLabel}</span> dari <span className="font-medium text-foreground">{h.from}</span> ke <span className="font-medium text-foreground">{h.to}</span>.
                             </p>
                           ) : (
                             <p>
-                              <span className="font-bold text-foreground">{h.quantity} unit</span> {h.type === 'INBOUND' ? 'diterima di' : 'keluar dari'} <span className="font-medium text-foreground">{h.location}</span>.
+                              <span className="font-bold text-foreground">{h.quantity} {unitLabel}</span> {h.type === 'INBOUND' ? 'diterima di' : 'keluar dari'} <span className="font-medium text-foreground">{h.location}</span>.
                             </p>
                           )}
                           {h.notes && (

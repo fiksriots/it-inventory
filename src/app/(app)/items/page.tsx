@@ -7,6 +7,7 @@ import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
 import { getAllItemsForExport, importItemsBulk } from "@/app/(app)/services/import-export-actions";
+import { formatStock } from "@/utils/unit";
 
 const itemTemplate = [
   {
@@ -128,7 +129,9 @@ export default async function ItemsPage({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1.5">
-                          <p className="font-bold leading-none">{totalStock} <span className="text-[10px] text-text-muted uppercase tracking-tighter">Total Unit</span></p>
+                          <div className="text-xs font-black text-primary leading-tight">
+                            {formatStock(totalStock, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)}
+                          </div>
                           <div className="flex flex-wrap gap-1">
                             {stocks.map((s: any, idx: number) => (
                               <div key={idx} className="flex items-center bg-background border border-border rounded overflow-hidden">
@@ -141,7 +144,7 @@ export default async function ItemsPage({
                                   s.condition?.includes('Rusak (Total)') || s.condition === 'Afkir' ? 'text-rose-500 bg-rose-500/5' :
                                   'text-amber-500 bg-amber-500/5'
                                 }`}>
-                                  {s.quantity} {s.condition}
+                                  {formatStock(s.quantity, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)} ({s.condition})
                                 </span>
                               </div>
                             ))}

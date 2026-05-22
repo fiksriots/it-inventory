@@ -10,12 +10,23 @@ export async function updateItem(id: string, prevState: any, formData: FormData)
   const condition = formData.get("condition") as string;
   const price = formData.get("price") as string;
   const description = formData.get("description") as string;
+
+  const unit = (formData.get("unit") as string) || "PCS";
+  const has_conversion = formData.get("has_conversion") === "on" || formData.get("has_conversion") === "true";
+  const conversion_unit = formData.get("conversion_unit") as string || null;
+  const conversion_rate_str = formData.get("conversion_rate") as string;
+  const conversion_rate = conversion_rate_str ? parseFloat(conversion_rate_str) : 1;
+
   if (!name || !sku) return { error: "Nama barang dan SKU wajib diisi." };
   const supabase = await createClient();
   const { error } = await supabase.from("items").update({
     name, sku, category_id: category_id || null,
     condition: condition || 'Baru',
     price: price ? parseFloat(price) : 0, description,
+    unit,
+    has_conversion,
+    conversion_unit: has_conversion ? conversion_unit : null,
+    conversion_rate: has_conversion ? conversion_rate : 1,
   }).eq("id", id);
   if (error) {
     if (error.code === "23505") return { error: "SKU sudah digunakan." };

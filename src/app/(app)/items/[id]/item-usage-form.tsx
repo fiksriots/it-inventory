@@ -4,19 +4,21 @@ import { useState } from "react";
 import { Loader2, Plus, ArrowUpRight, Scissors } from "lucide-react";
 import { logItemUsage } from "../actions";
 import { useToast } from "@/components/ui/ToastProvider";
+import { formatStock } from "@/utils/unit";
 
 interface ItemUsageFormProps {
-  itemId: string;
+  item: any;
   stocks: any[];
 }
 
-export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
+export default function ItemUsageForm({ item, stocks }: ItemUsageFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const availableStocks = stocks.filter(s => s.quantity > 0);
+  const unitLabel = item.has_conversion && item.conversion_unit ? item.conversion_unit : (item.unit || "PCS");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,7 +26,7 @@ export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    formData.append("item_id", itemId);
+    formData.append("item_id", item.id);
 
     try {
       await logItemUsage(formData);
@@ -49,7 +51,7 @@ export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95"
+        className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 cursor-pointer"
       >
         <Scissors className="w-4 h-4" />
         Catat Pemakaian (Mutasi Keluar)
@@ -65,7 +67,7 @@ export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
         </h3>
         <button 
           onClick={() => setIsOpen(false)}
-          className="text-xs text-text-muted hover:text-foreground border border-border bg-background px-2 py-1 rounded-lg font-bold"
+          className="text-xs text-text-muted hover:text-foreground border border-border bg-background px-2 py-1 rounded-lg font-bold cursor-pointer"
         >
           Batal
         </button>
@@ -88,20 +90,22 @@ export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
             <option value="">-- Pilih Lokasi --</option>
             {availableStocks.map((s: any) => (
               <option key={s.locations?.id} value={s.locations?.id}>
-                {s.locations?.name} (Sisa Stok: {s.quantity})
+                {s.locations?.name} (Sisa: {formatStock(s.quantity, item.unit, item.has_conversion, item.conversion_unit, item.conversion_rate)})
               </option>
             ))}
           </select>
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-text-muted uppercase">Jumlah Dipakai / Dikeluarkan</label>
+          <label className="text-[10px] font-bold text-text-muted uppercase">
+            Jumlah Dipakai / Dikeluarkan ({unitLabel})
+          </label>
           <input 
             type="number" 
             name="quantity" 
             min="1" 
             required 
-            placeholder="Contoh: 5"
+            placeholder={`Contoh: 10 ${unitLabel}`}
             className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
           />
         </div>
@@ -121,7 +125,7 @@ export default function ItemUsageForm({ itemId, stocks }: ItemUsageFormProps) {
         <button 
           type="submit" 
           disabled={isPending}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 active:scale-95"
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 active:scale-95 cursor-pointer"
         >
           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUpRight className="w-4 h-4" />}
           Keluarkan Stok

@@ -3,10 +3,16 @@ import { Save, ArrowLeft, Loader2, MinusCircle, PlusCircle, MapPin, Package } fr
 import Link from "next/link";
 import { useActionState, useCallback, useState } from "react";
 import { updateItem } from "./actions";
+import { formatStock } from "@/utils/unit";
 
 export default function EditItemForm({ item, categories, locations, stocks }: { item: any; categories: any[]; locations: any[]; stocks: any[] }) {
   const fn = useCallback((s: any, f: FormData) => updateItem(item.id, s, f), [item.id]);
   const [state, formAction, isPending] = useActionState(fn, null);
+
+  const [unit, setUnit] = useState(item.unit || "PCS");
+  const [hasConversion, setHasConversion] = useState(!!item.has_conversion);
+  const [conversionUnit, setConversionUnit] = useState(item.conversion_unit || "");
+  const [conversionRate, setConversionRate] = useState(item.conversion_rate || 1);
   
   const totalStock = stocks.reduce((acc, curr) => acc + curr.quantity, 0);
 
@@ -53,6 +59,39 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                     <option value="Afkir">Afkir / Disposal</option>
                   </select>
                 </div>
+                
+                {/* Satuan Utama */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Satuan Barang Utama</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      name="unit"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      required
+                      className="flex-1 bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold" 
+                      placeholder="PCS, ROLL, PACK" 
+                    />
+                    <div className="flex gap-1">
+                      {["PCS", "ROLL", "PACK"].map((u) => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => setUnit(u)}
+                          className={`px-3 py-2 border rounded-lg text-xs font-bold transition-all ${
+                            unit.toUpperCase() === u.toUpperCase()
+                              ? "bg-primary border-primary text-white"
+                              : "border-border hover:bg-background text-text-muted"
+                          }`}
+                        >
+                          {u}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Harga (Rp)</label>
                   <div className="relative group">
@@ -72,6 +111,53 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                     />
                     <input type="hidden" name="price" id="price_raw" defaultValue={item.price || 0} />
                   </div>
+                </div>
+
+                {/* Konversi Satuan */}
+                <div className="md:col-span-2 border border-border/65 bg-background/20 rounded-xl p-4 space-y-4">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      name="has_conversion" 
+                      checked={hasConversion}
+                      onChange={(e) => setHasConversion(e.target.checked)}
+                      className="w-4.5 h-4.5 mt-0.5 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Aktifkan Konversi Satuan</p>
+                      <p className="text-xs text-text-muted mt-0.5">Contoh: Kabel dibeli dalam Roll, tapi dikurangi/dipakai dalam Meter. RJ-45 dibeli dalam Pack, tapi dipakai dalam Pcs.</p>
+                    </div>
+                  </label>
+
+                  {hasConversion && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border/40 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-text-muted">Satuan Pemakaian / Satuan Terkecil</label>
+                        <input 
+                          type="text" 
+                          name="conversion_unit"
+                          value={conversionUnit}
+                          onChange={(e) => setConversionUnit(e.target.value)}
+                          required={hasConversion}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-medium" 
+                          placeholder="Contoh: METER, PCS" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-text-muted">Faktor Konversi (1 {unit} = ... {conversionUnit || "Satuan Terkecil"})</label>
+                        <input 
+                          type="number" 
+                          name="conversion_rate"
+                          value={conversionRate}
+                          onChange={(e) => setConversionRate(parseInt(e.target.value) || 1)}
+                          min="1"
+                          required={hasConversion}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold text-primary" 
+                          placeholder="Contoh: 300" 
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -108,7 +194,9 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
             <div className="p-6 space-y-6">
               <div>
                 <p className="text-xs text-text-muted uppercase font-bold tracking-tighter mb-1">Total Stok</p>
-                <p className="text-4xl font-bold text-primary">{totalStock}</p>
+                <p className="text-lg font-extrabold text-primary break-words">
+                  {formatStock(totalStock, unit, hasConversion, conversionUnit, conversionRate)}
+                </p>
               </div>
 
               <div className="space-y-3">
@@ -116,24 +204,27 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                 {stocks.length > 0 ? (
                   stocks.map((s: any) => (
                     <div key={`${s.location_id}-${s.condition}`} className="p-3 bg-background border border-border rounded-lg space-y-3 group/loc">
-                      <div className="flex justify-between items-start">
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-3.5 h-3.5 text-primary" />
-                            <span className="text-sm font-bold">{s.locations?.name}</span>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-primary" />
+                              <span className="text-sm font-bold">{s.locations?.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded w-fit ${
+                              s.condition === 'Baru' ? 'text-emerald-500 bg-emerald-500/10' :
+                              s.condition === 'Normal' ? 'text-blue-500 bg-blue-500/10' :
+                              s.condition?.includes('Rusak (Total)') || s.condition === 'Afkir' ? 'text-rose-500 bg-rose-500/10' :
+                              'text-amber-500 bg-amber-500/10'
+                            }`}>
+                              {s.condition}
+                            </span>
                           </div>
-                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded w-fit ${
-                            s.condition === 'Baru' ? 'text-emerald-500 bg-emerald-500/10' :
-                            s.condition === 'Normal' ? 'text-blue-500 bg-blue-500/10' :
-                            s.condition?.includes('Rusak (Total)') || s.condition === 'Afkir' ? 'text-rose-500 bg-rose-500/10' :
-                            'text-amber-500 bg-amber-500/10'
-                          }`}>
-                            {s.condition}
-                          </span>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-primary">{s.quantity}</span>
-                          <p className="text-[10px] text-text-muted uppercase tracking-tighter leading-none mt-1">Unit</p>
+                        <div className="text-left bg-background/50 p-2 border border-border/40 rounded">
+                          <span className="text-xs font-black text-primary">
+                            {formatStock(s.quantity, unit, hasConversion, conversionUnit, conversionRate)}
+                          </span>
                         </div>
                       </div>
                       
@@ -143,7 +234,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                           <input 
                             type="number" 
                             id={`quick_out_qty_${s.location_id}_${s.condition}`}
-                            placeholder="Qty Keluar"
+                            placeholder={`Qty Keluar (${hasConversion && conversionUnit ? conversionUnit : unit})`}
                             max={s.quantity}
                             className="flex-1 min-w-0 bg-background/50 border border-border rounded px-2 py-1 text-[11px] focus:ring-1 focus:ring-rose-500/50 outline-none text-rose-500 font-bold" 
                           />
@@ -163,7 +254,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                               condInput.value = s.condition;
                               (document.getElementById('edit-item-form') as HTMLFormElement).requestSubmit();
                             }}
-                            className="px-3 py-1 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1"
+                            className="px-3 py-1 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white border border-rose-500/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer"
                           >
                             <MinusCircle className="w-3 h-3" />
                             Kurangi
@@ -206,7 +297,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                     <input 
                       type="number" 
                       id="quick_in_qty"
-                      placeholder="Qty"
+                      placeholder={`Qty (${hasConversion && conversionUnit ? conversionUnit : unit})`}
                       className="w-20 bg-background border border-border rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-primary/20 outline-none font-bold" 
                     />
                     <button 
@@ -226,7 +317,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                         condInput.value = cond;
                         (document.getElementById('edit-item-form') as HTMLFormElement).requestSubmit();
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 py-1.5 px-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg transition-all text-[10px] font-bold uppercase"
+                      className="flex-1 flex items-center justify-center gap-2 py-1.5 px-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg transition-all text-[10px] font-bold uppercase cursor-pointer"
                     >
                       <PlusCircle className="w-3.5 h-3.5" />
                       Tambah
