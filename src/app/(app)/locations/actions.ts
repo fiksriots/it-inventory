@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 export async function createLocation(prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
   const address = formData.get("address") as string;
+  const parentIdVal = formData.get("parent_id") as string;
+  const parent_id = parentIdVal ? parentIdVal : null;
 
   if (!name) {
     return { error: "Nama departemen/lokasi wajib diisi." };
@@ -16,7 +18,7 @@ export async function createLocation(prevState: any, formData: FormData) {
 
   const { error } = await supabase
     .from("locations")
-    .insert([{ name, address }]);
+    .insert([{ name, address, parent_id }]);
 
   if (error) {
     console.error("Error inserting location:", error);
@@ -30,6 +32,8 @@ export async function createLocation(prevState: any, formData: FormData) {
 export async function updateLocation(id: string, prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
   const address = formData.get("address") as string;
+  const parentIdVal = formData.get("parent_id") as string;
+  const parent_id = parentIdVal ? parentIdVal : null;
 
   if (!name) {
     return { error: "Nama departemen/lokasi wajib diisi." };
@@ -39,7 +43,7 @@ export async function updateLocation(id: string, prevState: any, formData: FormD
 
   const { error } = await supabase
     .from("locations")
-    .update({ name, address })
+    .update({ name, address, parent_id })
     .eq("id", id);
 
   if (error) {

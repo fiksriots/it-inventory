@@ -135,9 +135,14 @@ export default function InfrastructureForm({
                   className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer"
                 >
                   <option value="">Pilih Lokasi / Ruangan...</option>
-                  {locations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
-                  ))}
+                  {locations.map((loc) => {
+                    const displayName = loc.parent ? `${loc.parent.name} › ${loc.name}` : loc.name;
+                    return (
+                      <option key={loc.id} value={loc.id}>
+                        {displayName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>

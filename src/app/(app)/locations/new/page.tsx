@@ -1,76 +1,12 @@
-"use client";
+import { createClient } from "@/utils/supabase/server";
+import NewLocationForm from "./new-form";
 
-import { Save, ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { useActionState } from "react";
-import { createLocation } from "../actions";
+export default async function NewLocationPage() {
+  const supabase = await createClient();
+  const { data: locations } = await supabase
+    .from("locations")
+    .select("id, name")
+    .order("name");
 
-export default function NewLocationPage() {
-  const [state, formAction, isPending] = useActionState(createLocation, null);
-  
-  return (
-    <div className="space-y-6 max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/locations" className="p-2 border border-border rounded-lg hover:bg-background transition-colors">
-          <ArrowLeft className="w-5 h-5 text-text-muted" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tambah Lokasi Baru</h1>
-          <p className="text-text-muted mt-1">Buat departemen atau lokasi penempatan barang baru.</p>
-        </div>
-      </div>
-
-      {/* Form Card */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
-        <form action={formAction} className="space-y-6">
-          {state?.error && (
-            <div className="p-3 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-lg text-sm font-medium">
-              {state.error}
-            </div>
-          )}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nama Departemen / Lokasi <span className="text-rose-500">*</span></label>
-              <input 
-                type="text" 
-                name="name"
-                required
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Contoh: Lantai 2 - Ruang IT" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Alamat / Detail Lokasi</label>
-              <textarea 
-                name="address"
-                rows={4} 
-                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-                placeholder="Keterangan mengenai lokasi ini..."
-              ></textarea>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Link href="/locations" className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-background transition-colors">
-              Batal
-            </Link>
-            <button 
-              type="submit" 
-              disabled={isPending}
-              className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-70"
-            >
-              {isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              {isPending ? "Menyimpan..." : "Simpan Lokasi"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+  return <NewLocationForm locations={locations || []} />;
 }

@@ -336,9 +336,10 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
             <option value="Semua">Semua Lokasi / Area ({totalAssets} perangkat)</option>
             {locations.map((loc) => {
               const count = assetCountsByLocation[loc.id] || 0;
+              const displayName = loc.parent ? `${loc.parent.name} › ${loc.name}` : loc.name;
               return (
                 <option key={loc.id} value={loc.id}>
-                  {loc.name} ({count} perangkat)
+                  {displayName} ({count} perangkat)
                 </option>
               );
             })}
@@ -401,7 +402,17 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
                     <td className="px-6 py-4 text-xs font-medium text-text-muted">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 shrink-0" />
-                        {asset.locations?.name || "Belum Ditentukan"}
+                        {asset.locations ? (
+                          asset.locations.parent ? (
+                            <span>
+                              {asset.locations.parent.name} › <span className="text-foreground font-semibold">{asset.locations.name}</span>
+                            </span>
+                          ) : (
+                            <span>{asset.locations.name}</span>
+                          )
+                        ) : (
+                          "Belum Ditentukan"
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -19,7 +19,7 @@ export default async function LocationsPage({
 
   let query = supabase
     .from("locations")
-    .select("*, item_stocks(quantity), computers(id), infrastructure_assets(id)", { count: "exact" })
+    .select("*, parent:parent_id(name), item_stocks(quantity), computers(id), infrastructure_assets(id)", { count: "exact" })
     .order("created_at", { ascending: false });
 
   if (q) {
@@ -77,7 +77,15 @@ export default async function LocationsPage({
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary transition-all">
                           <MapPin className="w-5 h-5 text-primary transition-colors" />
                         </div>
-                        <span className="font-bold transition-colors">{location.name}</span>
+                        <div className="flex flex-col">
+                          <span className="font-bold transition-colors">{location.name}</span>
+                          {location.parent && (
+                            <span className="text-[10px] text-text-muted mt-0.5 flex items-center gap-1 font-semibold">
+                              <span>Sub dari:</span>
+                              <span className="underline decoration-dotted">{location.parent.name}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-text-muted font-medium">{location.address || "-"}</td>

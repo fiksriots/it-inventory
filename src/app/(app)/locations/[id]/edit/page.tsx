@@ -8,6 +8,13 @@ export default async function EditLocationPage({ params }: { params: Promise<{ i
   const { data: location } = await supabase.from("locations").select("*").eq("id", id).single();
   
   if (!location) notFound();
+
+  // Ambil lokasi lain yang bisa dijadikan parent (kecuali lokasi itu sendiri)
+  const { data: locations } = await supabase
+    .from("locations")
+    .select("id, name")
+    .neq("id", id)
+    .order("name");
   
-  return <EditLocationForm location={location} />;
+  return <EditLocationForm location={location} locations={locations || []} />;
 }

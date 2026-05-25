@@ -12,7 +12,7 @@ export default async function NewInfrastructurePage({
   // Ambil lokasi untuk penempatan
   const { data: locations } = await supabase
     .from("locations")
-    .select("id, name")
+    .select("id, name, parent:parent_id(name)")
     .order("name");
 
   return (

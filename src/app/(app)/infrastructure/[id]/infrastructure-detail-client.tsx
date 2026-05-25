@@ -312,7 +312,17 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
                 <div>
                   <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Penempatan Fisik</p>
                   <p className="text-sm font-bold text-foreground mt-0.5">
-                    {asset.locations?.name || "Belum Ditetapkan / Ruang Publik"}
+                    {asset.locations ? (
+                      asset.locations.parent ? (
+                        <span>
+                          {asset.locations.parent.name} › <span className="font-extrabold text-foreground">{asset.locations.name}</span>
+                        </span>
+                      ) : (
+                        <span>{asset.locations.name}</span>
+                      )
+                    ) : (
+                      "Belum Ditetapkan / Ruang Publik"
+                    )}
                   </p>
                 </div>
               </div>
@@ -423,9 +433,14 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
                     className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                   >
                     <option value="">Tanpa Lokasi Spesifik</option>
-                    {locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
+                    {locations.map((loc) => {
+                      const displayName = loc.parent ? `${loc.parent.name} › ${loc.name}` : loc.name;
+                      return (
+                        <option key={loc.id} value={loc.id}>
+                          {displayName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 

@@ -9,14 +9,14 @@ export default async function InfrastructurePage() {
     .from("infrastructure_assets")
     .select(`
       *,
-      locations (name)
+      locations (name, parent:parent_id(name))
     `)
     .order("created_at", { ascending: false });
 
   // Ambil lokasi untuk kemudahan filter
   const { data: locations } = await supabase
     .from("locations")
-    .select("id, name")
+    .select("id, name, parent:parent_id(name)")
     .order("name");
 
   const safeAssets = infrastructureAssets || [];

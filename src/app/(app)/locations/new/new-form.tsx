@@ -3,12 +3,11 @@
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useActionState } from "react";
-import { updateLocation } from "../../actions";
+import { createLocation } from "../actions";
 
-export default function EditLocationForm({ location, locations }: { location: any; locations: any[] }) {
-  const updateLocationWithId = updateLocation.bind(null, location.id);
-  const [state, formAction, isPending] = useActionState(updateLocationWithId, null);
-
+export default function NewLocationForm({ locations }: { locations: any[] }) {
+  const [state, formAction, isPending] = useActionState(createLocation, null);
+  
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
@@ -17,8 +16,8 @@ export default function EditLocationForm({ location, locations }: { location: an
           <ArrowLeft className="w-5 h-5 text-text-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Lokasi</h1>
-          <p className="text-text-muted mt-1">Perbarui data departemen atau lokasi penempatan barang.</p>
+          <h1 className="text-2xl font-bold tracking-tight">Tambah Lokasi Baru</h1>
+          <p className="text-text-muted mt-1">Buat departemen atau lokasi penempatan barang baru.</p>
         </div>
       </div>
 
@@ -36,7 +35,6 @@ export default function EditLocationForm({ location, locations }: { location: an
               <input 
                 type="text" 
                 name="name"
-                defaultValue={location.name}
                 required
                 className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
                 placeholder="Contoh: Lantai 2 - Ruang IT" 
@@ -47,7 +45,7 @@ export default function EditLocationForm({ location, locations }: { location: an
               <label className="text-sm font-medium">Lokasi Induk (Parent Location)</label>
               <select
                 name="parent_id"
-                defaultValue={location.parent_id || ""}
+                defaultValue=""
                 className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer"
               >
                 <option value="">-- Tanpa Lokasi Induk (Top Level) --</option>
@@ -63,7 +61,6 @@ export default function EditLocationForm({ location, locations }: { location: an
               <label className="text-sm font-medium">Alamat / Detail Lokasi</label>
               <textarea 
                 name="address"
-                defaultValue={location.address}
                 rows={4} 
                 className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
                 placeholder="Keterangan mengenai lokasi ini..."
@@ -85,7 +82,7 @@ export default function EditLocationForm({ location, locations }: { location: an
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {isPending ? "Memperbarui..." : "Perbarui Lokasi"}
+              {isPending ? "Menyimpan..." : "Simpan Lokasi"}
             </button>
           </div>
         </form>

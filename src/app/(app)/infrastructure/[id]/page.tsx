@@ -15,7 +15,7 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
     .from("infrastructure_assets")
     .select(`
       *,
-      locations (name)
+      locations (name, parent:parent_id(name))
     `)
     .eq("id", id)
     .single();
@@ -27,7 +27,7 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
   // Ambil seluruh daftar lokasi untuk fitur pengeditan
   const { data: locations } = await supabase
     .from("locations")
-    .select("id, name")
+    .select("id, name, parent:parent_id(name)")
     .order("name");
 
   const { data: itemsList } = await supabase
