@@ -20,6 +20,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Pass dummy env keys during build so TS static verification doesn't fail if required
+ENV NEXT_PUBLIC_SUPABASE_URL=https://dummy.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=dummy-anon-key
 RUN npm run build
 
 # Production image, copy all the files and run next
