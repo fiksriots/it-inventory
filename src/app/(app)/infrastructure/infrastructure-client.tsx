@@ -161,7 +161,12 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
       asset.ip_address?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === "Semua" || asset.category === selectedCategory;
-    const matchesLocation = selectedLocation === "Semua" || asset.location_id === selectedLocation;
+    
+    let matchesLocation = selectedLocation === "Semua" || asset.location_id === selectedLocation;
+    if (selectedLocation !== "Semua" && !matchesLocation) {
+      const isChild = locations.some(loc => loc.id === asset.location_id && loc.parent_id === selectedLocation);
+      if (isChild) matchesLocation = true;
+    }
 
     return matchesSearch && matchesCategory && matchesLocation;
   });
@@ -172,12 +177,22 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
   const maintenanceAssets = assets.filter(a => a.status === 'Maintenance').length;
   const brokenAssets = assets.filter(a => a.status === 'Rusak').length;
 
-  // Hitung jumlah perangkat per lokasi
+  // Hitung jumlah perangkat per lokasi (termasuk sub-lokasi)
   const assetCountsByLocation: Record<string, number> = {};
+  const directAssetCounts: Record<string, number> = {};
   assets.forEach(a => {
     if (a.location_id) {
-      assetCountsByLocation[a.location_id] = (assetCountsByLocation[a.location_id] || 0) + 1;
+      directAssetCounts[a.location_id] = (directAssetCounts[a.location_id] || 0) + 1;
     }
+  });
+
+  locations.forEach(loc => {
+    let count = directAssetCounts[loc.id] || 0;
+    const children = locations.filter(l => l.parent_id === loc.id);
+    children.forEach(child => {
+      count += (directAssetCounts[child.id] || 0);
+    });
+    assetCountsByLocation[loc.id] = count;
   });
 
   return (

@@ -61,7 +61,13 @@ export default async function ComputersPage({
   }
 
   if (location) {
-    query = query.eq("location_id", location);
+    const { data: subLocs } = await supabase
+      .from("locations")
+      .select("id")
+      .eq("parent_id", location);
+    
+    const locationIds = [location, ...(subLocs?.map(l => l.id) || [])];
+    query = query.in("location_id", locationIds);
   }
 
   const from = (currentPage - 1) * pageSize;
@@ -70,7 +76,7 @@ export default async function ComputersPage({
   const { data: computers, count } = await query.range(from, to);
 
   // Ambil daftar lokasi untuk opsi filter
-  const { data: locations } = await supabase.from("locations").select("id, name").order("name");
+  const { data: locations } = await supabase.from("locations").select("id, name, parent_id, parent:parent_id(name)").order("name");
 
   // Ambil data untuk ringkasan metrik dan hitung lokasi
   const { data: allComps } = await supabase.from("computers").select("status, next_maintenance_date, location_id");
@@ -96,12 +102,22 @@ export default async function ComputersPage({
 
   const totalPages = Math.ceil((count || 0) / pageSize);
 
-  // Hitung jumlah komputer per lokasi
+  // Hitung jumlah komputer per lokasi (termasuk sub-lokasi)
   const computerCountsByLocation: Record<string, number> = {};
+  const directComputerCounts: Record<string, number> = {};
   allComps?.forEach(c => {
     if (c.location_id) {
-      computerCountsByLocation[c.location_id] = (computerCountsByLocation[c.location_id] || 0) + 1;
+      directComputerCounts[c.location_id] = (directComputerCounts[c.location_id] || 0) + 1;
     }
+  });
+
+  locations?.forEach(loc => {
+    let count = directComputerCounts[loc.id] || 0;
+    const children = locations.filter(l => l.parent_id === loc.id);
+    children.forEach(child => {
+      count += (directComputerCounts[child.id] || 0);
+    });
+    computerCountsByLocation[loc.id] = count;
   });
 
   return (
@@ -191,9 +207,12 @@ export default async function ComputersPage({
                   <option value="">Semua Lokasi ({totalComps} unit)</option>
                   {locations.map((loc) => {
                     const cnt = computerCountsByLocation[loc.id] || 0;
+                    const parentObj = loc.parent as any;
+                    const parentName = Array.isArray(parentObj) ? parentObj[0]?.name : parentObj?.name;
+                    const displayName = parentName ? `${parentName} › ${loc.name}` : loc.name;
                     return (
                       <option key={loc.id} value={loc.id}>
-                        {loc.name} ({cnt} unit)
+                        {displayName} ({cnt} unit)
                       </option>
                     );
                   })}

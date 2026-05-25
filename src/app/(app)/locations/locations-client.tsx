@@ -188,6 +188,20 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
                   }, 0);
                   const cumulativeTotalItems = parentTotalItems + subLocationsTotalItems;
 
+                  // Hitung total komputer akumulatif (parent + semua sub-lokasinya)
+                  const parentTotalComputers = parent.computers?.length || 0;
+                  const subLocationsTotalComputers = (childrenByParent[parent.id] || []).reduce((acc, child) => {
+                    return acc + (child.computers?.length || 0);
+                  }, 0);
+                  const cumulativeTotalComputers = parentTotalComputers + subLocationsTotalComputers;
+
+                  // Hitung total infrastruktur akumulatif (parent + semua sub-lokasinya)
+                  const parentTotalInfra = parent.infrastructure_assets?.length || 0;
+                  const subLocationsTotalInfra = (childrenByParent[parent.id] || []).reduce((acc, child) => {
+                    return acc + (child.infrastructure_assets?.length || 0);
+                  }, 0);
+                  const cumulativeTotalInfra = parentTotalInfra + subLocationsTotalInfra;
+
                   return (
                     <Fragment key={parent.id}>
                       {/* Baris Lokasi Induk (Parent Row) */}
@@ -255,7 +269,7 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-primary/40 hover:text-primary transition-all text-xs font-bold font-mono"
                           >
                             <Monitor className="w-3.5 h-3.5 text-primary" />
-                            <span>{parent.computers?.length || 0} Unit</span>
+                            <span>{cumulativeTotalComputers} Unit</span>
                           </Link>
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -264,7 +278,7 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-blue-500/40 hover:text-blue-500 transition-all text-xs font-bold font-mono"
                           >
                             <Cctv className="w-3.5 h-3.5 text-blue-500" />
-                            <span>{parent.infrastructure_assets?.length || 0} Unit</span>
+                            <span>{cumulativeTotalInfra} Unit</span>
                           </Link>
                         </td>
                         <td className="px-6 py-4 text-right">
