@@ -8,12 +8,14 @@ interface LocationItemsModalProps {
   locationId: string;
   locationName: string;
   totalItems: number;
+  triggerLabel?: React.ReactNode;
 }
 
 export default function LocationItemsModal({ 
   locationId, 
   locationName, 
-  totalItems 
+  totalItems,
+  triggerLabel
 }: LocationItemsModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<any[]>([]);
@@ -37,17 +39,23 @@ export default function LocationItemsModal({
 
   return (
     <>
-      <button 
-        onClick={handleOpen}
-        className="group flex flex-col items-center gap-1 hover:scale-105 transition-all"
-      >
-        <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm ${totalItems > 0 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-surface text-text-muted border border-border'}`}>
-          {totalItems.toLocaleString()} Unit
-        </span>
-        <span className="text-[9px] uppercase tracking-tighter text-text-muted font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-          Lihat Detail
-        </span>
-      </button>
+      {triggerLabel ? (
+        <div onClick={handleOpen} className="inline-block cursor-pointer">
+          {triggerLabel}
+        </div>
+      ) : (
+        <button 
+          onClick={handleOpen}
+          className="group flex flex-col items-center gap-1 hover:scale-105 transition-all"
+        >
+          <span className={`px-3 py-1 rounded-full text-xs font-bold transition-all shadow-sm ${totalItems > 0 ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-surface text-text-muted border border-border'}`}>
+            {totalItems.toLocaleString()} Unit
+          </span>
+          <span className="text-[9px] uppercase tracking-tighter text-text-muted font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+            Lihat Detail
+          </span>
+        </button>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
