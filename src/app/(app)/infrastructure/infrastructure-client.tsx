@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench, ArrowLeft } from "lucide-react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench, ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
 import { getAllInfrastructureForExport, importInfrastructureBulk } from "@/app/(app)/services/import-export-actions";
+import { updateAssetsCategory } from "./actions";
 
 const infraTemplate = [
   {
@@ -42,19 +43,116 @@ interface InfrastructureClientProps {
 
 export default function InfrastructureClient({ assets, locations }: InfrastructureClientProps) {
   const searchParams = useSearchParams();
-  const locationParam = searchParams?.get("location");
+  const locationParam = searchParams?.get("location") || "Semua";
+  const categoryParam = searchParams?.get("category") || "Semua";
+  const router = useRouter();
+  const pathname = usePathname();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Semua");
-  const [selectedLocation, setSelectedLocation] = useState(locationParam || "Semua");
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam);
+  const [selectedLocation, setSelectedLocation] = useState(locationParam);
   const { toast } = useToast();
+
+  // Sync state to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedCategory && selectedCategory !== "Semua") {
+      params.set("category", selectedCategory);
+    }
+    if (selectedLocation && selectedLocation !== "Semua") {
+      params.set("location", selectedLocation);
+    }
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [selectedCategory, selectedLocation, pathname, router]);
+
+  // Sync state from URL (handles back/forward navigation)
+  useEffect(() => {
+    setSelectedCategory(searchParams?.get("category") || "Semua");
+    setSelectedLocation(searchParams?.get("location") || "Semua");
+  }, [searchParams]);
+
+  const [localCustomCategories, setLocalCustomCategories] = useState<string[]>([]);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  // Load custom categories from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("infra_custom_categories");
+    if (saved) {
+      try {
+        setLocalCustomCategories(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
 
   // Ambil kategori unik yang ada di database + kategori default
   const defaultCategories = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
   const dbCategories = Array.from(new Set(assets.map(a => a.category).filter(Boolean)));
   
   // Gabungkan dan hilangkan duplikasi, urutkan
-  const categories = ["Semua", ...Array.from(new Set([...defaultCategories, ...dbCategories]))];
+  const categories = [
+    "Semua",
+    ...Array.from(new Set([...defaultCategories, ...dbCategories, ...localCustomCategories]))
+  ];
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) return;
+    
+    // Check if category already exists
+    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
+      toast("Kategori sudah ada!", "error");
+      return;
+    }
+
+    const updated = [...localCustomCategories, name];
+    setLocalCustomCategories(updated);
+    localStorage.setItem("infra_custom_categories", JSON.stringify(updated));
+    setSelectedCategory(name);
+    setNewCategoryName("");
+    setIsAddCategoryOpen(false);
+    toast(`Kategori "${name}" berhasil ditambahkan!`, "success");
+  };
+
+  const handleDeleteCategory = async () => {
+    if (selectedCategory === "Semua") return;
+
+    // Check if assets are using it
+    const affectedAssets = assets.filter(a => a.category === selectedCategory);
+    const count = affectedAssets.length;
+
+    let confirmMsg = `Apakah Anda yakin ingin menghapus kategori "${selectedCategory}"?`;
+    if (count > 0) {
+      confirmMsg = `Kategori "${selectedCategory}" sedang digunakan oleh ${count} perangkat. Menghapus kategori ini akan memindahkan perangkat-perangkat tersebut ke kategori "Lainnya". Apakah Anda yakin?`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    startTransition(async () => {
+      try {
+        if (count > 0) {
+          // Panggil server action untuk update database
+          await updateAssetsCategory(selectedCategory, "Lainnya");
+        }
+
+        // Hapus dari localStorage/local state jika ada
+        const updated = localCustomCategories.filter(c => c !== selectedCategory);
+        setLocalCustomCategories(updated);
+        localStorage.setItem("infra_custom_categories", JSON.stringify(updated));
+
+        setSelectedCategory("Semua");
+        toast(`Kategori "${selectedCategory}" berhasil dihapus!`, "success");
+        router.refresh();
+      } catch (err: any) {
+        toast(err.message || "Gagal menghapus kategori", "error");
+      }
+    });
+  };
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch = 
@@ -109,7 +207,7 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
           </div>
         </div>
         <Link
-          href="/infrastructure/new"
+          href={`/infrastructure/new?location=${selectedLocation}&category=${selectedCategory}`}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0"
         >
           <Plus className="w-5 h-5" />
@@ -160,41 +258,60 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
         </div>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none w-full border-b border-border/30 pb-3 flex-wrap sm:flex-nowrap">
-        <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-none">
-          {categories.map((cat) => {
-            const count = cat === "Semua" ? totalAssets : assets.filter(a => a.category === cat).length;
-            const isActive = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 border ${
-                  isActive 
-                    ? "bg-primary text-white border-primary shadow-md shadow-primary/20" 
-                    : "bg-surface text-text-muted border-border hover:bg-background hover:text-foreground"
-                }`}
-              >
-                {cat}
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                  isActive ? "bg-white/20 text-white" : "bg-background text-text-muted"
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+      {/* Category Dropdown & Add Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full border-b border-border/30 pb-3">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="w-full sm:w-72 relative">
+            <Layers className="w-4.5 h-4.5 absolute left-4 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full pl-11 pr-10 py-3 bg-surface border border-border rounded-xl text-sm font-bold text-foreground cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none appearance-none"
+            >
+              {categories.map((cat) => {
+                const count = cat === "Semua" ? totalAssets : assets.filter(a => a.category === cat).length;
+                return (
+                  <option key={cat} value={cat} className="bg-surface text-foreground font-semibold">
+                    Kategori: {cat} ({count})
+                  </option>
+                );
+              })}
+            </select>
+            {/* Custom Chevron Down */}
+            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-muted">
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                <path d="M5.516 7.548c0.436-0.446 1.043-0.481 1.576 0l3.908 3.747 3.908-3.747c0.533-0.481 1.141-0.446 1.576 0 0.436 0.445 0.408 1.197 0 1.615l-4.695 4.502c-0.218 0.209-0.507 0.313-0.789 0.313s-0.571-0.104-0.789-0.313l-4.695-4.502c-0.408-0.418-0.436-1.17 0-1.615z"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Add Category Button */}
+          <button
+            onClick={() => setIsAddCategoryOpen(true)}
+            className="p-3 bg-surface hover:bg-primary/5 border border-border hover:border-primary/20 rounded-xl text-text-muted hover:text-primary transition-all active:scale-95 shrink-0 flex items-center gap-1.5 font-bold text-xs"
+            title="Tambah Kategori Baru"
+          >
+            <Plus className="w-4.5 h-4.5 text-primary" />
+            <span>Tambah</span>
+          </button>
+
+          {/* Delete Category Button */}
+          {selectedCategory !== "Semua" && (
+            <button
+              onClick={handleDeleteCategory}
+              disabled={isPending}
+              className="p-3 bg-surface hover:bg-rose-500/10 border border-border hover:border-rose-500/20 rounded-xl text-text-muted hover:text-rose-500 transition-all active:scale-95 shrink-0 flex items-center gap-1.5 font-bold text-xs disabled:opacity-50"
+              title={`Hapus Kategori "${selectedCategory}"`}
+            >
+              {isPending ? (
+                <Loader2 className="w-4.5 h-4.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-4.5 h-4.5 text-rose-500" />
+              )}
+              <span>Hapus</span>
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => {
-            toast("Untuk menambah kategori kustom baru, silakan klik 'Registrasi Fasilitas' lalu aktifkan '+ Kategori Kustom' pada form!", "success");
-          }}
-          className="px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border border-dashed border-primary/40 text-primary hover:bg-primary/5 hover:border-primary shrink-0 hover:scale-105 active:scale-95 sm:ml-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Tambah Kategori Baru
-        </button>
       </div>
 
       {/* Filter Controls */}
@@ -336,6 +453,57 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
           </tbody>
         </table>
       </div>
+
+      {/* Modal Tambah Kategori */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-foreground">Tambah Kategori Baru</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddCategoryOpen(false)}
+                className="p-1 text-text-muted hover:text-foreground rounded-lg hover:bg-background transition-all"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
+                  Nama Kategori <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Contoh: Router, Server, UPS, Access Point"
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm font-bold text-foreground focus:ring-2 focus:ring-primary/20 outline-none placeholder:text-text-muted/40"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryOpen(false)}
+                  className="px-4 py-2.5 bg-background border border-border text-text-muted hover:text-foreground rounded-xl text-xs font-bold transition-all"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-primary/10"
+                >
+                  Tambah Kategori
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

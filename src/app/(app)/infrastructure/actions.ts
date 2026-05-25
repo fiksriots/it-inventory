@@ -500,3 +500,19 @@ export async function updateInfraMaintenanceLog(logId: string, assetId: string, 
   return { success: true };
 }
 
+export async function updateAssetsCategory(oldCategory: string, newCategory: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("infrastructure_assets")
+    .update({ category: newCategory })
+    .eq("category", oldCategory);
+
+  if (error) {
+    console.error("Update Assets Category Error:", error);
+    throw new Error(`Gagal memperbarui kategori aset: ${error.message}`);
+  }
+
+  revalidatePath("/infrastructure");
+  return { success: true };
+}
+

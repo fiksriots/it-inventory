@@ -641,14 +641,14 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
                           <>
                             <button
                               onClick={() => openEditModal(log)}
-                              className="p-1.5 bg-background hover:bg-amber-500/10 text-text-muted/60 hover:text-amber-500 rounded-lg border border-border hover:border-amber-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
+                              className="p-1.5 bg-background hover:bg-amber-500/10 text-text-muted/60 hover:text-amber-500 rounded-lg border border-border hover:border-amber-500/20 transition-all lg:opacity-0 lg:group-hover:opacity-100 opacity-100 active:scale-95 no-print"
                               title="Edit Laporan"
                             >
                               <FileText className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDelete(log.id, log.activity_name)}
-                              className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all opacity-0 group-hover:opacity-100 active:scale-95 no-print"
+                              className="p-1.5 bg-background hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded-lg border border-border hover:border-rose-500/20 transition-all lg:opacity-0 lg:group-hover:opacity-100 opacity-100 active:scale-95 no-print"
                               title="Hapus Laporan"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

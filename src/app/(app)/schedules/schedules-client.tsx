@@ -577,7 +577,7 @@ export default function SchedulesClient() {
                       <span className="font-semibold text-sm truncate">{member}</span>
                       <button
                         onClick={() => handleRemoveMemberFromBoard(member)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-all"
+                        className="lg:opacity-0 lg:group-hover:opacity-100 opacity-100 p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-all"
                         title={`Hapus ${member} dari board`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />

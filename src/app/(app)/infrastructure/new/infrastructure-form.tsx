@@ -9,12 +9,25 @@ import { useToast } from "@/components/ui/ToastProvider";
 
 interface InfrastructureFormProps {
   locations: any[];
+  initialLocation?: string;
+  initialCategory?: string;
 }
 
-export default function InfrastructureForm({ locations }: InfrastructureFormProps) {
+export default function InfrastructureForm({ 
+  locations, 
+  initialLocation, 
+  initialCategory 
+}: InfrastructureFormProps) {
   const [loading, setLoading] = useState(false);
-  const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [selectedCat, setSelectedCat] = useState("CCTV");
+  
+  const defaultCategories = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+  const isCustom = initialCategory && initialCategory !== "Semua" && !defaultCategories.includes(initialCategory);
+  
+  const [isCustomCategory, setIsCustomCategory] = useState(!!isCustom);
+  const [selectedCat, setSelectedCat] = useState(
+    initialCategory && initialCategory !== "Semua" ? initialCategory : "CCTV"
+  );
+  
   const router = useRouter();
   const { toast } = useToast();
 
@@ -27,7 +40,7 @@ export default function InfrastructureForm({ locations }: InfrastructureFormProp
       const result = await createInfrastructure(formData);
       
       toast("Fasilitas berhasil didaftarkan ke sistem!", "success");
-      router.push(`/infrastructure/${result.id}`);
+      router.push(`/infrastructure/${result.id}?location=${initialLocation || "Semua"}&category=${initialCategory || "Semua"}`);
     } catch (error: any) {
       toast(error.message || "Gagal mendaftarkan fasilitas", "error");
       setLoading(false);
@@ -40,7 +53,7 @@ export default function InfrastructureForm({ locations }: InfrastructureFormProp
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/infrastructure"
+            href={`/infrastructure?location=${initialLocation || "Semua"}&category=${initialCategory || "Semua"}`}
             className="p-2.5 bg-surface border border-border rounded-xl text-text-muted hover:text-foreground hover:bg-background transition-all"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -118,7 +131,7 @@ export default function InfrastructureForm({ locations }: InfrastructureFormProp
                 <MapPin className="w-4 h-4 absolute left-4 top-3.5 text-text-muted" />
                 <select
                   name="location_id"
-                  defaultValue=""
+                  defaultValue={initialLocation && initialLocation !== "Semua" ? initialLocation : ""}
                   className="w-full pl-11 pr-4 py-3 bg-background border border-border rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer"
                 >
                   <option value="">Pilih Lokasi / Ruangan...</option>

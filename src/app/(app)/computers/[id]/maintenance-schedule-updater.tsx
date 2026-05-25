@@ -787,7 +787,7 @@ NOTIFY pgrst, 'reload schema';`);
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all">
+                              <div className="flex items-center gap-1.5 lg:opacity-0 lg:group-hover/item:opacity-100 opacity-100 transition-all">
                                 {log.image_url && (
                                   <button
                                     type="button"

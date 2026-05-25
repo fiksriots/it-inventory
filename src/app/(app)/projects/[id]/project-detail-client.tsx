@@ -600,7 +600,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                       </span>
                       <button
                         onClick={() => handleDeleteRabItem(item.id, item.item_name)}
-                        className="p-1 hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded border border-transparent hover:border-rose-500/20 transition-all opacity-0 group-hover/rab:opacity-100"
+                        className="p-1 hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded border border-transparent hover:border-rose-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
                         title="Hapus Anggaran"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -776,7 +776,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                             
                             <button
                               onClick={() => openEditLogModal(log)}
-                              className="p-1 bg-surface hover:bg-primary/10 text-text-muted/75 hover:text-primary rounded border border-border/40 hover:border-primary/20 transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-1 bg-surface hover:bg-primary/10 text-text-muted/75 hover:text-primary rounded border border-border/40 hover:border-primary/20 transition-colors lg:opacity-0 lg:group-hover:opacity-100 opacity-100"
                               title="Edit Log"
                             >
                               <FileText className="w-3 h-3" />
@@ -784,7 +784,7 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
 
                             <button
                               onClick={() => handleDeleteLog(log.id)}
-                              className="p-1 bg-surface hover:bg-rose-500/10 text-text-muted/75 hover:text-rose-500 rounded border border-border/40 hover:border-rose-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                              className="p-1 bg-surface hover:bg-rose-500/10 text-text-muted/75 hover:text-rose-500 rounded border border-border/40 hover:border-rose-500/20 transition-colors lg:opacity-0 lg:group-hover:opacity-100 opacity-100"
                               title="Hapus Log"
                             >
                               <Trash2 className="w-3 h-3" />

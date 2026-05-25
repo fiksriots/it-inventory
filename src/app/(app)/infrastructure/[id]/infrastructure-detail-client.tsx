@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save, Trash2, Edit3, CheckCircle2, Clock, MapPin, Globe, Users, Cctv, Video, Wrench, AlertTriangle, FileText, Loader2, Calendar, Plus, Trash, PlusCircle, Copy, Check, Image, FileImage, X, Eye, Pencil } from "lucide-react";
 import { updateInfrastructure, updateInfraSchedule, deleteInfrastructure, createInfraMaintenanceLog, deleteInfraMaintenanceLog, updateInfraMaintenanceLog } from "../actions";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -15,6 +15,11 @@ interface InfrastructureDetailClientProps {
 }
 
 export default function InfrastructureDetailClient({ asset, locations, itemsList = [], maintenanceLogs = [], dbTableMissing = false }: InfrastructureDetailClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const locationParam = searchParams?.get("location") || "Semua";
+  const categoryParam = searchParams?.get("category") || "Semua";
+
   const [loading, setLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -54,7 +59,6 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
       fileInputRef.current.value = "";
     }
   };
-  const router = useRouter();
   const { toast } = useToast();
 
   const isOverdue = asset.next_maintenance_date && new Date(asset.next_maintenance_date) < new Date();
@@ -226,7 +230,7 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-border shadow-sm">
         <div className="flex items-center gap-4">
           <Link
-            href="/infrastructure"
+            href={`/infrastructure?location=${locationParam}&category=${categoryParam}`}
             className="p-2.5 bg-background border border-border rounded-xl text-text-muted hover:text-foreground hover:bg-surface transition-all"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -1064,7 +1068,7 @@ NOTIFY pgrst, 'reload schema';`);
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-1.5 opacity-0 group-hover/item:opacity-100 transition-all">
+                                  <div className="flex items-center gap-1.5 lg:opacity-0 lg:group-hover/item:opacity-100 opacity-100 transition-all">
                                     {log.image_url && (
                                       <button
                                         type="button"

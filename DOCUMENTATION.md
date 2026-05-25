@@ -1,6 +1,5 @@
 # 🏢 Dokumentasi Teknis & Panduan Penggunaan
 ## **OpsFlow IT** — *Modern IT Service & Operations Management Suite*
-**PT. INVENTARIS TEKNOLOGI UTAMA**
 
 ---
 
@@ -458,13 +457,13 @@ Buat file bernama `.env.local` pada direktori utama proyek, lalu isi parameter b
 
 ```env
 # URL endpoint Supabase Anda
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://your-proj-id.supabase.co
 
 # Kunci anonim publik untuk operasi standar di sisi klien
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1kpXVCJ9...
 
 # Kunci admin rahasia (Service Role Key) untuk memproses penyimpanan file serverless
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzIkpXVCJ9...
 ```
 
 ### **B. Penerapan Lokal Menggunakan Docker (On-Premise)**
