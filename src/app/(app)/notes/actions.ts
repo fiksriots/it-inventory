@@ -16,6 +16,7 @@ export async function createNote(prevState: any, formData: FormData) {
     const content = (formData.get("content") as string) || "";
     const color = (formData.get("color") as string) || "default";
     const isPinned = formData.get("is_pinned") === "true";
+    const isTodo = formData.get("is_todo") === "true";
 
     if (!title.trim() && !content.trim()) {
       return { error: "Judul atau isi catatan wajib diisi!" };
@@ -28,6 +29,7 @@ export async function createNote(prevState: any, formData: FormData) {
         content: content.trim(),
         color,
         is_pinned: isPinned,
+        is_todo: isTodo,
       })
       .select()
       .single();
@@ -53,6 +55,7 @@ export async function updateNote(id: string, prevState: any, formData: FormData)
     const content = (formData.get("content") as string) || "";
     const color = (formData.get("color") as string) || "default";
     const isPinned = formData.get("is_pinned") === "true";
+    const isTodo = formData.get("is_todo") === "true";
 
     if (!title.trim() && !content.trim()) {
       return { error: "Judul atau isi catatan wajib diisi!" };
@@ -65,6 +68,7 @@ export async function updateNote(id: string, prevState: any, formData: FormData)
         content: content.trim(),
         color,
         is_pinned: isPinned,
+        is_todo: isTodo,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -140,6 +144,28 @@ export async function deleteNote(id: string) {
     if (error) {
       console.error("Error deleting note:", error);
       return { error: `Gagal menghapus catatan: ${error.message}` };
+    }
+
+    revalidatePath("/notes");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Server action error:", err);
+    return { error: "Terjadi kesalahan sistem internal." };
+  }
+}
+
+export async function updateNoteContent(id: string, content: string) {
+  try {
+    const { supabase } = await getActionClient();
+
+    const { error } = await supabase
+      .from("it_notes")
+      .update({ content, updated_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating note content:", error);
+      return { error: `Gagal memperbarui isi catatan: ${error.message}` };
     }
 
     revalidatePath("/notes");

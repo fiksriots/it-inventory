@@ -3,11 +3,11 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { 
   StickyNote, Pin, Search, Trash2, Edit3, X, Check, Copy, 
-  AlertTriangle, Loader2, Palette, Plus, RefreshCw
+  AlertTriangle, Loader2, Palette, Plus, ListTodo
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { 
-  createNote, updateNote, deleteNote, togglePinNote, updateNoteColor 
+  createNote, updateNote, deleteNote, togglePinNote, updateNoteColor, updateNoteContent 
 } from "./actions";
 
 interface NotesClientProps {
@@ -68,6 +68,14 @@ const colorClasses: Record<string, { card: string; picker: string; name: string 
   }
 };
 
+function parseTodoContent(contentStr: string) {
+  try {
+    const parsed = JSON.parse(contentStr);
+    if (Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+  return [];
+}
+
 export default function NotesClient({ initialNotes, dbTableMissing }: NotesClientProps) {
   const [notes, setNotes] = useState<any[]>(initialNotes);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +87,10 @@ export default function NotesClient({ initialNotes, dbTableMissing }: NotesClien
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [isTodoMode, setIsTodoMode] = useState(false);
+  const [todoItems, setTodoItems] = useState<Array<{ id: string; text: string; checked: boolean }>>([
+    { id: "1", text: "", checked: false }
+  ]);
   const [color, setColor] = useState("default");
   const [isPinned, setIsPinned] = useState(false);
   const [showColorPalette, setShowColorPalette] = useState(false);
@@ -87,6 +99,8 @@ export default function NotesClient({ initialNotes, dbTableMissing }: NotesClien
   const [editingNote, setEditingNote] = useState<any>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const [editIsTodo, setEditIsTodo] = useState(false);
+  const [editTodoItems, setEditTodoItems] = useState<Array<{ id: string; text: string; checked: boolean }>>([]);
   const [editColor, setEditColor] = useState("default");
   const [editIsPinned, setEditIsPinned] = useState(false);
   const [showEditColorPalette, setShowEditColorPalette] = useState(false);
@@ -103,6 +117,7 @@ CREATE TABLE IF NOT EXISTS public.it_notes (
     content TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT 'default',
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    is_todo BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -119,7 +134,8 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (creatorRef.current && !creatorRef.current.contains(event.target as Node)) {
-        if (!title.trim() && !content.trim()) {
+        const hasTodoText = todoItems.some(t => t.text.trim() !== "");
+        if (!title.trim() && !content.trim() && !hasTodoText) {
           setIsExpanded(false);
           setShowColorPalette(false);
         }
@@ -127,7 +143,7 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [title, content]);
+  }, [title, content, todoItems]);
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlCode);
@@ -136,9 +152,45 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
     setTimeout(() => setSqlCopied(false), 2000);
   };
 
+  // Todo items management helpers
+  const handleAddTodoItem = (isEdit = false) => {
+    const newItem = { id: Math.random().toString(), text: "", checked: false };
+    if (isEdit) {
+      setEditTodoItems([...editTodoItems, newItem]);
+    } else {
+      setTodoItems([...todoItems, newItem]);
+    }
+  };
+
+  const handleUpdateTodoItemText = (id: string, text: string, isEdit = false) => {
+    if (isEdit) {
+      setEditTodoItems(editTodoItems.map(item => item.id === id ? { ...item, text } : item));
+    } else {
+      setTodoItems(todoItems.map(item => item.id === id ? { ...item, text } : item));
+    }
+  };
+
+  const handleToggleTodoItemChecked = (id: string, isEdit = false) => {
+    if (isEdit) {
+      setEditTodoItems(editTodoItems.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    } else {
+      setTodoItems(todoItems.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    }
+  };
+
+  const handleRemoveTodoItem = (id: string, isEdit = false) => {
+    if (isEdit) {
+      setEditTodoItems(editTodoItems.filter(item => item.id !== id));
+    } else {
+      setTodoItems(todoItems.filter(item => item.id !== id));
+    }
+  };
+
   const handleCreateSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!title.trim() && !content.trim()) {
+
+    const hasTodoText = todoItems.some(t => t.text.trim() !== "");
+    if (!title.trim() && !content.trim() && !hasTodoText) {
       setIsExpanded(false);
       return;
     }
@@ -146,9 +198,15 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
     startTransition(async () => {
       const formData = new FormData();
       formData.append("title", title);
-      formData.append("content", content);
+      
+      let finalContent = content;
+      if (isTodoMode) {
+        finalContent = JSON.stringify(todoItems.filter(t => t.text.trim() !== "").map(t => ({ text: t.text, checked: t.checked })));
+      }
+      formData.append("content", finalContent);
       formData.append("color", color);
       formData.append("is_pinned", isPinned ? "true" : "false");
+      formData.append("is_todo", isTodoMode ? "true" : "false");
 
       const res = await createNote(null, formData);
       if (res.error) {
@@ -161,6 +219,8 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
         // Reset states
         setTitle("");
         setContent("");
+        setIsTodoMode(false);
+        setTodoItems([{ id: "1", text: "", checked: false }]);
         setColor("default");
         setIsPinned(false);
         setIsExpanded(false);
@@ -173,16 +233,23 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
     if (e) e.preventDefault();
     if (!editingNote) return;
 
-    if (!editTitle.trim() && !editContent.trim()) {
+    const hasTodoText = editTodoItems.some(t => t.text.trim() !== "");
+    if (!editTitle.trim() && !editContent.trim() && !hasTodoText) {
       return toast("Judul atau isi catatan wajib diisi!", "error");
     }
 
     startTransition(async () => {
       const formData = new FormData();
       formData.append("title", editTitle);
-      formData.append("content", editContent);
+
+      let finalContent = editContent;
+      if (editIsTodo) {
+        finalContent = JSON.stringify(editTodoItems.filter(t => t.text.trim() !== "").map(t => ({ text: t.text, checked: t.checked })));
+      }
+      formData.append("content", finalContent);
       formData.append("color", editColor);
       formData.append("is_pinned", editIsPinned ? "true" : "false");
+      formData.append("is_todo", editIsTodo ? "true" : "false");
 
       const res = await updateNote(editingNote.id, null, formData);
       if (res.error) {
@@ -214,6 +281,16 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
     setNotes(notes.map(n => n.id === id ? { ...n, color: targetColor } : n));
 
     const res = await updateNoteColor(id, targetColor);
+    if (res.error) {
+      toast(res.error, "error");
+    }
+  };
+
+  const handleTodoCheckToggle = async (id: string, serializedContent: string) => {
+    // Instant UI reaction
+    setNotes(notes.map(n => n.id === id ? { ...n, content: serializedContent } : n));
+
+    const res = await updateNoteContent(id, serializedContent);
     if (res.error) {
       toast(res.error, "error");
     }
@@ -319,20 +396,68 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
             </div>
           )}
 
-          <div className="px-4 py-3">
-            <textarea
-              placeholder="Tulis catatan..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onFocus={() => setIsExpanded(true)}
-              rows={isExpanded ? 3 : 1}
-              className="w-full bg-transparent text-xs font-semibold outline-none border-none resize-none placeholder-text-muted/70 text-foreground"
-            />
-          </div>
+          {isExpanded && isTodoMode ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto px-4 py-2 border-t border-border/10">
+              {todoItems.map((item, index) => (
+                <div key={item.id} className="flex items-center gap-2 group/todo animate-in fade-in duration-100">
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => handleToggleTodoItemChecked(item.id, false)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) => handleUpdateTodoItemText(item.id, e.target.value, false)}
+                    placeholder={index === todoItems.length - 1 ? "+ Tambah item" : "Item daftar"}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTodoItem(false);
+                      } else if (e.key === "Backspace" && !item.text && todoItems.length > 1) {
+                        e.preventDefault();
+                        handleRemoveTodoItem(item.id, false);
+                      }
+                    }}
+                    className="flex-1 bg-transparent text-xs font-semibold outline-none border-none placeholder-text-muted/50 text-foreground py-0.5"
+                  />
+                  {todoItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTodoItem(item.id, false)}
+                      className="p-1 hover:bg-background rounded text-text-muted opacity-0 group-hover/todo:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleAddTodoItem(false)}
+                className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider flex items-center gap-1 mt-1 pl-6 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Item Baru
+              </button>
+            </div>
+          ) : (
+            <div className="px-4 py-3">
+              <textarea
+                placeholder="Tulis catatan..."
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onFocus={() => setIsExpanded(true)}
+                rows={isExpanded ? 3 : 1}
+                className="w-full bg-transparent text-xs font-semibold outline-none border-none resize-none placeholder-text-muted/70 text-foreground"
+              />
+            </div>
+          )}
 
           {isExpanded && (
             <div className="px-4 py-2 border-t border-border/30 flex items-center justify-between gap-2 bg-background/5 rounded-b-xl">
-              <div className="flex items-center gap-1 relative">
+              <div className="flex items-center gap-1.5 relative">
                 {/* Palette color selection */}
                 <button
                   type="button"
@@ -358,6 +483,26 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
                     ))}
                   </div>
                 )}
+
+                {/* Todo Checklist Toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isTodoMode) {
+                      const lines = content.split("\n").filter(l => l.trim() !== "");
+                      const newItems = lines.map((l, i) => ({ id: i.toString(), text: l, checked: false }));
+                      setTodoItems(newItems.length > 0 ? newItems : [{ id: "1", text: "", checked: false }]);
+                    } else {
+                      const text = todoItems.map(item => item.text).filter(t => t.trim() !== "").join("\n");
+                      setContent(text);
+                    }
+                    setIsTodoMode(!isTodoMode);
+                  }}
+                  className={`p-1.5 rounded-lg hover:bg-background transition-colors ${isTodoMode ? 'text-primary bg-primary/10' : 'text-text-muted'}`}
+                  title="Daftar Centang (Checklist)"
+                >
+                  <ListTodo className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -366,6 +511,8 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
                   onClick={() => {
                     setTitle("");
                     setContent("");
+                    setIsTodoMode(false);
+                    setTodoItems([{ id: "1", text: "", checked: false }]);
                     setColor("default");
                     setIsPinned(false);
                     setIsExpanded(false);
@@ -456,12 +603,21 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
                 note={note}
                 onTogglePin={handleTogglePin}
                 onColorChange={handleColorChange}
+                onTodoCheckToggle={handleTodoCheckToggle}
                 onEditClick={(n) => {
                   setEditingNote(n);
                   setEditTitle(n.title || "");
-                  setEditContent(n.content || "");
-                  setEditColor(n.color || "default");
                   setEditIsPinned(n.is_pinned || false);
+                  setEditColor(n.color || "default");
+                  setEditIsTodo(n.is_todo || false);
+                  if (n.is_todo) {
+                    const parsed = parseTodoContent(n.content);
+                    setEditTodoItems(parsed.map((item: any, i: number) => ({ id: i.toString(), text: item.text, checked: item.checked })));
+                    setEditContent("");
+                  } else {
+                    setEditContent(n.content || "");
+                    setEditTodoItems([]);
+                  }
                 }}
                 onDelete={handleDelete}
               />
@@ -483,12 +639,21 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
                 note={note}
                 onTogglePin={handleTogglePin}
                 onColorChange={handleColorChange}
+                onTodoCheckToggle={handleTodoCheckToggle}
                 onEditClick={(n) => {
                   setEditingNote(n);
                   setEditTitle(n.title || "");
-                  setEditContent(n.content || "");
-                  setEditColor(n.color || "default");
                   setEditIsPinned(n.is_pinned || false);
+                  setEditColor(n.color || "default");
+                  setEditIsTodo(n.is_todo || false);
+                  if (n.is_todo) {
+                    const parsed = parseTodoContent(n.content);
+                    setEditTodoItems(parsed.map((item: any, i: number) => ({ id: i.toString(), text: item.text, checked: item.checked })));
+                    setEditContent("");
+                  } else {
+                    setEditContent(n.content || "");
+                    setEditTodoItems([]);
+                  }
                 }}
                 onDelete={handleDelete}
               />
@@ -530,18 +695,66 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
               </div>
             </div>
 
-            <div className="p-6">
-              <textarea
-                placeholder="Tulis catatan..."
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                rows={6}
-                className="w-full bg-transparent text-xs font-semibold outline-none border-none resize-none text-foreground placeholder-text-muted/70"
-              />
-            </div>
+            {editIsTodo ? (
+              <div className="p-6 space-y-2 max-h-60 overflow-y-auto">
+                {editTodoItems.map((item, index) => (
+                  <div key={item.id} className="flex items-center gap-2 group/todo animate-in fade-in duration-100">
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={() => handleToggleTodoItemChecked(item.id, true)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={item.text}
+                      onChange={(e) => handleUpdateTodoItemText(item.id, e.target.value, true)}
+                      placeholder={index === editTodoItems.length - 1 ? "+ Tambah item" : "Item daftar"}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddTodoItem(true);
+                        } else if (e.key === "Backspace" && !item.text && editTodoItems.length > 1) {
+                          e.preventDefault();
+                          handleRemoveTodoItem(item.id, true);
+                        }
+                      }}
+                      className="flex-1 bg-transparent text-xs font-semibold outline-none border-none placeholder-text-muted/50 text-foreground py-0.5"
+                    />
+                    {editTodoItems.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTodoItem(item.id, true)}
+                        className="p-1 hover:bg-background/20 rounded text-text-muted opacity-0 group-hover/todo:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => handleAddTodoItem(true)}
+                  className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider flex items-center gap-1 mt-1 pl-6 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Item Baru
+                </button>
+              </div>
+            ) : (
+              <div className="p-6">
+                <textarea
+                  placeholder="Tulis catatan..."
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={6}
+                  className="w-full bg-transparent text-xs font-semibold outline-none border-none resize-none text-foreground placeholder-text-muted/70"
+                />
+              </div>
+            )}
 
             <div className="px-6 py-4 border-t border-border/20 flex items-center justify-between bg-background/5">
-              <div className="flex items-center gap-1 relative">
+              <div className="flex items-center gap-1.5 relative">
                 <button
                   type="button"
                   onClick={() => setShowEditColorPalette(!showEditColorPalette)}
@@ -566,6 +779,26 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
                     ))}
                   </div>
                 )}
+
+                {/* Todo Checklist Toggle */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!editIsTodo) {
+                      const lines = editContent.split("\n").filter(l => l.trim() !== "");
+                      const newItems = lines.map((l, i) => ({ id: i.toString(), text: l, checked: false }));
+                      setEditTodoItems(newItems.length > 0 ? newItems : [{ id: "1", text: "", checked: false }]);
+                    } else {
+                      const text = editTodoItems.map(item => item.text).filter(t => t.trim() !== "").join("\n");
+                      setEditContent(text);
+                    }
+                    setEditIsTodo(!editIsTodo);
+                  }}
+                  className={`p-1.5 rounded-lg hover:bg-background/20 transition-colors ${editIsTodo ? 'text-primary bg-primary/10' : 'text-text-muted'}`}
+                  title="Daftar Centang (Checklist)"
+                >
+                  <ListTodo className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -596,11 +829,12 @@ CREATE POLICY "Authenticated users can delete notes" ON public.it_notes FOR DELE
 
 // Card Component inside
 function NoteCard({ 
-  note, onTogglePin, onColorChange, onEditClick, onDelete 
+  note, onTogglePin, onColorChange, onTodoCheckToggle, onEditClick, onDelete 
 }: { 
   note: any; 
   onTogglePin: (id: string, currentPin: boolean) => void;
   onColorChange: (id: string, color: string) => void;
+  onTodoCheckToggle: (id: string, serializedContent: string) => void;
   onEditClick: (note: any) => void;
   onDelete: (id: string) => void;
 }) {
@@ -617,6 +851,8 @@ function NoteCard({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const todoItems = note.is_todo ? parseTodoContent(note.content) : [];
+
   return (
     <div className={`border rounded-xl p-4 flex flex-col justify-between min-h-[140px] relative group/card transition-all duration-300 hover:scale-[1.01] ${colorClasses[note.color || 'default'].card}`}>
       
@@ -631,15 +867,40 @@ function NoteCard({
       </button>
 
       {/* Note Content */}
-      <div className="space-y-2 cursor-pointer pr-5" onClick={() => onEditClick(note)}>
+      <div className="space-y-2 cursor-pointer pr-5 flex-1" onClick={() => onEditClick(note)}>
         {note.title && (
           <h3 className="font-extrabold text-sm leading-tight pr-2 break-words">
             {note.title}
           </h3>
         )}
-        <p className="text-[11px] font-semibold leading-relaxed whitespace-pre-wrap break-words opacity-85">
-          {note.content}
-        </p>
+
+        {note.is_todo ? (
+          <div className="space-y-1 mt-1.5" onClick={(e) => e.stopPropagation()}>
+            {todoItems.map((item: any, idx: number) => (
+              <label 
+                key={idx} 
+                className="flex items-center gap-2 text-[11px] font-semibold opacity-90 cursor-pointer hover:bg-background/10 py-0.5 rounded px-1 transition-colors"
+              >
+                <input 
+                  type="checkbox" 
+                  checked={item.checked} 
+                  onChange={async () => {
+                    const newItems = todoItems.map((itm: any, i: number) => i === idx ? { ...itm, checked: !itm.checked } : itm);
+                    onTodoCheckToggle(note.id, JSON.stringify(newItems));
+                  }}
+                  className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                />
+                <span className={`break-all ${item.checked ? 'line-through opacity-50' : ''}`}>
+                  {item.text}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] font-semibold leading-relaxed whitespace-pre-wrap break-words opacity-85">
+            {note.content}
+          </p>
+        )}
       </div>
 
       {/* Action Toolbar on Hover */}

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.it_notes (
     content TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT 'default',
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    is_todo BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
