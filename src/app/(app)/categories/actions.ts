@@ -8,6 +8,7 @@ export async function createCategory(prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
   const description = formData.get("description") as string;
+  const parentId = formData.get("parent_id") as string || null;
 
   if (!name || !code) {
     return { error: "Nama kategori dan Kode wajib diisi." };
@@ -17,7 +18,12 @@ export async function createCategory(prevState: any, formData: FormData) {
 
   const { error } = await supabase
     .from("categories")
-    .insert([{ name, code: code.toUpperCase(), description }]);
+    .insert([{ 
+      name, 
+      code: code.toUpperCase(), 
+      description,
+      parent_id: parentId || null
+    }]);
 
   if (error) {
     console.error("Error inserting category:", error);

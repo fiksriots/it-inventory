@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import CategoryForm from "./category-form";
+import { formatCategoryName } from "@/utils/category";
 
 export default async function NewCategoryPage() {
   const supabase = await createClient();
@@ -9,7 +10,8 @@ export default async function NewCategoryPage() {
   // Get all category codes to find the highest sequence number (K-0001 format)
   const { data: categories } = await supabase
     .from("categories")
-    .select("code");
+    .select("id, name, code, parent_id")
+    .order("name");
     
   let maxNum = 0;
   if (categories && categories.length > 0) {
@@ -26,6 +28,12 @@ export default async function NewCategoryPage() {
   const nextNum = maxNum + 1;
   const nextCode = `K-${nextNum.toString().padStart(4, '0')}`;
 
+  // Format category options hierarchically
+  const categoryOptions = (categories || []).map(cat => ({
+    id: cat.id,
+    label: formatCategoryName(cat, categories || [])
+  })).sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
@@ -41,7 +49,7 @@ export default async function NewCategoryPage() {
 
       {/* Form Card */}
       <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
-        <CategoryForm nextCode={nextCode} />
+        <CategoryForm nextCode={nextCode} categories={categoryOptions} />
       </div>
     </div>
   );

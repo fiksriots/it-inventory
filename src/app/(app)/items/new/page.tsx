@@ -2,11 +2,17 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import ItemForm from "./item-form";
+import { formatCategoryName } from "@/utils/category";
 
 export default async function NewItemPage() {
   const supabase = await createClient();
-  const { data: categories } = await supabase.from("categories").select("id, name, code").order("name");
+  const { data: rawCategories } = await supabase.from("categories").select("id, name, code, parent_id");
   const { data: locations } = await supabase.from("locations").select("id, name").order("name");
+
+  const formattedCategories = (rawCategories || []).map(cat => ({
+    ...cat,
+    name: formatCategoryName(cat, rawCategories || [])
+  })).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -23,7 +29,7 @@ export default async function NewItemPage() {
 
       {/* Form Card */}
       <div className="bg-surface border border-border rounded-xl shadow-sm p-6">
-        <ItemForm categories={categories || []} locations={locations || []} />
+        <ItemForm categories={formattedCategories} locations={locations || []} />
       </div>
     </div>
   );

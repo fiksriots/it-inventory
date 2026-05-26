@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { createCategory } from "../actions";
 
-export default function CategoryForm({ nextCode }: { nextCode: string }) {
+export default function CategoryForm({ nextCode, categories }: { nextCode: string; categories: { id: string; label: string }[] }) {
   const [state, formAction, isPending] = useActionState(createCategory, null);
   
   return (
@@ -24,7 +24,7 @@ export default function CategoryForm({ nextCode }: { nextCode: string }) {
               name="name"
               required
               className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
-              placeholder="Contoh: Elektronik" 
+              placeholder="Contoh: Switch" 
             />
           </div>
           <div className="space-y-2">
@@ -41,6 +41,19 @@ export default function CategoryForm({ nextCode }: { nextCode: string }) {
               className="w-full bg-background/50 border border-border rounded-lg px-4 py-2 focus:outline-none font-mono text-primary font-bold cursor-not-allowed" 
             />
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Kategori Induk (Parent) - <span className="text-text-muted text-xs italic font-normal">Opsional (Kosongkan jika ini kategori utama)</span></label>
+          <select 
+            name="parent_id"
+            className="w-full bg-background border border-border rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none cursor-pointer"
+          >
+            <option value="">-- Tanpa Kategori Induk (Kategori Utama) --</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.label}</option>
+            ))}
+          </select>
         </div>
 
         <div className="space-y-2">

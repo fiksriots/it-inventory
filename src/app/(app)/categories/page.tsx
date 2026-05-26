@@ -5,6 +5,7 @@ import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteCategory } from "./actions";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
+import { formatCategoryName } from "@/utils/category";
 
 export default async function CategoriesPage({
   searchParams,
@@ -29,6 +30,8 @@ export default async function CategoriesPage({
   const to = from + pageSize - 1;
 
   const { data: categories, error, count } = await query.range(from, to);
+
+  const { data: allCats } = await supabase.from("categories").select("id, name, parent_id");
 
   const totalPages = Math.ceil((count || 0) / pageSize);
 
@@ -75,7 +78,7 @@ export default async function CategoriesPage({
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary transition-all">
                           <Tags className="w-5 h-5 text-primary transition-colors" />
                         </div>
-                        <span className="font-bold transition-colors">{category.name}</span>
+                        <span className="font-bold transition-colors">{formatCategoryName(category, allCats || [])}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
