@@ -18,11 +18,43 @@ export async function createItem(prevState: any, formData: FormData) {
   const conversion_rate_str = formData.get("conversion_rate") as string;
   const conversion_rate = conversion_rate_str ? parseFloat(conversion_rate_str) : 1;
 
+  const new_category_name = formData.get("new_category_name") as string;
+  const new_category_code = formData.get("new_category_code") as string;
+
   if (!name || !sku) {
     return { error: "Nama barang dan SKU wajib diisi." };
   }
 
   const supabase = await createClient();
+
+  let finalCategoryId = category_id;
+  if (new_category_name && new_category_code) {
+    // Check if category name or code already exists to avoid duplicates
+    const { data: existingCat } = await supabase
+      .from("categories")
+      .select("id")
+      .or(`name.ilike.${new_category_name.trim()},code.ilike.${new_category_code.trim()}`)
+      .maybeSingle();
+
+    if (existingCat) {
+      finalCategoryId = existingCat.id;
+    } else {
+      const { data: newCat, error: catError } = await supabase
+        .from("categories")
+        .insert([{ 
+          name: new_category_name.trim(), 
+          code: new_category_code.trim().toUpperCase() 
+        }])
+        .select()
+        .single();
+
+      if (catError) {
+        console.error("Error creating custom category:", catError);
+        return { error: `Gagal membuat kategori baru: ${catError.message}` };
+      }
+      finalCategoryId = newCat.id;
+    }
+  }
 
   let finalSku = sku;
   if (finalSku.endsWith("-AUTO") || !finalSku) {
@@ -30,7 +62,7 @@ export async function createItem(prevState: any, formData: FormData) {
     const { data: category } = await supabase
       .from("categories")
       .select("name, code")
-      .eq("id", category_id)
+      .eq("id", finalCategoryId)
       .single();
 
     const prefix = category ? (category.code || category.name.split(' ')[0]).toUpperCase().replace(/[^A-Z0-9]/g, "") : "ITEM";
@@ -63,7 +95,7 @@ export async function createItem(prevState: any, formData: FormData) {
     .insert([{ 
       name, 
       sku: finalSku, 
-      category_id: category_id || null, 
+      category_id: finalCategoryId || null, 
       condition: condition || 'Baru',
       price: price ? parseFloat(price) : 0,
       description,

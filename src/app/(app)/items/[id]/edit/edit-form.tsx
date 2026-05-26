@@ -13,6 +13,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
   const [hasConversion, setHasConversion] = useState(!!item.has_conversion);
   const [conversionUnit, setConversionUnit] = useState(item.conversion_unit || "");
   const [conversionRate, setConversionRate] = useState(item.conversion_rate || 1);
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
   
   const totalStock = stocks.reduce((acc, curr) => acc + curr.quantity, 0);
 
@@ -43,11 +44,39 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                   <input type="text" name="sku" required defaultValue={item.sku} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-mono text-primary font-bold" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Kategori</label>
-                  <select name="category_id" defaultValue={item.category_id || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none">
-                    <option value="">Pilih Kategori...</option>
-                    {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                  </select>
+                  <label className="text-sm font-medium flex justify-between items-center">
+                    <span>Kategori</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomCategory(!isCustomCategory)}
+                      className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      {isCustomCategory ? "Pilih dari Daftar" : "+ Kategori Kustom"}
+                    </button>
+                  </label>
+                  {isCustomCategory ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
+                      <input 
+                        type="text" 
+                        name="new_category_name"
+                        required={isCustomCategory}
+                        className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
+                        placeholder="Nama Kategori Baru" 
+                      />
+                      <input 
+                        type="text" 
+                        name="new_category_code"
+                        required={isCustomCategory}
+                        className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none uppercase" 
+                        placeholder="Kode Kategori Baru" 
+                      />
+                    </div>
+                  ) : (
+                    <select name="category_id" defaultValue={item.category_id || ""} className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none">
+                      <option value="">Pilih Kategori...</option>
+                      {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Kondisi Barang</label>

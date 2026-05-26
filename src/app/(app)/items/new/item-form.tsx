@@ -15,20 +15,31 @@ export default function ItemForm({ categories, locations }: { categories: any[];
   const [conversionUnit, setConversionUnit] = useState("");
   const [conversionRate, setConversionRate] = useState(1);
   const [initialStock, setInitialStock] = useState("");
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [newCategoryCode, setNewCategoryCode] = useState("");
 
   // Auto-generate SKU logic
   useEffect(() => {
-    if (selectedCategory) {
-      const category = categories.find(c => c.id === selectedCategory);
-      if (category) {
-        // Use category code (or first word of name) stripped of symbols
-        const prefix = (category.code || category.name.split(' ')[0]).toUpperCase().replace(/[^A-Z0-9]/g, "");
-        setSku(`${prefix}-AUTO`);
+    if (isCustomCategory) {
+      if (newCategoryCode) {
+        const prefix = newCategoryCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+        setSku(prefix ? `${prefix}-AUTO` : "");
+      } else {
+        setSku("");
       }
     } else {
-      setSku("");
+      if (selectedCategory) {
+        const category = categories.find(c => c.id === selectedCategory);
+        if (category) {
+          // Use category code (or first word of name) stripped of symbols
+          const prefix = (category.code || category.name.split(' ')[0]).toUpperCase().replace(/[^A-Z0-9]/g, "");
+          setSku(`${prefix}-AUTO`);
+        }
+      } else {
+        setSku("");
+      }
     }
-  }, [selectedCategory, categories]);
+  }, [selectedCategory, categories, isCustomCategory, newCategoryCode]);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -50,19 +61,53 @@ export default function ItemForm({ categories, locations }: { categories: any[];
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Kategori <span className="text-rose-500">*</span></label>
-          <select 
-            name="category_id"
-            required
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none"
-          >
-            <option value="">Pilih Kategori...</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
+          <label className="text-sm font-medium flex justify-between items-center">
+            <span>Kategori <span className="text-rose-500">*</span></span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustomCategory(!isCustomCategory);
+                setSelectedCategory("");
+                setNewCategoryCode("");
+              }}
+              className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider cursor-pointer"
+            >
+              {isCustomCategory ? "Pilih dari Daftar" : "+ Kategori Kustom"}
+            </button>
+          </label>
+          {isCustomCategory ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-200">
+              <input 
+                type="text" 
+                name="new_category_name"
+                required={isCustomCategory}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
+                placeholder="Nama Kategori Baru (contoh: Router)" 
+              />
+              <input 
+                type="text" 
+                name="new_category_code"
+                required={isCustomCategory}
+                value={newCategoryCode}
+                onChange={(e) => setNewCategoryCode(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none uppercase" 
+                placeholder="Kode Kategori Baru (contoh: RTR)" 
+              />
+            </div>
+          ) : (
+            <select 
+              name="category_id"
+              required={!isCustomCategory}
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none appearance-none"
+            >
+              <option value="">Pilih Kategori...</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         
         <div className="space-y-2">
