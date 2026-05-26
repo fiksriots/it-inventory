@@ -1021,12 +1021,22 @@ export default function SchedulesClient() {
                   {/* JAM Row */}
                   <tr>
                     <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1.5 align-middle">JAM</td>
-                    {periodDays.map(d => (
-                      <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle">
-                      {member.toLowerCase() === 'fikri' ? '10' : '9'}
-                    </td>
-                  ))}
-                </tr>
+                    {periodDays.map(d => {
+                      const s = getDaySchedule(member, d.dateStr);
+                      let jamDisplay = member.toLowerCase() === 'fikri' ? '10' : '9';
+                      if (s?.check_in_time) {
+                        const hr = s.check_in_time.split(":")[0];
+                        if (hr) {
+                          jamDisplay = String(Number(hr));
+                        }
+                      }
+                      return (
+                        <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle">
+                          {jamDisplay}
+                        </td>
+                      );
+                    })}
+                  </tr>
                   {/* MEMBER Row */}
                   <tr>
                     <td className="border border-black uppercase font-bold bg-[#e2efda] p-1.5 align-middle">{member}</td>
