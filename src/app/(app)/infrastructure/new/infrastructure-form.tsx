@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2, Cctv, MapPin, Tag, Globe, Users, Clock, FileText } from "lucide-react";
@@ -9,19 +9,41 @@ import { useToast } from "@/components/ui/ToastProvider";
 
 interface InfrastructureFormProps {
   locations: any[];
+  dbCategories: string[];
   initialLocation?: string;
   initialCategory?: string;
 }
 
 export default function InfrastructureForm({ 
   locations, 
+  dbCategories,
   initialLocation, 
   initialCategory 
 }: InfrastructureFormProps) {
   const [loading, setLoading] = useState(false);
   
-  const defaultCategories = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
-  const isCustom = initialCategory && initialCategory !== "Semua" && !defaultCategories.includes(initialCategory);
+  const [localCategories, setLocalCategories] = useState<string[]>(["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"]);
+  
+  useEffect(() => {
+    const saved = localStorage.getItem("infra_categories");
+    if (saved) {
+      try {
+        setLocalCategories(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      localStorage.setItem("infra_categories", JSON.stringify(localCategories));
+    }
+  }, []);
+
+  const categoriesList = Array.from(new Set([
+    ...localCategories, 
+    ...dbCategories, 
+    ...(initialCategory && initialCategory !== "Semua" ? [initialCategory] : [])
+  ]));
+
+  const isCustom = initialCategory && initialCategory !== "Semua" && !categoriesList.includes(initialCategory);
   
   const [isCustomCategory, setIsCustomCategory] = useState(!!isCustom);
   const [selectedCat, setSelectedCat] = useState(
@@ -114,11 +136,9 @@ export default function InfrastructureForm({
                   onChange={(e) => setSelectedCat(e.target.value)}
                   className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                 >
-                  <option value="CCTV">CCTV (Kamera Pengawas)</option>
-                  <option value="DVR">DVR (Digital Video Recorder / NVR)</option>
-                  <option value="Gate/Portal">Gate / Portal Akses Kendaraan</option>
-                  <option value="AC/Pendingin">AC / Sistem Pendingin Ruangan</option>
-                  <option value="Lainnya">Fasilitas Lainnya</option>
+                  {categoriesList.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
                 </select>
               )}
             </div>

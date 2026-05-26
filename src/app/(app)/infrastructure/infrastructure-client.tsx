@@ -72,31 +72,45 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
     setSelectedLocation(searchParams?.get("location") || "Semua");
   }, [searchParams]);
 
-  const [localCustomCategories, setLocalCustomCategories] = useState<string[]>([]);
+  const [localCategories, setLocalCategories] = useState<string[]>([]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  // Load custom categories from localStorage on mount
+  // Load custom/default categories from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("infra_custom_categories");
+    const saved = localStorage.getItem("infra_categories");
     if (saved) {
       try {
-        setLocalCustomCategories(JSON.parse(saved));
+        setLocalCategories(JSON.parse(saved));
       } catch (e) {
         console.error(e);
       }
+    } else {
+      const defaults = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+      // Migrate from old storage if exists
+      const oldSaved = localStorage.getItem("infra_custom_categories");
+      let initialSet = [...defaults];
+      if (oldSaved) {
+        try {
+          const oldCustom = JSON.parse(oldSaved);
+          initialSet = Array.from(new Set([...defaults, ...oldCustom]));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setLocalCategories(initialSet);
+      localStorage.setItem("infra_categories", JSON.stringify(initialSet));
     }
   }, []);
 
-  // Ambil kategori unik yang ada di database + kategori default
-  const defaultCategories = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+  // Ambil kategori unik yang ada di database
   const dbCategories = Array.from(new Set(assets.map(a => a.category).filter(Boolean)));
   
   // Gabungkan dan hilangkan duplikasi, urutkan
   const categories = [
     "Semua",
-    ...Array.from(new Set([...defaultCategories, ...dbCategories, ...localCustomCategories]))
+    ...Array.from(new Set([...localCategories, ...dbCategories]))
   ];
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -110,9 +124,9 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
       return;
     }
 
-    const updated = [...localCustomCategories, name];
-    setLocalCustomCategories(updated);
-    localStorage.setItem("infra_custom_categories", JSON.stringify(updated));
+    const updated = [...localCategories, name];
+    setLocalCategories(updated);
+    localStorage.setItem("infra_categories", JSON.stringify(updated));
     setSelectedCategory(name);
     setNewCategoryName("");
     setIsAddCategoryOpen(false);
@@ -121,6 +135,10 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
 
   const handleDeleteCategory = async () => {
     if (selectedCategory === "Semua") return;
+    if (selectedCategory === "Lainnya") {
+      toast("Kategori 'Lainnya' adalah kategori default sistem dan tidak dapat dihapus.", "error");
+      return;
+    }
 
     // Check if assets are using it
     const affectedAssets = assets.filter(a => a.category === selectedCategory);
@@ -141,9 +159,9 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
         }
 
         // Hapus dari localStorage/local state jika ada
-        const updated = localCustomCategories.filter(c => c !== selectedCategory);
-        setLocalCustomCategories(updated);
-        localStorage.setItem("infra_custom_categories", JSON.stringify(updated));
+        const updated = localCategories.filter(c => c !== selectedCategory);
+        setLocalCategories(updated);
+        localStorage.setItem("infra_categories", JSON.stringify(updated));
 
         setSelectedCategory("Semua");
         toast(`Kategori "${selectedCategory}" berhasil dihapus!`, "success");

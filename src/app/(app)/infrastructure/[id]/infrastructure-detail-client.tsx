@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Save, Trash2, Edit3, CheckCircle2, Clock, MapPin, Globe, Users, Cctv, Video, Wrench, AlertTriangle, FileText, Loader2, Calendar, Plus, Trash, PlusCircle, Copy, Check, Image, FileImage, X, Eye, Pencil } from "lucide-react";
@@ -12,9 +12,17 @@ interface InfrastructureDetailClientProps {
   itemsList?: any[];
   maintenanceLogs: any[];
   dbTableMissing?: boolean;
+  dbCategories?: string[];
 }
 
-export default function InfrastructureDetailClient({ asset, locations, itemsList = [], maintenanceLogs = [], dbTableMissing = false }: InfrastructureDetailClientProps) {
+export default function InfrastructureDetailClient({ 
+  asset, 
+  locations, 
+  itemsList = [], 
+  maintenanceLogs = [], 
+  dbTableMissing = false,
+  dbCategories = []
+}: InfrastructureDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locationParam = searchParams?.get("location") || "Semua";
@@ -35,6 +43,29 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [localCategories, setLocalCategories] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const saved = localStorage.getItem("infra_categories");
+    let cats = ["CCTV", "DVR", "Gate/Portal", "AC/Pendingin", "Lainnya"];
+    if (saved) {
+      try {
+        cats = JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      localStorage.setItem("infra_categories", JSON.stringify(cats));
+    }
+    setLocalCategories(cats);
+  }, []);
+
+  const categoriesList = Array.from(new Set([
+    ...localCategories, 
+    ...dbCategories, 
+    ...(asset.category ? [asset.category] : [])
+  ]));
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -416,11 +447,9 @@ export default function InfrastructureDetailClient({ asset, locations, itemsList
                       onChange={(e) => setSelectedCat(e.target.value)}
                       className="w-full px-3 py-2.5 bg-background border border-border rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer"
                     >
-                      <option value="CCTV">CCTV</option>
-                      <option value="DVR">DVR</option>
-                      <option value="Gate/Portal">Gate/Portal</option>
-                      <option value="AC/Pendingin">AC/Pendingin</option>
-                      <option value="Lainnya">Lainnya</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
                     </select>
                   )}
                 </div>

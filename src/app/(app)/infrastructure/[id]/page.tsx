@@ -60,6 +60,12 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
     dbTableMissing = true;
   }
 
+  // Ambil kategori unik yang ada di database
+  const { data: categoryData } = await supabase
+    .from("infrastructure_assets")
+    .select("category");
+  const dbCategories = Array.from(new Set((categoryData || []).map(a => a.category).filter(Boolean)));
+
   return (
     <InfrastructureDetailClient
       asset={asset}
@@ -67,6 +73,7 @@ export default async function InfrastructureDetailPage({ params }: PageProps) {
       itemsList={itemsList || []}
       maintenanceLogs={maintenanceLogs}
       dbTableMissing={dbTableMissing}
+      dbCategories={dbCategories}
     />
   );
 }
