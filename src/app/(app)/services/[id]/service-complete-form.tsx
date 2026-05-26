@@ -1,19 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { CheckCircle2, Loader2, UploadCloud, FileCheck } from "lucide-react";
 import { completeService } from "../actions";
 import { useRouter } from "next/navigation";
 
 interface ServiceCompleteFormProps {
   service: any;
+  locations: any[];
 }
 
-export default function ServiceCompleteForm({ service }: ServiceCompleteFormProps) {
+export default function ServiceCompleteForm({ service, locations }: ServiceCompleteFormProps) {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const router = useRouter();
+
+  const formattedLocations = useMemo(() => {
+    const map: Record<string, any> = {};
+    locations.forEach(loc => {
+      map[loc.id] = { ...loc };
+    });
+
+    const getPath = (id: string): string => {
+      const path: string[] = [];
+      let curr = map[id];
+      while (curr) {
+        path.unshift(curr.name);
+        curr = curr.parent_id ? map[curr.parent_id] : null;
+      }
+      return path.join(" › ");
+    };
+
+    return locations.map(loc => ({
+      id: loc.id,
+      pathName: getPath(loc.id)
+    })).sort((a, b) => a.pathName.localeCompare(b.pathName));
+  }, [locations]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -65,7 +88,7 @@ export default function ServiceCompleteForm({ service }: ServiceCompleteFormProp
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-bold text-text-muted uppercase tracking-tight">Kondisi Akhir Perangkat</label>
             <input 
@@ -98,6 +121,22 @@ export default function ServiceCompleteForm({ service }: ServiceCompleteFormProp
               required
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-tight">Lokasi Tujuan Penempatan</label>
+            <select
+              name="destination_location_id"
+              defaultValue={service.location_id || ""}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 outline-none cursor-pointer font-semibold"
+            >
+              <option value="">-- Tanpa Lokasi / Gudang Utama --</option>
+              {formattedLocations.map((loc: any) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.pathName}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

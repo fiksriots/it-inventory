@@ -250,6 +250,8 @@ export async function completeService(id: string, formData: FormData) {
   const cost = costStr ? parseFloat(costStr) : 0;
   const notes = formData.get("notes") as string;
   const completedDateInput = formData.get("completed_date") as string;
+  const destinationLocationIdVal = formData.get("destination_location_id") as string;
+  const destination_location_id = destinationLocationIdVal ? destinationLocationIdVal : null;
 
   // Handle Invoice Upload
   let invoiceUrl: string | undefined = undefined;
@@ -300,7 +302,8 @@ export async function completeService(id: string, formData: FormData) {
     final_condition: finalCondition,
     cost,
     notes,
-    completed_date: completedDate
+    completed_date: completedDate,
+    destination_location_id
   };
 
   if (invoiceUrl) {
@@ -327,13 +330,14 @@ export async function completeService(id: string, formData: FormData) {
   let itemName = "Barang";
   if (serviceData?.items) {
     itemName = serviceData.items.name;
-    // Tambah/Update stok barang ke lokasi asal setelah selesai service
-    if (serviceData.location_id && serviceData.item_id) {
+    // Tambah/Update stok barang ke lokasi tujuan (jika diisi) atau lokasi asal setelah selesai service
+    const targetLocationId = destination_location_id || serviceData.location_id;
+    if (targetLocationId && serviceData.item_id) {
       const { data: stock } = await supabase
         .from("item_stocks")
         .select("id, quantity")
         .eq("item_id", serviceData.item_id)
-        .eq("location_id", serviceData.location_id)
+        .eq("location_id", targetLocationId)
         .eq("condition", finalCondition)
         .maybeSingle();
 
@@ -347,7 +351,7 @@ export async function completeService(id: string, formData: FormData) {
           .from("item_stocks")
           .insert([{
             item_id: serviceData.item_id,
-            location_id: serviceData.location_id,
+            location_id: targetLocationId,
             quantity: serviceData.quantity,
             condition: finalCondition
           }]);
@@ -357,7 +361,7 @@ export async function completeService(id: string, formData: FormData) {
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from("inventory_logs").insert([{
         item_id: serviceData.item_id,
-        location_id: serviceData.location_id,
+        location_id: targetLocationId,
         user_id: user?.id,
         mutation_type: 'INBOUND',
         quantity: serviceData.quantity,
@@ -366,12 +370,20 @@ export async function completeService(id: string, formData: FormData) {
     }
   } else if (serviceData?.computers) {
     itemName = `PC: ${serviceData.computers.name} (${serviceData.computers.asset_number})`;
-    // Kembalikan status komputer ke Aktif
-    await supabase.from("computers").update({ status: "Aktif" }).eq("id", serviceData.computer_id);
+    // Kembalikan status komputer ke Aktif, dan pindahkan lokasi jika diisi
+    const compUpdate: any = { status: "Aktif" };
+    if (destination_location_id) {
+      compUpdate.location_id = destination_location_id;
+    }
+    await supabase.from("computers").update(compUpdate).eq("id", serviceData.computer_id);
   } else if (serviceData?.infrastructure_assets) {
     itemName = `Infra: ${serviceData.infrastructure_assets.name} (${serviceData.infrastructure_assets.asset_number})`;
-    // Kembalikan status infrastruktur ke Aktif
-    await supabase.from("infrastructure_assets").update({ status: "Aktif" }).eq("id", serviceData.infrastructure_asset_id);
+    // Kembalikan status infrastruktur ke Aktif, dan pindahkan lokasi jika diisi
+    const infraUpdate: any = { status: "Aktif" };
+    if (destination_location_id) {
+      infraUpdate.location_id = destination_location_id;
+    }
+    await supabase.from("infrastructure_assets").update(infraUpdate).eq("id", serviceData.infrastructure_asset_id);
   }
 
   const serviceNumber = serviceData?.service_number || id;

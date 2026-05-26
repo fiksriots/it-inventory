@@ -39,11 +39,24 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
   const { data: service } = await supabase
     .from("item_services")
-    .select("*, items(name, sku, description), computers(name, asset_number, notes), infrastructure_assets(name, asset_number, notes), locations(name), suppliers(*)")
+    .select(`
+      *,
+      items(name, sku, description),
+      computers(name, asset_number, notes),
+      infrastructure_assets(name, asset_number, notes),
+      locations:locations!location_id(name),
+      destination_location:locations!destination_location_id(name),
+      suppliers(*)
+    `)
     .eq("id", id)
     .single();
 
   if (!service) notFound();
+
+  const { data: locations } = await supabase
+    .from("locations")
+    .select("id, name, parent_id")
+    .order("name");
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
@@ -136,13 +149,27 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
               <div className="flex items-center gap-3">
                 <div className="bg-background p-2 rounded-lg border border-border">
-                  <MapPin className="w-4 h-4 text-text-muted" />
+                  <MapPin className="w-4 h-4 text-amber-500" />
                 </div>
                 <div>
                   <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Lokasi Pengambilan</p>
                   <p className="text-xs font-medium">{service.locations?.name || "Gudang Utama"}</p>
                 </div>
               </div>
+
+              {service.status === 'Selesai' && (
+                <div className="flex items-center gap-3">
+                  <div className="bg-background p-2 rounded-lg border border-border">
+                    <MapPin className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Lokasi Penempatan Baru</p>
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      {service.destination_location?.name || "Gudang Utama"}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -285,7 +312,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
           </div>
 
           {/* Interactive Completion Block (If still in process) */}
-          <ServiceCompleteForm service={service} />
+          <ServiceCompleteForm service={service} locations={locations || []} />
 
           {/* Completed Notes Block (If finished) */}
           {service.status === 'Selesai' && service.notes && (
