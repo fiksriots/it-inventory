@@ -428,7 +428,7 @@ export default function SchedulesClient() {
     <div className="space-y-6">
       <style>{`
         @media print {
-          @page { size: A4 landscape !important; margin: 0 !important; }
+          @page { size: A4 landscape !important; margin: 8mm !important; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: white !important; }
           .max-w-7xl { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
         }
@@ -983,59 +983,62 @@ export default function SchedulesClient() {
       {/* PRINT ONLY LAYOUT */}
       <div 
         className="hidden print:block bg-white text-black font-sans"
-        style={{ width: '100%', maxWidth: 'none', padding: '0 5mm' }}
+        style={{ width: '100%', maxWidth: 'none', padding: '0' }}
       >
         <h2 className="text-center font-bold text-[16px] mb-6 uppercase tracking-wider">
           {getPrintTitle()}
         </h2>
         
         {/* Main Matrix */}
-        <div className="flex justify-center">
-          <table className="w-full max-w-full mx-auto border-collapse border border-black mb-8 text-center text-xs">
+        <div className="w-full overflow-visible">
+          <table className="w-full border-collapse border border-black mb-8 text-center text-xs">
             <thead>
               {/* TGL Row */}
               <tr>
-                <th className="border border-black bg-[#ffff00] p-1.5 w-[60px] align-middle">TGL</th>
+                <th className="border border-black bg-[#ffff00] p-1 w-[90px] font-bold align-middle text-[10px]">TGL</th>
                 {periodDays.map(d => (
-                  <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-normal p-1.5 align-middle">
-                  {d.dayNum}
-                </th>
-              ))}
-            </tr>
+                  <th key={`print-tgl-${d.dateStr}`} className="border border-black bg-[#ffff00] font-bold p-1 align-middle text-[9px]">
+                    {d.dayNum}
+                  </th>
+                ))}
+              </tr>
               {/* HARI Row */}
               <tr>
-                <th className="border border-black bg-[#d9d9d9] p-1.5 align-middle">HARI</th>
+                <th className="border border-black bg-[#d9d9d9] p-1 font-bold align-middle text-[10px]">HARI</th>
                 {periodDays.map(d => {
                   const shortDay = ["MG", "SN", "SL", "RB", "KM", "JM", "SB"][new Date(d.year, d.month - 1, d.dayNum).getDay()];
                   return (
-                    <th key={`print-hari-${d.dateStr}`} className={`border border-black font-normal p-1.5 align-middle ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
-                    {shortDay}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {members.map(member => (
-              <React.Fragment key={`print-row-${member}`}>
+                    <th key={`print-hari-${d.dateStr}`} className={`border border-black font-bold p-1 align-middle text-[9px] ${d.isSunday ? 'bg-red-600 text-white' : 'bg-white text-black'}`}>
+                      {shortDay}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {members.map(member => (
+                <React.Fragment key={`print-row-${member}`}>
                   {/* JAM Row */}
                   <tr>
-                    <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1.5 align-middle">JAM</td>
+                    <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1 align-middle text-[10px]">JAM</td>
                     {periodDays.map(d => {
                       const s = getDaySchedule(member, d.dateStr);
-                      const jamText = s?.check_in_time && s?.check_out_time 
-                        ? `${s.check_in_time}-${s.check_out_time}` 
-                        : (member.toLowerCase() === 'fikri' ? '10:00-19:00' : '09:00-18:00');
+                      const checkIn = s?.check_in_time || (member.toLowerCase() === 'fikri' ? '10:00' : '09:00');
+                      const checkOut = s?.check_out_time || (member.toLowerCase() === 'fikri' ? '19:00' : '18:00');
                       return (
-                        <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle text-[9px]">
-                          {jamText}
+                        <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] p-0.5 align-middle">
+                          <div className="flex flex-col items-center justify-center leading-none text-[8px] py-0.5">
+                            <span>{checkIn}</span>
+                            <span className="text-[6px] my-px font-bold">-</span>
+                            <span>{checkOut}</span>
+                          </div>
                         </td>
                       );
                     })}
                   </tr>
                   {/* MEMBER Row */}
                   <tr>
-                    <td className="border border-black uppercase font-bold bg-[#e2efda] p-1.5 align-middle">{member}</td>
+                    <td className="border border-black uppercase font-bold bg-[#e2efda] p-1.5 align-middle text-[11px] truncate">{member}</td>
                     {periodDays.map(d => {
                       const s = getDaySchedule(member, d.dateStr);
                       const status = s ? s.status : (d.isHoliday ? "PH" : "M");
@@ -1049,10 +1052,10 @@ export default function SchedulesClient() {
                         bgClass = "bg-[#ffc000]";
                       }
                       return (
-                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1.5 align-middle relative ${bgClass} ${textClass}`}>
+                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1 align-middle text-[10px] relative ${bgClass} ${textClass}`}>
                           {displayStatus}
                           {s && s.overtime_hours && s.overtime_hours > 0 ? (
-                            <div className="text-[8px] font-normal mt-0.5 text-amber-500 print:text-amber-600">
+                            <div className="text-[7px] font-normal mt-0.5 text-amber-500 print:text-amber-600">
                               +{s.overtime_hours}h
                             </div>
                           ) : null}
@@ -1060,13 +1063,11 @@ export default function SchedulesClient() {
                       );
                     })}
                   </tr>
-              </React.Fragment>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
         </div>
-
-
       </div>
     </div>
   );
