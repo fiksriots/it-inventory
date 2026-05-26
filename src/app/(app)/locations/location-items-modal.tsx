@@ -111,7 +111,7 @@ export default function LocationItemsModal({
                           {idx + 1}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-0.5">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <p className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{item.items?.name}</p>
                             <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
                               item.condition === 'Rusak' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
@@ -120,6 +120,11 @@ export default function LocationItemsModal({
                             }`}>
                               {item.condition}
                             </span>
+                            {item.locations?.name && (
+                              <span className="text-[9px] text-text-muted font-medium bg-background border border-border px-1.5 py-0.5 rounded">
+                                📍 {item.locations.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[10px] text-text-muted font-mono uppercase">{item.items?.sku}</p>
                         </div>

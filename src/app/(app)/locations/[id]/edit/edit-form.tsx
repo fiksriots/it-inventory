@@ -2,12 +2,34 @@
 
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useMemo } from "react";
 import { updateLocation } from "../../actions";
 
 export default function EditLocationForm({ location, locations }: { location: any; locations: any[] }) {
   const updateLocationWithId = updateLocation.bind(null, location.id);
   const [state, formAction, isPending] = useActionState(updateLocationWithId, null);
+
+  const formattedLocations = useMemo(() => {
+    const map: Record<string, any> = {};
+    locations.forEach(loc => {
+      map[loc.id] = { ...loc };
+    });
+
+    const getPath = (id: string): string => {
+      const path: string[] = [];
+      let curr = map[id];
+      while (curr) {
+        path.unshift(curr.name);
+        curr = curr.parent_id ? map[curr.parent_id] : null;
+      }
+      return path.join(" › ");
+    };
+
+    return locations.map(loc => ({
+      id: loc.id,
+      pathName: getPath(loc.id)
+    })).sort((a, b) => a.pathName.localeCompare(b.pathName));
+  }, [locations]);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -51,9 +73,9 @@ export default function EditLocationForm({ location, locations }: { location: an
                 className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer"
               >
                 <option value="">-- Tanpa Lokasi Induk (Top Level) --</option>
-                {locations.map((loc: any) => (
+                {formattedLocations.map((loc: any) => (
                   <option key={loc.id} value={loc.id}>
-                    {loc.name}
+                    {loc.pathName}
                   </option>
                 ))}
               </select>

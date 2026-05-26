@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect, Fragment } from "react";
-import { Plus, MapPin, PackageX, Edit, ShoppingCart, Monitor, Cctv, ChevronRight, ChevronDown, CornerDownRight, Search, Loader2 } from "lucide-react";
+import { useState, useTransition, useMemo, useCallback, Fragment } from "react";
+import { Plus, MapPin, Edit, ShoppingCart, Monitor, Cctv, ChevronRight, ChevronDown, CornerDownRight, Search } from "lucide-react";
 import Link from "next/link";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteLocation } from "./actions";
@@ -19,6 +19,13 @@ interface Location {
   infrastructure_assets?: { id: string }[];
 }
 
+interface LocationNode extends Location {
+  children: LocationNode[];
+  cumulativeItems: number;
+  cumulativeComputers: number;
+  cumulativeInfra: number;
+}
+
 interface LocationsClientProps {
   initialLocations: Location[];
 }
@@ -26,94 +33,154 @@ interface LocationsClientProps {
 export default function LocationsClient({ initialLocations }: LocationsClientProps) {
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
+  const [expandedLocations, setExpandedLocations] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
 
-  // Membagi lokasi menjadi parent (top-level) dan children (sub-lokasi)
-  const { parents, childrenByParent } = useMemo(() => {
-    const parentList: Location[] = [];
-    const childrenMap: Record<string, Location[]> = {};
-
+  // Membangun pohon lokasi dan menghitung statistik kumulatif
+  const { roots, nodesMap } = useMemo(() => {
+    const map: Record<string, LocationNode> = {};
+    
     locations.forEach((loc) => {
-      if (!loc.parent_id) {
-        parentList.push(loc);
+      map[loc.id] = {
+        ...loc,
+        children: [],
+        cumulativeItems: 0,
+        cumulativeComputers: 0,
+        cumulativeInfra: 0,
+      };
+    });
+
+    const rootList: LocationNode[] = [];
+    locations.forEach((loc) => {
+      const node = map[loc.id];
+      if (loc.parent_id && map[loc.parent_id]) {
+        map[loc.parent_id].children.push(node);
       } else {
-        if (!childrenMap[loc.parent_id]) {
-          childrenMap[loc.parent_id] = [];
-        }
-        childrenMap[loc.parent_id].push(loc);
+        rootList.push(node);
       }
     });
 
-    // Urutkan berdasarkan nama
-    parentList.sort((a, b) => a.name.localeCompare(b.name));
-    Object.keys(childrenMap).forEach((parentId) => {
-      childrenMap[parentId].sort((a, b) => a.name.localeCompare(b.name));
-    });
+    // Urutkan sub-lokasi berdasarkan nama secara rekursif
+    const sortNode = (node: LocationNode) => {
+      node.children.sort((a, b) => a.name.localeCompare(b.name));
+      node.children.forEach(sortNode);
+    };
+    rootList.sort((a, b) => a.name.localeCompare(b.name));
+    rootList.forEach(sortNode);
 
-    return { parents: parentList, childrenByParent: childrenMap };
+    // Hitung statistik secara rekursif dari bawah ke atas
+    const computeStats = (node: LocationNode) => {
+      let directItems = node.item_stocks?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
+      let directComputers = node.computers?.length || 0;
+      let directInfra = node.infrastructure_assets?.length || 0;
+
+      node.children.forEach((child) => {
+        computeStats(child);
+        directItems += child.cumulativeItems;
+        directComputers += child.cumulativeComputers;
+        directInfra += child.cumulativeInfra;
+      });
+
+      node.cumulativeItems = directItems;
+      node.cumulativeComputers = directComputers;
+      node.cumulativeInfra = directInfra;
+    };
+    rootList.forEach(computeStats);
+
+    return { roots: rootList, nodesMap: map };
   }, [locations]);
 
-  // Efek samping: Buka otomatis parent yang memiliki anak yang cocok dengan kata kunci pencarian
-  useEffect(() => {
-    if (!searchQuery) return;
-    
-    const nextExpanded: Record<string, boolean> = {};
-    parents.forEach((parent) => {
-      const children = childrenByParent[parent.id] || [];
-      const hasMatchingChild = children.some((child) =>
-        child.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (child.address && child.address.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-      if (hasMatchingChild) {
-        nextExpanded[parent.id] = true;
-      }
-    });
-    
-    setExpandedParents((prev) => ({ ...prev, ...nextExpanded }));
-  }, [searchQuery, parents, childrenByParent]);
+  // Fungsi pencocokan pencarian secara rekursif
+  const matchesSearch = useCallback((node: LocationNode, query: string): boolean => {
+    const matchesSelf =
+      node.name.toLowerCase().includes(query) ||
+      (node.address && node.address.toLowerCase().includes(query));
+    if (matchesSelf) return true;
+    return node.children.some((child) => matchesSearch(child, query));
+  }, []);
 
-  // Handler toggle ekspansi parent
-  const toggleParent = (parentId: string) => {
-    setExpandedParents((prev) => ({
+  // Ekspansi otomatis untuk hasil pencarian
+  const searchExpandedMap = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    if (!searchQuery) return map;
+
+    const query = searchQuery.toLowerCase();
+    const buildSearchExpanded = (nodes: LocationNode[]) => {
+      nodes.forEach((node) => {
+        const hasMatchingDescendant = node.children.some((child) => matchesSearch(child, query));
+        if (hasMatchingDescendant) {
+          map[node.id] = true;
+        }
+        buildSearchExpanded(node.children);
+      });
+    };
+    buildSearchExpanded(roots);
+    return map;
+  }, [roots, searchQuery, matchesSearch]);
+
+  const activeExpandedMap = useMemo(() => {
+    return { ...expandedLocations, ...searchExpandedMap };
+  }, [expandedLocations, searchExpandedMap]);
+
+  const toggleLocation = (id: string) => {
+    setExpandedLocations((prev) => ({
       ...prev,
-      [parentId]: !prev[parentId],
+      [id]: !prev[id],
     }));
   };
 
-  // Filter parent berdasarkan pencarian (parent itu sendiri cocok, atau ada anaknya yang cocok)
-  const filteredParents = useMemo(() => {
-    if (!searchQuery) return parents;
-
+  // Meratakan pohon ke baris tabel (Flattened)
+  const flattenedRows = useMemo(() => {
+    interface FlattenedRow {
+      node: LocationNode;
+      depth: number;
+      hasChildren: boolean;
+      isExpanded: boolean;
+    }
+    const list: FlattenedRow[] = [];
     const query = searchQuery.toLowerCase();
-    return parents.filter((parent) => {
-      const matchesParent =
-        parent.name.toLowerCase().includes(query) ||
-        (parent.address && parent.address.toLowerCase().includes(query));
 
-      const children = childrenByParent[parent.id] || [];
-      const matchesChild = children.some(
-        (child) =>
-          child.name.toLowerCase().includes(query) ||
-          (child.address && child.address.toLowerCase().includes(query))
-      );
+    const flatten = (nodes: LocationNode[], depth: number = 0) => {
+      const filtered = searchQuery
+        ? nodes.filter((node) => matchesSearch(node, query))
+        : nodes;
 
-      return matchesParent || matchesChild;
-    });
-  }, [parents, childrenByParent, searchQuery]);
+      filtered.forEach((node) => {
+        const hasChildren = node.children.length > 0;
+        const isExpanded = !!activeExpandedMap[node.id];
 
-  // Filter children berdasarkan pencarian untuk setiap parent yang ditampilkan
-  const getFilteredChildren = (parentId: string) => {
-    const children = childrenByParent[parentId] || [];
-    if (!searchQuery) return children;
+        list.push({
+          node,
+          depth,
+          hasChildren,
+          isExpanded,
+        });
 
-    const query = searchQuery.toLowerCase();
-    return children.filter(
-      (child) =>
-        child.name.toLowerCase().includes(query) ||
-        (child.address && child.address.toLowerCase().includes(query))
-    );
-  };
+        if (hasChildren && isExpanded) {
+          flatten(node.children, depth + 1);
+        }
+      });
+    };
+
+    flatten(roots);
+    return list;
+  }, [roots, searchQuery, activeExpandedMap, matchesSearch]);
+
+  // Fungsi untuk mendapatkan path lengkap dari lokasi (breadcrumb)
+  const getLocationPath = useCallback((nodeId: string): string => {
+    const path: string[] = [];
+    let currentId: string | null = nodeId;
+    while (currentId) {
+      const pathNode: LocationNode | undefined = nodesMap[currentId];
+      if (pathNode) {
+        path.unshift(pathNode.name);
+        currentId = pathNode.parent_id;
+      } else {
+        break;
+      }
+    }
+    return path.join(" › ");
+  }, [nodesMap]);
 
   // Handler hapus lokasi lokal setelah berhasil dihapus di database
   const handleDeleteLocal = async (id: string) => {
@@ -132,7 +199,7 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Departemen & Lokasi</h1>
-          <p className="text-text-muted mt-1">Kelola daftar departemen, lokasi utama, dan sub-lokasi penempatan barang.</p>
+          <p className="text-text-muted mt-1">Kelola daftar departemen, lokasi utama, dan sub-lokasi penempatan barang secara bertingkat.</p>
         </div>
         <Link
           href="/locations/new"
@@ -153,7 +220,7 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari lokasi utama atau sub-lokasi..."
+              placeholder="Cari lokasi utama, sub-lokasi, atau lantai..."
               className="w-full pl-11 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none font-medium"
             />
           </div>
@@ -173,194 +240,123 @@ export default function LocationsClient({ initialLocations }: LocationsClientPro
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredParents.length > 0 ? (
-                filteredParents.map((parent) => {
-                  const parentChildren = getFilteredChildren(parent.id);
-                  const hasChildren = parentChildren.length > 0;
-                  const isExpanded = !!expandedParents[parent.id];
-
-                  // Hitung total barang dari parent saja
-                  const parentTotalItems = parent.item_stocks?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-                  
-                  // Hitung total akumulatif (parent + semua sub-lokasinya)
-                  const subLocationsTotalItems = (childrenByParent[parent.id] || []).reduce((acc, child) => {
-                    return acc + (child.item_stocks?.reduce((a, c) => a + c.quantity, 0) || 0);
-                  }, 0);
-                  const cumulativeTotalItems = parentTotalItems + subLocationsTotalItems;
-
-                  // Hitung total komputer akumulatif (parent + semua sub-lokasinya)
-                  const parentTotalComputers = parent.computers?.length || 0;
-                  const subLocationsTotalComputers = (childrenByParent[parent.id] || []).reduce((acc, child) => {
-                    return acc + (child.computers?.length || 0);
-                  }, 0);
-                  const cumulativeTotalComputers = parentTotalComputers + subLocationsTotalComputers;
-
-                  // Hitung total infrastruktur akumulatif (parent + semua sub-lokasinya)
-                  const parentTotalInfra = parent.infrastructure_assets?.length || 0;
-                  const subLocationsTotalInfra = (childrenByParent[parent.id] || []).reduce((acc, child) => {
-                    return acc + (child.infrastructure_assets?.length || 0);
-                  }, 0);
-                  const cumulativeTotalInfra = parentTotalInfra + subLocationsTotalInfra;
+              {flattenedRows.length > 0 ? (
+                flattenedRows.map(({ node, depth, hasChildren, isExpanded }) => {
+                  const directItems = node.item_stocks?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
+                  const hasSubStocks = node.cumulativeItems > directItems;
 
                   return (
-                    <Fragment key={parent.id}>
-                      {/* Baris Lokasi Induk (Parent Row) */}
-                      <tr className="hover:bg-background/40 transition-all group/parent border-b border-border/60">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            {/* Toggle Ekspansi */}
-                            {hasChildren ? (
-                              <button
-                                onClick={() => toggleParent(parent.id)}
-                                className="p-1 hover:bg-border/60 rounded-md transition-colors text-text-muted hover:text-foreground cursor-pointer shrink-0"
-                              >
-                                {isExpanded ? (
-                                  <ChevronDown className="w-4 h-4 text-primary" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4" />
-                                )}
-                              </button>
-                            ) : (
-                              <div className="w-6" /> // Placeholder spacing jika tidak punya sub-lokasi
-                            )}
-
-                            <div 
-                              className={`flex items-center gap-2.5 ${hasChildren ? "cursor-pointer select-none" : ""}`}
-                              onClick={() => hasChildren && toggleParent(parent.id)}
+                    <tr 
+                      key={node.id} 
+                      className={`hover:bg-background/40 transition-all ${
+                        depth === 0 
+                          ? "border-b border-border/60 font-semibold" 
+                          : "bg-surface/10 border-b border-border/40"
+                      }`}
+                    >
+                      <td className="px-6 py-4" style={{ paddingLeft: `${24 + depth * 24}px` }}>
+                        <div className="flex items-center gap-3">
+                          {/* Toggle Ekspansi */}
+                          {hasChildren ? (
+                            <button
+                              onClick={() => toggleLocation(node.id)}
+                              className="p-1 hover:bg-border/60 rounded-md transition-colors text-text-muted hover:text-foreground cursor-pointer shrink-0"
                             >
-                              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover/parent:bg-primary group-hover/parent:border-primary transition-all shrink-0">
-                                <MapPin className="w-4.5 h-4.5 text-primary group-hover/parent:text-white transition-colors" />
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-bold text-foreground group-hover/parent:text-primary transition-colors text-sm">
-                                  {parent.name}
+                              {isExpanded ? (
+                                <ChevronDown className="w-4 h-4 text-primary" />
+                              ) : (
+                                <ChevronRight className="w-4 h-4" />
+                              )}
+                            </button>
+                          ) : (
+                            <div className="w-6 shrink-0" />
+                          )}
+
+                          <div 
+                            className={`flex items-center gap-2.5 ${hasChildren ? "cursor-pointer select-none" : ""}`}
+                            onClick={() => hasChildren && toggleLocation(node.id)}
+                          >
+                            {depth > 0 && <CornerDownRight className="w-3.5 h-3.5 text-text-muted/60 shrink-0" />}
+                            <div className={
+                              depth === 0 
+                                ? "w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0" 
+                                : "w-7 h-7 rounded-lg bg-border/50 flex items-center justify-center border border-border shrink-0"
+                            }>
+                              <MapPin className={
+                                depth === 0 
+                                  ? "w-4.5 h-4.5 text-primary" 
+                                  : "w-3.5 h-3.5 text-text-muted"
+                              } />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className={`text-foreground hover:text-primary transition-colors ${
+                                depth === 0 ? "text-sm font-bold" : "text-xs font-semibold"
+                              }`}>
+                                {node.name}
+                              </span>
+                              {hasChildren && (
+                                <span className="text-[10px] text-text-muted font-medium mt-0.5">
+                                  {node.children.length} Sub-lokasi
                                 </span>
-                                {hasChildren && (
-                                  <span className="text-[10px] text-text-muted font-medium mt-0.5">
-                                    {parentChildren.length} Sub-lokasi
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-text-muted font-medium text-xs">
-                          {parent.address || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <LocationItemsModal
-                            locationId={parent.id}
-                            locationName={parent.name}
-                            totalItems={cumulativeTotalItems}
-                            triggerLabel={
-                              cumulativeTotalItems > 0 ? (
-                                <button className="px-2.5 py-1 rounded-full text-xs font-black bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all cursor-pointer">
-                                  {cumulativeTotalItems} Unit {subLocationsTotalItems > 0 && `(Akumulatif)`}
-                                </button>
-                              ) : (
-                                <span className="text-text-muted/50 text-xs">0 Unit</span>
-                              )
-                            }
-                          />
-                        </td>
-                        <td className="px-6 py-4 text-center">
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-text-muted font-medium text-xs">
+                        {node.address || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <LocationItemsModal
+                          locationId={node.id}
+                          locationName={getLocationPath(node.id)}
+                          totalItems={node.cumulativeItems}
+                          triggerLabel={
+                            node.cumulativeItems > 0 ? (
+                              <button className="px-2.5 py-1 rounded-full text-xs font-black bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all cursor-pointer">
+                                {node.cumulativeItems} Unit {hasSubStocks && `(Akumulatif)`}
+                              </button>
+                            ) : (
+                              <span className="text-text-muted/50 text-xs">0 Unit</span>
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <Link
+                          href={`/computers?location=${node.id}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-primary/40 hover:text-primary transition-all font-mono ${
+                            depth === 0 ? "text-xs font-bold" : "text-[11px] font-medium"
+                          }`}
+                        >
+                          <Monitor className="w-3.5 h-3.5 text-primary" />
+                          <span>{node.cumulativeComputers} Unit</span>
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <Link
+                          href={`/infrastructure?location=${node.id}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-blue-500/40 hover:text-blue-500 transition-all font-mono ${
+                            depth === 0 ? "text-xs font-bold" : "text-[11px] font-medium"
+                          }`}
+                        >
+                          <Cctv className="w-3.5 h-3.5 text-blue-500" />
+                          <span>{node.cumulativeInfra} Unit</span>
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
                           <Link
-                            href={`/computers?location=${parent.id}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-primary/40 hover:text-primary transition-all text-xs font-bold font-mono"
+                            href={`/locations/${node.id}/edit`}
+                            className="p-1.5 text-text-muted hover:text-primary rounded-lg hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
+                            title="Edit"
                           >
-                            <Monitor className="w-3.5 h-3.5 text-primary" />
-                            <span>{cumulativeTotalComputers} Unit</span>
+                            <Edit className="w-4 h-4" />
                           </Link>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <Link
-                            href={`/infrastructure?location=${parent.id}`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-blue-500/40 hover:text-blue-500 transition-all text-xs font-bold font-mono"
-                          >
-                            <Cctv className="w-3.5 h-3.5 text-blue-500" />
-                            <span>{cumulativeTotalInfra} Unit</span>
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Link
-                              href={`/locations/${parent.id}/edit`}
-                              className="p-1.5 text-text-muted hover:text-primary rounded-lg hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
-                              title="Edit"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Link>
-                            <DeleteButton id={parent.id} label={`lokasi "${parent.name}"`} onDelete={handleDeleteLocal} />
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Baris Sub-lokasi (Children Rows) */}
-                      {isExpanded &&
-                        parentChildren.map((child) => {
-                          const childTotalItems = child.item_stocks?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-
-                          return (
-                            <tr
-                              key={child.id}
-                              className="bg-surface/10 hover:bg-primary/5 transition-all group/child border-b border-border/40"
-                            >
-                              <td className="px-6 py-3 pl-12">
-                                <div className="flex items-center gap-2.5">
-                                  {/* Ikon Alur Pohon */}
-                                  <CornerDownRight className="w-4 h-4 text-text-muted/60 shrink-0" />
-                                  <div className="w-7 h-7 rounded-lg bg-border/50 flex items-center justify-center border border-border shrink-0">
-                                    <MapPin className="w-3.5 h-3.5 text-text-muted group-hover/child:text-primary transition-colors" />
-                                  </div>
-                                  <span className="font-semibold text-text-muted group-hover/child:text-foreground transition-colors text-xs">
-                                    {child.name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-3 text-text-muted font-medium text-xs opacity-80">
-                                {child.address || "-"}
-                              </td>
-                              <td className="px-6 py-3 text-center">
-                                <LocationItemsModal
-                                  locationId={child.id}
-                                  locationName={`${parent.name} › ${child.name}`}
-                                  totalItems={childTotalItems}
-                                />
-                              </td>
-                              <td className="px-6 py-3 text-center">
-                                <Link
-                                  href={`/computers?location=${child.id}`}
-                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface border border-border/80 hover:border-primary/40 hover:text-primary transition-all text-[11px] font-medium font-mono"
-                                >
-                                  <Monitor className="w-3 h-3 text-primary" />
-                                  <span>{child.computers?.length || 0} Unit</span>
-                                </Link>
-                              </td>
-                              <td className="px-6 py-3 text-center">
-                                <Link
-                                  href={`/infrastructure?location=${child.id}`}
-                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface border border-border/80 hover:border-blue-500/40 hover:text-blue-500 transition-all text-[11px] font-medium font-mono"
-                                >
-                                  <Cctv className="w-3 h-3 text-blue-500" />
-                                  <span>{child.infrastructure_assets?.length || 0} Unit</span>
-                                </Link>
-                              </td>
-                              <td className="px-6 py-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <Link
-                                    href={`/locations/${child.id}/edit`}
-                                    className="p-1 text-text-muted hover:text-primary rounded hover:bg-primary/10 transition-all"
-                                    title="Edit"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </Link>
-                                  <DeleteButton id={child.id} label={`sub-lokasi "${child.name}"`} onDelete={handleDeleteLocal} />
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </Fragment>
+                          <DeleteButton id={node.id} label={`lokasi "${node.name}"`} onDelete={handleDeleteLocal} />
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })
               ) : (

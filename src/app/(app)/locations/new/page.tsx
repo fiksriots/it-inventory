@@ -5,7 +5,7 @@ export default async function NewLocationPage() {
   const supabase = await createClient();
   const { data: locations } = await supabase
     .from("locations")
-    .select("id, name")
+    .select("id, name, parent_id")
     .order("name");
 
   return <NewLocationForm locations={locations || []} />;

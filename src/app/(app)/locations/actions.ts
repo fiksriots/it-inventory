@@ -70,18 +70,39 @@ export async function deleteLocation(id: string) {
 
 export async function getLocationItems(locationId: string) {
   const supabase = await createClient();
+  
+  // Ambil semua lokasi untuk menghitung tree sub-lokasi secara rekursif
+  const { data: allLocs } = await supabase.from("locations").select("id, parent_id");
+  const targetIds: string[] = [locationId];
+  
+  if (allLocs) {
+    const getChildrenIds = (parentId: string) => {
+      allLocs.forEach(loc => {
+        if (loc.parent_id === parentId) {
+          targetIds.push(loc.id);
+          getChildrenIds(loc.id);
+        }
+      });
+    };
+    getChildrenIds(locationId);
+  }
+
   const { data, error } = await supabase
     .from("item_stocks")
     .select(`
       quantity,
       condition,
+      location_id,
+      locations (
+        name
+      ),
       items (
         id,
         name,
         sku
       )
     `)
-    .eq("location_id", locationId)
+    .in("location_id", targetIds)
     .gt("quantity", 0)
     .order("quantity", { ascending: false });
 

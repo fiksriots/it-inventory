@@ -12,7 +12,7 @@ export default async function EditLocationPage({ params }: { params: Promise<{ i
   // Ambil lokasi lain yang bisa dijadikan parent (kecuali lokasi itu sendiri)
   const { data: locations } = await supabase
     .from("locations")
-    .select("id, name")
+    .select("id, name, parent_id")
     .neq("id", id)
     .order("name");
   
