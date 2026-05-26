@@ -179,6 +179,44 @@ export async function createService(prevState: any, formData: FormData) {
     await supabase.from("infrastructure_assets").update({ status: "Service" }).eq("id", infrastructureAssetId);
   }
 
+  // Kurangi stok barang dari lokasi asal (dengan kondisi awal, misal 'Rusak')
+  if (itemType === "master" && itemId && locationId) {
+    const { data: stock } = await supabase
+      .from("item_stocks")
+      .select("id, quantity")
+      .eq("item_id", itemId)
+      .eq("location_id", locationId)
+      .eq("condition", initialCondition)
+      .maybeSingle();
+
+    if (stock) {
+      const newQty = Math.max(0, stock.quantity - quantity);
+      await supabase
+        .from("item_stocks")
+        .update({ quantity: newQty, last_updated: new Date().toISOString() })
+        .eq("id", stock.id);
+    } else {
+      await supabase
+        .from("item_stocks")
+        .insert([{
+          item_id: itemId,
+          location_id: locationId,
+          quantity: -quantity,
+          condition: initialCondition
+        }]);
+    }
+
+    // Catat ke inventory_logs (OUTBOUND)
+    await supabase.from("inventory_logs").insert([{
+      item_id: itemId,
+      location_id: locationId,
+      user_id: user?.id,
+      mutation_type: 'OUTBOUND',
+      quantity,
+      notes: `[Service Keluar] No Dokumen: ${serviceNumber} (${quantity} unit, Kondisi: ${initialCondition})`
+    }]);
+  }
+
   // Tambahkan ke laporan harian otomatis
   let itemName = "Barang";
   if (itemType === "master" && itemId) {
@@ -282,13 +320,50 @@ export async function completeService(id: string, formData: FormData) {
   // Tarik data service lengkap untuk diproses status asetnya
   const { data: serviceData } = await supabase
     .from("item_services")
-    .select("service_number, item_id, computer_id, infrastructure_asset_id, items(name), computers(name, asset_number), infrastructure_assets(name, asset_number)")
+    .select("service_number, item_id, location_id, quantity, computer_id, infrastructure_asset_id, items(name), computers(name, asset_number), infrastructure_assets(name, asset_number)")
     .eq("id", id)
     .single();
 
   let itemName = "Barang";
   if (serviceData?.items) {
     itemName = serviceData.items.name;
+    // Tambah/Update stok barang ke lokasi asal setelah selesai service
+    if (serviceData.location_id && serviceData.item_id) {
+      const { data: stock } = await supabase
+        .from("item_stocks")
+        .select("id, quantity")
+        .eq("item_id", serviceData.item_id)
+        .eq("location_id", serviceData.location_id)
+        .eq("condition", finalCondition)
+        .maybeSingle();
+
+      if (stock) {
+        await supabase
+          .from("item_stocks")
+          .update({ quantity: stock.quantity + serviceData.quantity, last_updated: new Date().toISOString() })
+          .eq("id", stock.id);
+      } else {
+        await supabase
+          .from("item_stocks")
+          .insert([{
+            item_id: serviceData.item_id,
+            location_id: serviceData.location_id,
+            quantity: serviceData.quantity,
+            condition: finalCondition
+          }]);
+      }
+
+      // Catat ke inventory_logs (INBOUND)
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("inventory_logs").insert([{
+        item_id: serviceData.item_id,
+        location_id: serviceData.location_id,
+        user_id: user?.id,
+        mutation_type: 'INBOUND',
+        quantity: serviceData.quantity,
+        notes: `[Service Selesai] No Dokumen: ${serviceData.service_number} (${serviceData.quantity} unit, Kondisi Akhir: ${finalCondition})`
+      }]);
+    }
   } else if (serviceData?.computers) {
     itemName = `PC: ${serviceData.computers.name} (${serviceData.computers.asset_number})`;
     // Kembalikan status komputer ke Aktif
@@ -319,7 +394,7 @@ export async function updateServiceStatus(id: string, status: string) {
   
   const { data: serviceData } = await supabase
     .from("item_services")
-    .select("computer_id, infrastructure_asset_id")
+    .select("service_number, item_id, location_id, quantity, initial_condition, computer_id, infrastructure_asset_id")
     .eq("id", id)
     .single();
 
@@ -330,6 +405,44 @@ export async function updateServiceStatus(id: string, status: string) {
 
   if (error) {
     return { error: `Gagal mengubah status: ${error.message}` };
+  }
+
+  // Jika dibatalkan, kembalikan stok barang
+  if (status === 'Dibatalkan' && serviceData?.item_id && serviceData.location_id) {
+    const { data: stock } = await supabase
+      .from("item_stocks")
+      .select("id, quantity")
+      .eq("item_id", serviceData.item_id)
+      .eq("location_id", serviceData.location_id)
+      .eq("condition", serviceData.initial_condition)
+      .maybeSingle();
+
+    if (stock) {
+      await supabase
+        .from("item_stocks")
+        .update({ quantity: stock.quantity + serviceData.quantity, last_updated: new Date().toISOString() })
+        .eq("id", stock.id);
+    } else {
+      await supabase
+        .from("item_stocks")
+        .insert([{
+          item_id: serviceData.item_id,
+          location_id: serviceData.location_id,
+          quantity: serviceData.quantity,
+          condition: serviceData.initial_condition
+        }]);
+    }
+
+    // Catat ke inventory_logs (INBOUND)
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("inventory_logs").insert([{
+      item_id: serviceData.item_id,
+      location_id: serviceData.location_id,
+      user_id: user?.id,
+      mutation_type: 'INBOUND',
+      quantity: serviceData.quantity,
+      notes: `[Service Dibatalkan] No Dokumen: ${serviceData.service_number} (${serviceData.quantity} unit, Kondisi: ${serviceData.initial_condition})`
+    }]);
   }
 
   // Jika dibatalkan atau selesai, kembalikan status aset ke 'Aktif'
@@ -353,7 +466,7 @@ export async function deleteService(id: string) {
   
   const { data: serviceData } = await supabase
     .from("item_services")
-    .select("computer_id, infrastructure_asset_id")
+    .select("service_number, item_id, location_id, quantity, initial_condition, status, computer_id, infrastructure_asset_id")
     .eq("id", id)
     .single();
 
@@ -364,6 +477,33 @@ export async function deleteService(id: string) {
 
   if (error) {
     return { error: `Gagal menghapus data service: ${error.message}` };
+  }
+
+  // Kembalikan stok barang jika service dihapus saat masih pending (Proses Service)
+  if (serviceData && serviceData.status === 'Proses Service' && serviceData.item_id && serviceData.location_id) {
+    const { data: stock } = await supabase
+      .from("item_stocks")
+      .select("id, quantity")
+      .eq("item_id", serviceData.item_id)
+      .eq("location_id", serviceData.location_id)
+      .eq("condition", serviceData.initial_condition)
+      .maybeSingle();
+
+    if (stock) {
+      await supabase
+        .from("item_stocks")
+        .update({ quantity: stock.quantity + serviceData.quantity, last_updated: new Date().toISOString() })
+        .eq("id", stock.id);
+    } else {
+      await supabase
+        .from("item_stocks")
+        .insert([{
+          item_id: serviceData.item_id,
+          location_id: serviceData.location_id,
+          quantity: serviceData.quantity,
+          condition: serviceData.initial_condition
+        }]);
+    }
   }
 
   // Kembalikan status aset ke 'Aktif' ketika service dihapus
