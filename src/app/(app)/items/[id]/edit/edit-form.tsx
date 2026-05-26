@@ -131,10 +131,10 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                       value={unit}
                       onChange={(e) => setUnit(e.target.value)}
                       required
-                      className="flex-1 bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold" 
+                      className="flex-1 min-w-0 bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-bold" 
                       placeholder="PCS, ROLL, PACK" 
                     />
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 shrink-0">
                       {["PCS", "ROLL", "PACK"].map((u) => (
                         <button
                           key={u}
