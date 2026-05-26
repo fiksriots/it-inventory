@@ -10,6 +10,10 @@ export interface Schedule {
   status: "M" | "C" | "DP" | "PH" | "L";
   notes: string | null;
   created_at: string;
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  overtime_hours?: number | null;
+  overtime_notes?: string | null;
 }
 
 export async function getSchedules(month: number, year: number) {
@@ -42,7 +46,11 @@ export async function saveSchedule(
   memberName: string,
   scheduleDate: string,
   status: "M" | "C" | "DP" | "PH" | "L",
-  notes?: string
+  notes?: string,
+  checkInTime?: string | null,
+  checkOutTime?: string | null,
+  overtimeHours?: number | null,
+  overtimeNotes?: string | null
 ) {
   if (!memberName || !scheduleDate || !status) {
     return { error: "Semua data wajib diisi." };
@@ -58,6 +66,10 @@ export async function saveSchedule(
         schedule_date: scheduleDate,
         status,
         notes: notes || null,
+        check_in_time: checkInTime || null,
+        check_out_time: checkOutTime || null,
+        overtime_hours: overtimeHours || 0,
+        overtime_notes: overtimeNotes || null,
       },
       { onConflict: "member_name,schedule_date" }
     );

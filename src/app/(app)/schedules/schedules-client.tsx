@@ -52,6 +52,10 @@ export default function SchedulesClient() {
 
   const [selectedStatus, setSelectedStatus] = useState<"M" | "C" | "DP" | "PH" | "L" | "DELETE">("M");
   const [scheduleNotes, setScheduleNotes] = useState("");
+  const [checkInTime, setCheckInTime] = useState("");
+  const [checkOutTime, setCheckOutTime] = useState("");
+  const [overtimeHours, setOvertimeHours] = useState<number>(0);
+  const [overtimeNotes, setOvertimeNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -202,6 +206,7 @@ export default function SchedulesClient() {
     let dpCount = 0;
     let phCount = 0;
     let lCount = 0;
+    let totalOvertimeHours = 0;
 
     periodDays.forEach(dayObj => {
       const s = getDaySchedule(memberName, dayObj.dateStr);
@@ -211,9 +216,13 @@ export default function SchedulesClient() {
       else if (status === "DP") dpCount++;
       else if (status === "PH") phCount++;
       else if (status === "L") lCount++;
+
+      if (s && s.overtime_hours) {
+        totalOvertimeHours += Number(s.overtime_hours);
+      }
     });
 
-    return { mCount, cCount, dpCount, phCount, lCount };
+    return { mCount, cCount, dpCount, phCount, lCount, totalOvertimeHours };
   };
 
   // Handle month/year navigation
@@ -258,6 +267,36 @@ export default function SchedulesClient() {
     }
   };
 
+  const calculateOvertime = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 0;
+    const [inH, inM] = checkIn.split(":").map(Number);
+    const [outH, outM] = checkOut.split(":").map(Number);
+    if (isNaN(inH) || isNaN(inM) || isNaN(outH) || isNaN(outM)) return 0;
+    
+    let diffMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60; // night shift
+    }
+    
+    const standardMinutes = 9 * 60; // 8 hours work + 1 hour break
+    if (diffMinutes > standardMinutes) {
+      return Math.round(((diffMinutes - standardMinutes) / 60) * 10) / 10;
+    }
+    return 0;
+  };
+
+  const handleCheckInChange = (val: string) => {
+    setCheckInTime(val);
+    const calculated = calculateOvertime(val, checkOutTime);
+    setOvertimeHours(calculated);
+  };
+
+  const handleCheckOutChange = (val: string) => {
+    setCheckOutTime(val);
+    const calculated = calculateOvertime(checkInTime, val);
+    setOvertimeHours(calculated);
+  };
+
   // Open edit dialog for a cell
   const handleCellClick = (memberName: string, dayObj: DayInfo) => {
     const existing = getDaySchedule(memberName, dayObj.dateStr);
@@ -278,6 +317,10 @@ export default function SchedulesClient() {
 
     setSelectedStatus(defaultStatus);
     setScheduleNotes(defaultNotes);
+    setCheckInTime(existing?.check_in_time || "");
+    setCheckOutTime(existing?.check_out_time || "");
+    setOvertimeHours(existing?.overtime_hours || 0);
+    setOvertimeNotes(existing?.overtime_notes || "");
   };
 
   // Save or delete schedule
@@ -317,11 +360,16 @@ export default function SchedulesClient() {
           fetchSchedules();
         }
       } else {
+        const isWorkingStatus = selectedStatus === "M" || selectedStatus === "DP" || selectedStatus === "PH";
         const res = await saveSchedule(
           activeCell.memberName,
           activeCell.dateStr,
           selectedStatus,
-          scheduleNotes
+          scheduleNotes,
+          isWorkingStatus ? (checkInTime || null) : null,
+          isWorkingStatus ? (checkOutTime || null) : null,
+          isWorkingStatus ? overtimeHours : 0,
+          isWorkingStatus ? (overtimeNotes || null) : null
         );
         if (res.error) {
           setMessage({ type: "error", text: res.error });
@@ -605,7 +653,7 @@ export default function SchedulesClient() {
                               : ""
                           }`}
                         >
-                          <div className="w-full h-7 sm:h-8 flex items-center justify-center">
+                          <div className="w-full h-7 sm:h-8 flex items-center justify-center relative">
                             <span
                               className={`w-7 sm:w-8 h-7 sm:h-8 rounded-md sm:rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-extrabold shadow-sm ${getStatusBadgeClass(
                                 displayStatus
@@ -613,13 +661,23 @@ export default function SchedulesClient() {
                               title={
                                 isDefault
                                   ? (dayObj.isHoliday ? `Default: ${dayObj.holidayName} (Tanggal Merah)` : "Default: Masuk kerja")
-                                  : displayNotes
-                                  ? `${getStatusLabel(displayStatus)}: ${displayNotes}`
-                                  : getStatusLabel(displayStatus)
+                                  : `${getStatusLabel(displayStatus)}${
+                                      s.check_in_time && s.check_out_time ? ` (${s.check_in_time} - ${s.check_out_time})` : ""
+                                    }${
+                                      s.overtime_hours ? `\nLembur: ${s.overtime_hours} Jam (${s.overtime_notes || "-"})` : ""
+                                    }${displayNotes ? `\nCatatan: ${displayNotes}` : ""}`
                               }
                             >
                               {displayStatus}
                             </span>
+                            {s && s.overtime_hours && s.overtime_hours > 0 ? (
+                              <span 
+                                className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-amber-500 rounded text-[7px] font-black text-black leading-none ring-1 ring-background"
+                                title={`Lembur: ${s.overtime_hours} Jam\nKet: ${s.overtime_notes || '-'}`}
+                              >
+                                +{s.overtime_hours}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                       );
@@ -694,6 +752,12 @@ export default function SchedulesClient() {
                     <div className="flex flex-col items-center p-1 rounded-lg hover:bg-purple-500/5 transition-colors">
                       <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Tot L</span>
                       <span className="text-sm font-black text-purple-500">{stats.lCount}</span>
+                    </div>
+                    
+                    {/* Total Lembur Row */}
+                    <div className="col-span-5 mt-2 pt-2 border-t border-border flex justify-between items-center px-2 text-xs font-semibold bg-amber-500/5 rounded-lg border border-amber-500/10 text-amber-400">
+                      <span>Total Lembur:</span>
+                      <span className="font-extrabold">{stats.totalOvertimeHours} Jam</span>
                     </div>
                   </div>
                 </div>
@@ -801,6 +865,62 @@ export default function SchedulesClient() {
                 </div>
               </div>
 
+              {/* Jam Kerja & Lembur (Hanya muncul jika status adalah Masuk (M), Day Off (DP), atau Public Holiday (PH)) */}
+              {(selectedStatus === "M" || selectedStatus === "DP" || selectedStatus === "PH") && (
+                <div className="space-y-4 border-t border-border pt-4">
+                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Jam Kerja & Lembur (Overtime)</h4>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-text-muted uppercase">Jam Masuk</label>
+                      <input
+                        type="time"
+                        value={checkInTime}
+                        onChange={(e) => handleCheckInChange(e.target.value)}
+                        className="w-full bg-background border border-border focus:border-primary rounded-lg px-3 py-2 text-sm focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-text-muted uppercase">Jam Keluar</label>
+                      <input
+                        type="time"
+                        value={checkOutTime}
+                        onChange={(e) => handleCheckOutChange(e.target.value)}
+                        className="w-full bg-background border border-border focus:border-primary rounded-lg px-3 py-2 text-sm focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 items-end">
+                    <div className="space-y-1.5 col-span-1">
+                      <label className="text-xs font-semibold text-text-muted uppercase">Lembur (Jam)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        placeholder="0"
+                        value={overtimeHours || ""}
+                        onChange={(e) => setOvertimeHours(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-background border border-border focus:border-primary rounded-lg px-3 py-2 text-sm text-center font-bold text-amber-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-xs font-semibold text-text-muted uppercase">Keterangan Lembur</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Overtime backup server"
+                        value={overtimeNotes}
+                        onChange={(e) => setOvertimeNotes(e.target.value)}
+                        className="w-full bg-background border border-border focus:border-primary rounded-lg px-3 py-2 text-sm focus:outline-none"
+                        disabled={!overtimeHours}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Notes Input */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-text-muted uppercase">Catatan / Keterangan</label>
@@ -901,12 +1021,18 @@ export default function SchedulesClient() {
                   {/* JAM Row */}
                   <tr>
                     <td className="border border-black bg-[#a9d08e] uppercase font-bold p-1.5 align-middle">JAM</td>
-                    {periodDays.map(d => (
-                      <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle">
-                      {member.toLowerCase() === 'fikri' ? '10' : '9'}
-                    </td>
-                  ))}
-                </tr>
+                    {periodDays.map(d => {
+                      const s = getDaySchedule(member, d.dateStr);
+                      const jamText = s?.check_in_time && s?.check_out_time 
+                        ? `${s.check_in_time}-${s.check_out_time}` 
+                        : (member.toLowerCase() === 'fikri' ? '10:00-19:00' : '09:00-18:00');
+                      return (
+                        <td key={`print-jam-${member}-${d.dateStr}`} className="border border-black bg-[#a9d08e] font-normal p-1.5 align-middle text-[9px]">
+                          {jamText}
+                        </td>
+                      );
+                    })}
+                  </tr>
                   {/* MEMBER Row */}
                   <tr>
                     <td className="border border-black uppercase font-bold bg-[#e2efda] p-1.5 align-middle">{member}</td>
@@ -923,12 +1049,17 @@ export default function SchedulesClient() {
                         bgClass = "bg-[#ffc000]";
                       }
                       return (
-                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1.5 align-middle ${bgClass} ${textClass}`}>
-                        {displayStatus}
-                      </td>
-                    );
-                  })}
-                </tr>
+                        <td key={`print-stat-${member}-${d.dateStr}`} className={`border border-black font-bold p-1.5 align-middle relative ${bgClass} ${textClass}`}>
+                          {displayStatus}
+                          {s && s.overtime_hours && s.overtime_hours > 0 ? (
+                            <div className="text-[8px] font-normal mt-0.5 text-amber-500 print:text-amber-600">
+                              +{s.overtime_hours}h
+                            </div>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
               </React.Fragment>
               ))}
             </tbody>
