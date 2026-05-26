@@ -39,7 +39,7 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
 
   const { data: service } = await supabase
     .from("item_services")
-    .select("*, items(name, sku, description), computers(name, asset_number, description), infrastructure_assets(name, asset_number, description), locations(name), suppliers(*)")
+    .select("*, items(name, sku, description), computers(name, asset_number, notes), infrastructure_assets(name, asset_number, notes), locations(name), suppliers(*)")
     .eq("id", id)
     .single();
 
@@ -211,8 +211,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                     {service.computers.asset_number || "N/A"}
                   </span>
                   <h3 className="text-lg font-bold text-foreground mt-1">{service.computers.name}</h3>
-                  {service.computers.description && (
-                    <p className="text-xs text-text-muted mt-1">{service.computers.description}</p>
+                  {service.computers.notes && (
+                    <p className="text-xs text-text-muted mt-1">{service.computers.notes}</p>
                   )}
                 </div>
               )}
@@ -225,8 +225,8 @@ export default async function ServiceDetailsPage({ params }: { params: Promise<{
                     {service.infrastructure_assets.asset_number || "N/A"}
                   </span>
                   <h3 className="text-lg font-bold text-foreground mt-1">{service.infrastructure_assets.name}</h3>
-                  {service.infrastructure_assets.description && (
-                    <p className="text-xs text-text-muted mt-1">{service.infrastructure_assets.description}</p>
+                  {service.infrastructure_assets.notes && (
+                    <p className="text-xs text-text-muted mt-1">{service.infrastructure_assets.notes}</p>
                   )}
                 </div>
               )}
