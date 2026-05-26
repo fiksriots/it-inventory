@@ -4,6 +4,24 @@ import Link from "next/link";
 import { useActionState, useState, useEffect } from "react";
 import { createItem } from "../actions";
 
+const generateCategoryCode = (name: string): string => {
+  const clean = name.replace(/[^a-zA-Z0-9\s]/g, "").toUpperCase().trim();
+  if (!clean) return "";
+  const words = clean.split(/\s+/);
+  if (words.length > 1) {
+    return words.map(w => w[0]).join("").substring(0, 4);
+  } else {
+    const vowels = ["A", "E", "I", "O", "U"];
+    const word = words[0];
+    if (word.length <= 4) return word;
+    const consonants = word.split("").filter((char, idx) => idx === 0 || !vowels.includes(char));
+    if (consonants.length >= 3) {
+      return consonants.join("").substring(0, 3);
+    }
+    return word.substring(0, 3);
+  }
+};
+
 export default function ItemForm({ categories, locations }: { categories: any[]; locations: any[] }) {
   const [state, formAction, isPending] = useActionState(createItem, null);
   const [sku, setSku] = useState("");
@@ -16,6 +34,7 @@ export default function ItemForm({ categories, locations }: { categories: any[];
   const [conversionRate, setConversionRate] = useState(1);
   const [initialStock, setInitialStock] = useState("");
   const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryCode, setNewCategoryCode] = useState("");
 
   // Auto-generate SKU logic
@@ -68,6 +87,7 @@ export default function ItemForm({ categories, locations }: { categories: any[];
               onClick={() => {
                 setIsCustomCategory(!isCustomCategory);
                 setSelectedCategory("");
+                setNewCategoryName("");
                 setNewCategoryCode("");
               }}
               className="text-[10px] text-primary hover:underline font-bold uppercase tracking-wider cursor-pointer"
@@ -81,6 +101,12 @@ export default function ItemForm({ categories, locations }: { categories: any[];
                 type="text" 
                 name="new_category_name"
                 required={isCustomCategory}
+                value={newCategoryName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewCategoryName(val);
+                  setNewCategoryCode(generateCategoryCode(val));
+                }}
                 className="w-full bg-background border border-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" 
                 placeholder="Nama Kategori Baru (contoh: Router)" 
               />
