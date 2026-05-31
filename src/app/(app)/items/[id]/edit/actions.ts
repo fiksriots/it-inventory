@@ -135,10 +135,11 @@ export async function updateStockCondition(
   itemId: string,
   locationId: string,
   oldCondition: string,
-  newCondition: string
+  newCondition: string,
+  qtyToChange: number
 ) {
-  if (!itemId || !locationId || !oldCondition || !newCondition) {
-    return { error: "Data tidak valid." };
+  if (!itemId || !locationId || !oldCondition || !newCondition || !qtyToChange || qtyToChange <= 0) {
+    return { error: "Data atau jumlah tidak valid." };
   }
 
   if (oldCondition === newCondition) {
@@ -161,7 +162,11 @@ export async function updateStockCondition(
     return { error: "Stok asal tidak ditemukan." };
   }
 
-  const qty = oldStock.quantity;
+  if (qtyToChange > oldStock.quantity) {
+    return { error: `Jumlah yang diubah (${qtyToChange}) melebihi stok yang tersedia (${oldStock.quantity}).` };
+  }
+
+  const isFullChange = qtyToChange === oldStock.quantity;
 
   // 2. Check if target condition already exists in the same location
   const { data: targetStock } = await supabase
@@ -172,33 +177,70 @@ export async function updateStockCondition(
     .eq("condition", newCondition)
     .maybeSingle();
 
-  if (targetStock) {
-    // Merge: Update target and delete old
-    const { error: updateErr } = await supabase
-      .from("item_stocks")
-      .update({ quantity: targetStock.quantity + qty, last_updated: new Date().toISOString() })
-      .eq("item_id", itemId)
-      .eq("location_id", locationId)
-      .eq("condition", newCondition);
+  if (isFullChange) {
+    if (targetStock) {
+      // Merge: Update target and delete old
+      const { error: updateErr } = await supabase
+        .from("item_stocks")
+        .update({ quantity: targetStock.quantity + qtyToChange, last_updated: new Date().toISOString() })
+        .eq("item_id", itemId)
+        .eq("location_id", locationId)
+        .eq("condition", newCondition);
 
-    if (updateErr) return { error: `Gagal memperbarui stok: ${updateErr.message}` };
+      if (updateErr) return { error: `Gagal memperbarui stok: ${updateErr.message}` };
 
-    await supabase
-      .from("item_stocks")
-      .delete()
-      .eq("item_id", itemId)
-      .eq("location_id", locationId)
-      .eq("condition", oldCondition);
+      await supabase
+        .from("item_stocks")
+        .delete()
+        .eq("item_id", itemId)
+        .eq("location_id", locationId)
+        .eq("condition", oldCondition);
+    } else {
+      // Just update the condition
+      const { error: updateErr } = await supabase
+        .from("item_stocks")
+        .update({ condition: newCondition, last_updated: new Date().toISOString() })
+        .eq("item_id", itemId)
+        .eq("location_id", locationId)
+        .eq("condition", oldCondition);
+
+      if (updateErr) return { error: `Gagal mengubah kondisi: ${updateErr.message}` };
+    }
   } else {
-    // Just update the condition
-    const { error: updateErr } = await supabase
+    // Partial Change
+    // Update old stock
+    const { error: updateOldErr } = await supabase
       .from("item_stocks")
-      .update({ condition: newCondition, last_updated: new Date().toISOString() })
+      .update({ quantity: oldStock.quantity - qtyToChange, last_updated: new Date().toISOString() })
       .eq("item_id", itemId)
       .eq("location_id", locationId)
       .eq("condition", oldCondition);
 
-    if (updateErr) return { error: `Gagal mengubah kondisi: ${updateErr.message}` };
+    if (updateOldErr) return { error: `Gagal mengurangi stok asal: ${updateOldErr.message}` };
+
+    if (targetStock) {
+      // Update target stock
+      const { error: updateTargetErr } = await supabase
+        .from("item_stocks")
+        .update({ quantity: targetStock.quantity + qtyToChange, last_updated: new Date().toISOString() })
+        .eq("item_id", itemId)
+        .eq("location_id", locationId)
+        .eq("condition", newCondition);
+
+      if (updateTargetErr) return { error: `Gagal menambah stok tujuan: ${updateTargetErr.message}` };
+    } else {
+      // Insert new stock record
+      const { error: insertErr } = await supabase
+        .from("item_stocks")
+        .insert([{
+          item_id: itemId,
+          location_id: locationId,
+          condition: newCondition,
+          quantity: qtyToChange
+        }]);
+
+      if (insertErr) return { error: `Gagal menambah stok baru: ${insertErr.message}` };
+    }
   }
 
   // 3. Log mutation in inventory_logs
@@ -207,8 +249,8 @@ export async function updateStockCondition(
     location_id: locationId,
     user_id: user?.id,
     mutation_type: 'OUTBOUND',
-    quantity: qty,
-    notes: `Ubah kondisi dari [${oldCondition}] ke [${newCondition}] (${qty} unit).`
+    quantity: qtyToChange,
+    notes: `Ubah kondisi dari [${oldCondition}] ke [${newCondition}] (${qtyToChange} unit).`
   }]);
 
   revalidatePath("/items");

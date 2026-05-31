@@ -41,20 +41,27 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
   
   const totalStock = stocks.reduce((acc, curr) => acc + curr.quantity, 0);
 
-  const handleUpdateCondition = (locId: string, oldCond: string) => {
+  const handleUpdateCondition = (locId: string, oldCond: string, maxQty: number) => {
     const key = `${locId}-${oldCond}`;
     const selectEl = document.getElementById(`change_cond_${locId}_${oldCond.replace(/\s+/g, '_')}`) as HTMLSelectElement;
-    if (!selectEl) return;
+    const qtyEl = document.getElementById(`change_cond_qty_${locId}_${oldCond.replace(/\s+/g, '_')}`) as HTMLInputElement;
+    if (!selectEl || !qtyEl) return;
+    
     const newCond = selectEl.value;
     if (newCond === oldCond) return alert("Pilih kondisi yang berbeda untuk diubah!");
+    
+    const qtyVal = parseInt(qtyEl.value);
+    if (isNaN(qtyVal) || qtyVal <= 0) return alert("Masukkan jumlah yang valid (minimal 1)!");
+    if (qtyVal > maxQty) return alert(`Jumlah melebihi stok yang tersedia (${maxQty})!`);
 
     setLoadingCondKey(key);
     startTransition(async () => {
-      const res = await updateStockCondition(item.id, locId, oldCond, newCond);
+      const res = await updateStockCondition(item.id, locId, oldCond, newCond, qtyVal);
       setLoadingCondKey(null);
       if (res?.error) {
         alert(res.error);
       } else {
+        qtyEl.value = "";
         router.refresh();
       }
     });
@@ -362,10 +369,19 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                             <option value="Afkir">Afkir</option>
                             <option value="Belum Di Cek">Belum Di Cek</option>
                           </select>
+                          <input
+                            type="number"
+                            id={`change_cond_qty_${s.location_id}_${s.condition.replace(/\s+/g, '_')}`}
+                            placeholder="Qty"
+                            min={1}
+                            max={s.quantity}
+                            defaultValue={s.quantity}
+                            className="w-14 bg-background/50 border border-border rounded px-1.5 py-1 text-[11px] focus:ring-1 focus:ring-primary/50 outline-none font-bold text-center"
+                          />
                           <button 
                             type="button"
                             disabled={loadingCondKey === `${s.location_id}-${s.condition}`}
-                            onClick={() => handleUpdateCondition(s.location_id, s.condition)}
+                            onClick={() => handleUpdateCondition(s.location_id, s.condition, s.quantity)}
                             className="px-3 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
                           >
                             <RefreshCw className={`w-3 h-3 ${loadingCondKey === `${s.location_id}-${s.condition}` ? 'animate-spin' : ''}`} />
