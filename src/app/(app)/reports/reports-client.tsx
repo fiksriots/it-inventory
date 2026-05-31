@@ -30,6 +30,12 @@ interface ReportsClientProps {
   pos: any[];
 }
 
+const isRusak = (cond?: string) => {
+  if (!cond) return false;
+  const c = cond.toLowerCase();
+  return c.includes("rusak") || c === "afkir";
+};
+
 export default function ReportsClient({
   items,
   infrastructureAssets,
@@ -143,8 +149,8 @@ export default function ReportsClient({
     const list: any[] = [];
     items.forEach(item => {
       const totalQty = item.item_stocks?.reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
-      const goodQty = item.item_stocks?.filter((s: any) => !(s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir")).reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
-      const badQty = item.item_stocks?.filter((s: any) => s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir").reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+      const goodQty = item.item_stocks?.filter((s: any) => !isRusak(s.condition)).reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
+      const badQty = item.item_stocks?.filter((s: any) => isRusak(s.condition)).reduce((acc: number, s: any) => acc + s.quantity, 0) || 0;
       const locNames = Array.from(new Set(item.item_stocks?.map((s: any) => s.locations?.name).filter(Boolean))).join(", ");
       list.push({
         sku: item.sku || "-",
@@ -456,7 +462,7 @@ export default function ReportsClient({
             <h3 className="text-2xl font-black text-emerald-500 mt-1">
               {formatNum(
                  items.reduce((acc, item) => {
-                  const goodQty = item.item_stocks?.filter((s: any) => !(s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir")).reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                  const goodQty = item.item_stocks?.filter((s: any) => !isRusak(s.condition)).reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
                   return acc + goodQty;
                 }, 0)
               )}
@@ -474,7 +480,7 @@ export default function ReportsClient({
             <h3 className="text-2xl font-black text-rose-500 mt-1">
               {formatNum(
                 items.reduce((acc, item) => {
-                  const badQty = item.item_stocks?.filter((s: any) => s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                  const badQty = item.item_stocks?.filter((s: any) => isRusak(s.condition)).reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
                   return acc + badQty;
                 }, 0)
               )}
@@ -836,7 +842,7 @@ export default function ReportsClient({
                   <p className="text-lg font-black text-rose-500">
                     {formatNum(
                       items.reduce((acc, item) => {
-                        const badQty = item.item_stocks?.filter((s: any) => s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                        const badQty = item.item_stocks?.filter((s: any) => isRusak(s.condition)).reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
                         return acc + badQty;
                       }, 0)
                     )} Unit
@@ -1198,7 +1204,7 @@ export default function ReportsClient({
                 <span style={{ fontSize: "9px", fontWeight: "bold", textTransform: "uppercase", display: "block" }}>Total Barang Inventaris Rusak:</span>
                 <span style={{ fontSize: "14px", fontWeight: "bold" }}>
                   {items.reduce((acc, item) => {
-                    const badQty = item.item_stocks?.filter((s: any) => s.condition?.toLowerCase().includes("rusak") || s.condition === "Afkir").reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
+                    const badQty = item.item_stocks?.filter((s: any) => isRusak(s.condition)).reduce((sum: number, s: any) => sum + s.quantity, 0) || 0;
                     return acc + badQty;
                   }, 0)} Unit
                 </span>
