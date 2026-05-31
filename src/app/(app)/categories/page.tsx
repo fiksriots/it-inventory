@@ -35,9 +35,25 @@ export default async function CategoriesPage({
 
   const { data: categories, error, count } = await query.range(from, to);
 
-  const { data: allCats } = await supabase.from("categories").select("id, name, parent_id");
+  const { data: allCats } = await supabase.from("categories").select("id, name, parent_id, items(count)");
 
   const totalPages = Math.ceil((count || 0) / pageSize);
+
+  // Helper untuk menjumlahkan item secara rekursif termasuk subkategori
+  function getCumulativeItemCount(categoryId: string, categoriesList: any[]): number {
+    const cat = categoriesList.find(c => c.id === categoryId);
+    if (!cat) return 0;
+    
+    const directCount = cat.items?.[0]?.count || 0;
+    const children = categoriesList.filter(c => c.parent_id === categoryId);
+    
+    let totalCount = directCount;
+    for (const child of children) {
+      totalCount += getCumulativeItemCount(child.id, categoriesList);
+    }
+    
+    return totalCount;
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
@@ -91,7 +107,7 @@ export default async function CategoriesPage({
                     <td className="px-6 py-4 text-text-muted font-medium">{category.description || "-"}</td>
                     <td className="px-6 py-4 text-center">
                       <span className="px-2.5 py-1 bg-background border border-border rounded-md text-[10px] font-bold text-text-muted transition-colors">
-                        {category.items?.[0]?.count || 0} Item
+                        {getCumulativeItemCount(category.id, allCats || [])} Item
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
