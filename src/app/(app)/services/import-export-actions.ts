@@ -194,13 +194,13 @@ export async function importItemsBulk(itemsData: any[]) {
       }
 
       if (location_id) {
-        await Promise.all([
+        const [stockRes, logRes] = await Promise.all([
           supabase.from("item_stocks").upsert({
             item_id: newItem.id,
             location_id,
             quantity: qty,
             condition: cond
-          }, { onConflict: 'item_id,location_id' }),
+          }, { onConflict: 'item_id,location_id,condition' }),
           supabase.from("inventory_logs").insert([{
             item_id: newItem.id,
             location_id,
@@ -210,6 +210,13 @@ export async function importItemsBulk(itemsData: any[]) {
             notes: 'Stok diperbarui otomatis via Excel.'
           }])
         ]);
+
+        if (stockRes.error) {
+          console.error(`Gagal menyimpan stok untuk ${name} di lokasi ${locName}:`, stockRes.error);
+        }
+        if (logRes.error) {
+          console.error(`Gagal mencatat log stok untuk ${name}:`, logRes.error);
+        }
       }
     }
   }
