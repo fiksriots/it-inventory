@@ -355,7 +355,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                       </div>
 
                       {/* Change Condition Form */}
-                      <div className="pt-2 border-t border-border/50">
+                      <div className="pt-2 border-t border-border/50 space-y-2">
                         <div className="flex gap-2">
                           <select 
                             id={`change_cond_${s.location_id}_${s.condition.replace(/\s+/g, '_')}`}
@@ -376,18 +376,18 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                             min={1}
                             max={s.quantity}
                             defaultValue={s.quantity}
-                            className="w-14 bg-background/50 border border-border rounded px-1.5 py-1 text-[11px] focus:ring-1 focus:ring-primary/50 outline-none font-bold text-center"
+                            className="w-16 bg-background/50 border border-border rounded px-1.5 py-1 text-[11px] focus:ring-1 focus:ring-primary/50 outline-none font-bold text-center"
                           />
-                          <button 
-                            type="button"
-                            disabled={loadingCondKey === `${s.location_id}-${s.condition}`}
-                            onClick={() => handleUpdateCondition(s.location_id, s.condition, s.quantity)}
-                            className="px-3 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
-                          >
-                            <RefreshCw className={`w-3 h-3 ${loadingCondKey === `${s.location_id}-${s.condition}` ? 'animate-spin' : ''}`} />
-                            Ubah
-                          </button>
                         </div>
+                        <button 
+                          type="button"
+                          disabled={loadingCondKey === `${s.location_id}-${s.condition}`}
+                          onClick={() => handleUpdateCondition(s.location_id, s.condition, s.quantity)}
+                          className="w-full py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingCondKey === `${s.location_id}-${s.condition}` ? 'animate-spin' : ''}`} />
+                          Ubah Kondisi
+                        </button>
                       </div>
                     </div>
                   ))
