@@ -903,7 +903,7 @@ export async function getItemTemplateExcel() {
     templateSheet.getCell(i, 7).dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: ['"Baru,Normal,Rusak,Afkir"'],
+      formulae: ['"Baru,Normal,Rusak,Afkir,Belum Di Cek"'],
       showErrorMessage: true,
       errorTitle: "Kondisi Tidak Valid",
       error: "Silakan pilih kondisi dari opsi yang tersedia."
@@ -1239,7 +1239,7 @@ export async function exportItemsExcel() {
     templateSheet.getCell(i, 7).dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: ['"Baru,Normal,Rusak,Afkir"'],
+      formulae: ['"Baru,Normal,Rusak,Afkir,Belum Di Cek"'],
       showErrorMessage: true,
       errorTitle: "Kondisi Tidak Valid",
       error: "Silakan pilih kondisi dari opsi yang tersedia."
