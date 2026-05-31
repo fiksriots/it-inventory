@@ -7,6 +7,7 @@ import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import { formatCategoryName } from "@/utils/category";
 import { fixEmptyCategoryCodes } from "@/app/(app)/services/import-export-actions";
+import CategoryItemsModal from "./category-items-modal";
 
 export default async function CategoriesPage({
   searchParams,
@@ -106,9 +107,11 @@ export default async function CategoriesPage({
                     </td>
                     <td className="px-6 py-4 text-text-muted font-medium">{category.description || "-"}</td>
                     <td className="px-6 py-4 text-center">
-                      <span className="px-2.5 py-1 bg-background border border-border rounded-md text-[10px] font-bold text-text-muted transition-colors">
-                        {getCumulativeItemCount(category.id, allCats || [])} Item
-                      </span>
+                      <CategoryItemsModal 
+                        categoryId={category.id} 
+                        categoryName={category.name}
+                        totalItems={getCumulativeItemCount(category.id, allCats || [])}
+                      />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

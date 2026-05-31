@@ -62,3 +62,52 @@ export async function deleteCategory(id: string) {
   revalidatePath("/categories");
   return {};
 }
+
+export async function getCategoryItems(categoryId: string) {
+  const supabase = await createClient();
+
+  // 1. Ambil semua kategori untuk menyelesaikan hierarki subkategori
+  const { data: allCats } = await supabase.from("categories").select("id, parent_id");
+  const targetIds: string[] = [categoryId];
+
+  if (allCats) {
+    const getChildrenIds = (parentId: string) => {
+      allCats.forEach(cat => {
+        if (cat.parent_id === parentId) {
+          targetIds.push(cat.id);
+          getChildrenIds(cat.id);
+        }
+      });
+    };
+    getChildrenIds(categoryId);
+  }
+
+  // 2. Ambil barang-barang yang termasuk dalam kategori-kategori tersebut, beserta total stoknya per kondisi/lokasi
+  const { data, error } = await supabase
+    .from("items")
+    .select(`
+      id,
+      name,
+      sku,
+      unit,
+      categories (
+        name
+      ),
+      item_stocks (
+        quantity,
+        condition,
+        locations (
+          name
+        )
+      )
+    `)
+    .in("category_id", targetIds)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching category items:", error);
+    return { error: error.message };
+  }
+
+  return { data };
+}
