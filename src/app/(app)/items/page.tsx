@@ -42,6 +42,9 @@ export default async function ItemsPage({
   const pageSize = 5;
   const supabase = await createClient();
 
+  // Self-healing: Hapus baris stok yang bernilai 0 atau kurang
+  await supabase.from("item_stocks").delete().lte("quantity", 0);
+
   let query = supabase
     .from("items")
     .select("*, categories(name), item_stocks(quantity, condition, locations(name))", { count: "exact" })

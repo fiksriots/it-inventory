@@ -1,8 +1,9 @@
 "use client";
-import { Save, ArrowLeft, Loader2, MinusCircle, PlusCircle, MapPin, Package } from "lucide-react";
+import { Save, ArrowLeft, Loader2, MinusCircle, PlusCircle, MapPin, Package, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useCallback, useState } from "react";
-import { updateItem } from "./actions";
+import { useActionState, useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { updateItem, updateStockCondition } from "./actions";
 import { formatStock } from "@/utils/unit";
 
 const generateCategoryCode = (name: string): string => {
@@ -26,6 +27,9 @@ const generateCategoryCode = (name: string): string => {
 export default function EditItemForm({ item, categories, locations, stocks }: { item: any; categories: any[]; locations: any[]; stocks: any[] }) {
   const fn = useCallback((s: any, f: FormData) => updateItem(item.id, s, f), [item.id]);
   const [state, formAction, isPending] = useActionState(fn, null);
+  const router = useRouter();
+  const [isPendingCond, startTransition] = useTransition();
+  const [loadingCondKey, setLoadingCondKey] = useState<string | null>(null);
 
   const [unit, setUnit] = useState(item.unit || "PCS");
   const [hasConversion, setHasConversion] = useState(!!item.has_conversion);
@@ -36,6 +40,25 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
   const [newCategoryCode, setNewCategoryCode] = useState("");
   
   const totalStock = stocks.reduce((acc, curr) => acc + curr.quantity, 0);
+
+  const handleUpdateCondition = (locId: string, oldCond: string) => {
+    const key = `${locId}-${oldCond}`;
+    const selectEl = document.getElementById(`change_cond_${locId}_${oldCond.replace(/\s+/g, '_')}`) as HTMLSelectElement;
+    if (!selectEl) return;
+    const newCond = selectEl.value;
+    if (newCond === oldCond) return alert("Pilih kondisi yang berbeda untuk diubah!");
+
+    setLoadingCondKey(key);
+    startTransition(async () => {
+      const res = await updateStockCondition(item.id, locId, oldCond, newCond);
+      setLoadingCondKey(null);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        router.refresh();
+      }
+    });
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
@@ -320,6 +343,37 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                           >
                             <MinusCircle className="w-3 h-3" />
                             Kurangi
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Change Condition Form */}
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex gap-2">
+                          <select 
+                            id={`change_cond_${s.location_id}_${s.condition.replace(/\s+/g, '_')}`}
+                            defaultValue={s.condition}
+                            className="flex-1 bg-background/50 border border-border rounded px-2 py-1 text-[11px] outline-none font-bold"
+                          >
+                            <option value="Baru">Baru</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Rusak (Bisa Diperbaiki)">Rusak (Bisa Diperbaiki)</option>
+                            <option value="Rusak (Total)">Rusak (Total)</option>
+                            <option value="Afkir">Afkir</option>
+                            <option value="Belum Di Cek">Belum Di Cek</option>
+                          </select>
+                          <button 
+                            type="button"
+                            disabled={loadingCondKey === `${s.location_id}-${s.condition}`}
+                            onClick={() => handleUpdateCondition(s.location_id, s.condition)}
+                            className="px-3 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {loadingCondKey === `${s.location_id}-${s.condition}` ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Save className="w-3 h-3" />
+                            )}
+                            Ubah Kondisi
                           </button>
                         </div>
                       </div>

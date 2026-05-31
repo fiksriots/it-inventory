@@ -92,12 +92,22 @@ export async function updateItem(id: string, prevState: any, formData: FormData)
     } else {
       // 2. Update/Insert Stock
       if (currentStock) {
-        await supabase
-          .from("item_stocks")
-          .update({ quantity: currentStock.quantity + qty, last_updated: new Date().toISOString() })
-          .eq("item_id", id)
-          .eq("location_id", locationId)
-          .eq("condition", adjCondition);
+        const newQty = currentStock.quantity + qty;
+        if (newQty <= 0) {
+          await supabase
+            .from("item_stocks")
+            .delete()
+            .eq("item_id", id)
+            .eq("location_id", locationId)
+            .eq("condition", adjCondition);
+        } else {
+          await supabase
+            .from("item_stocks")
+            .update({ quantity: newQty, last_updated: new Date().toISOString() })
+            .eq("item_id", id)
+            .eq("location_id", locationId)
+            .eq("condition", adjCondition);
+        }
       } else if (qty > 0) {
         await supabase
           .from("item_stocks")
@@ -119,4 +129,89 @@ export async function updateItem(id: string, prevState: any, formData: FormData)
   revalidatePath("/items");
   revalidatePath(`/items/${id}`);
   redirect("/items");
+}
+
+export async function updateStockCondition(
+  itemId: string,
+  locationId: string,
+  oldCondition: string,
+  newCondition: string
+) {
+  if (!itemId || !locationId || !oldCondition || !newCondition) {
+    return { error: "Data tidak valid." };
+  }
+
+  if (oldCondition === newCondition) {
+    return { success: true };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 1. Get current stock of old condition
+  const { data: oldStock, error: oldErr } = await supabase
+    .from("item_stocks")
+    .select("quantity")
+    .eq("item_id", itemId)
+    .eq("location_id", locationId)
+    .eq("condition", oldCondition)
+    .single();
+
+  if (oldErr || !oldStock) {
+    return { error: "Stok asal tidak ditemukan." };
+  }
+
+  const qty = oldStock.quantity;
+
+  // 2. Check if target condition already exists in the same location
+  const { data: targetStock } = await supabase
+    .from("item_stocks")
+    .select("quantity")
+    .eq("item_id", itemId)
+    .eq("location_id", locationId)
+    .eq("condition", newCondition)
+    .maybeSingle();
+
+  if (targetStock) {
+    // Merge: Update target and delete old
+    const { error: updateErr } = await supabase
+      .from("item_stocks")
+      .update({ quantity: targetStock.quantity + qty, last_updated: new Date().toISOString() })
+      .eq("item_id", itemId)
+      .eq("location_id", locationId)
+      .eq("condition", newCondition);
+
+    if (updateErr) return { error: `Gagal memperbarui stok: ${updateErr.message}` };
+
+    await supabase
+      .from("item_stocks")
+      .delete()
+      .eq("item_id", itemId)
+      .eq("location_id", locationId)
+      .eq("condition", oldCondition);
+  } else {
+    // Just update the condition
+    const { error: updateErr } = await supabase
+      .from("item_stocks")
+      .update({ condition: newCondition, last_updated: new Date().toISOString() })
+      .eq("item_id", itemId)
+      .eq("location_id", locationId)
+      .eq("condition", oldCondition);
+
+    if (updateErr) return { error: `Gagal mengubah kondisi: ${updateErr.message}` };
+  }
+
+  // 3. Log mutation in inventory_logs
+  await supabase.from("inventory_logs").insert([{
+    item_id: itemId,
+    location_id: locationId,
+    user_id: user?.id,
+    mutation_type: 'OUTBOUND',
+    quantity: qty,
+    notes: `Ubah kondisi dari [${oldCondition}] ke [${newCondition}] (${qty} unit).`
+  }]);
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${itemId}`);
+  return { success: true };
 }
