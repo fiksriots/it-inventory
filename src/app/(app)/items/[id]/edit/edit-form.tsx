@@ -366,14 +366,10 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                             type="button"
                             disabled={loadingCondKey === `${s.location_id}-${s.condition}`}
                             onClick={() => handleUpdateCondition(s.location_id, s.condition)}
-                            className="px-3 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white border border-primary/20 rounded transition-all text-[10px] font-bold uppercase flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
                           >
-                            {loadingCondKey === `${s.location_id}-${s.condition}` ? (
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Save className="w-3 h-3" />
-                            )}
-                            Ubah Kondisi
+                            <RefreshCw className={`w-3 h-3 ${loadingCondKey === `${s.location_id}-${s.condition}` ? 'animate-spin' : ''}`} />
+                            Ubah
                           </button>
                         </div>
                       </div>
