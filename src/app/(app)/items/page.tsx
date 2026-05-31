@@ -6,7 +6,7 @@ import { deleteItem } from "./actions";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
-import { getAllItemsForExport, importItemsBulk } from "@/app/(app)/services/import-export-actions";
+import { getAllItemsForExport, importItemsBulk, getItemTemplateExcel } from "@/app/(app)/services/import-export-actions";
 import { formatStock } from "@/utils/unit";
 
 const itemTemplate = [
@@ -85,7 +85,7 @@ export default async function ItemsPage({
             <ExcelImportExport
               exportAction={getAllItemsForExport}
               importAction={importItemsBulk}
-              templateData={itemTemplate}
+              templateAction={getItemTemplateExcel}
               fileName="Data_Barang"
               buttonLabel="Barang"
             />

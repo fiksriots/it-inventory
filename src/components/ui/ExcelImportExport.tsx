@@ -8,7 +8,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 interface ExcelImportExportProps {
   exportAction: () => Promise<any[]>;
   importAction: (data: any[]) => Promise<{ success: boolean; count: number }>;
-  templateData: any[];
+  templateData?: any[];
+  templateAction?: () => Promise<string>;
   fileName: string;
   buttonLabel: string;
 }
@@ -17,11 +18,13 @@ export default function ExcelImportExport({
   exportAction,
   importAction,
   templateData,
+  templateAction,
   fileName,
   buttonLabel
 }: ExcelImportExportProps) {
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -63,8 +66,33 @@ export default function ExcelImportExport({
   };
 
   // 2. DOWNLOAD TEMPLATE IMPORT
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    setTemplateLoading(true);
     try {
+      if (templateAction) {
+        const base64 = await templateAction();
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Template_Import_${fileName}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast("Template Excel berhasil diunduh!", "success");
+        return;
+      }
+
+      if (!templateData) {
+        toast("Template data tidak dikonfigurasi.", "error");
+        return;
+      }
+
       const worksheet = XLSX.utils.json_to_sheet(templateData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
@@ -84,6 +112,8 @@ export default function ExcelImportExport({
     } catch (error) {
       console.error(error);
       toast("Gagal mengunduh template.", "error");
+    } finally {
+      setTemplateLoading(false);
     }
   };
 
@@ -186,11 +216,15 @@ export default function ExcelImportExport({
       <div className="relative flex items-center gap-1">
         <button
           onClick={handleDownloadTemplate}
-          disabled={exportLoading || importLoading}
-          className="p-2 bg-surface hover:bg-background border border-border rounded-xl text-text-muted hover:text-foreground transition-all cursor-pointer active:scale-95"
+          disabled={exportLoading || importLoading || templateLoading}
+          className="p-2 bg-surface hover:bg-background border border-border rounded-xl text-text-muted hover:text-foreground transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           title="Unduh Template Format Import Excel"
         >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
+          {templateLoading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+          ) : (
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+          )}
         </button>
 
         <button

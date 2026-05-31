@@ -6,7 +6,7 @@ import Pagination from "@/components/ui/Pagination";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteComputer } from "./actions";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
-import { getAllComputersForExport, importComputersBulk } from "@/app/(app)/services/import-export-actions";
+import { getAllComputersForExport, importComputersBulk, getComputerTemplateExcel } from "@/app/(app)/services/import-export-actions";
 
 const computerTemplate = [
   {
@@ -227,7 +227,7 @@ export default async function ComputersPage({
             <ExcelImportExport
               exportAction={getAllComputersForExport}
               importAction={importComputersBulk}
-              templateData={computerTemplate}
+              templateAction={getComputerTemplateExcel}
               fileName="Data_PC"
               buttonLabel="Komputer"
             />

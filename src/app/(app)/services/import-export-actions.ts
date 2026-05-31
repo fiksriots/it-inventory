@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import ExcelJS from "exceljs";
 
 // ==========================================
 // 1. DATA BARANG (ITEMS / PRODUCTS)
@@ -55,10 +56,14 @@ export async function importItemsBulk(itemsData: any[]) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Cache kategori dan lokasi yang ada untuk optimasi kecepatan kueri
-  const { data: allCategories } = await supabase.from("categories").select("id, name");
+  const { data: allCategories } = await supabase.from("categories").select("id, name, code");
   const categoryMap: Record<string, string> = {};
+  const existingCodes = new Set<string>();
   allCategories?.forEach(cat => {
     categoryMap[cat.name.trim().toLowerCase()] = cat.id;
+    if (cat.code) {
+      existingCodes.add(cat.code.trim().toUpperCase());
+    }
   });
 
   const { data: allLocations } = await supabase.from("locations").select("id, name");
@@ -77,8 +82,8 @@ export async function importItemsBulk(itemsData: any[]) {
     const catName = row["Kategori"] || row["kategori"] || row["Category"] || row["category"];
     const priceVal = row["Harga"] || row["Harga (IDR)"] || row["price"] || row["Price"] || "0";
     const desc = row["Deskripsi"] || row["deskripsi"] || row["Description"] || row["description"] || "";
-    const locName = row["Lokasi"] || row["lokasi"] || row["Gudang"] || row["Location"] || row["location"];
-    const qtyVal = row["Stok"] || row["Total Stok"] || row["Stok Awal"] || row["quantity"] || row["Quantity"] || "0";
+    const locName = row["Lokasi"] || row["lokasi"] || row["Gudang"] || row["Location"] || row["location"] || row["Penempatan"] || row["penempatan"];
+    const qtyVal = row["Stok"] || row["Total Stok"] || row["Stok Awal"] || row["quantity"] || row["Quantity"] || row["Jumlah"] || row["jumlah"] || "0";
     const cond = row["Kondisi"] || row["condition"] || row["Condition"] || "Baru";
 
     if (!name) continue;
@@ -90,9 +95,25 @@ export async function importItemsBulk(itemsData: any[]) {
       if (categoryMap[lowerCat]) {
         category_id = categoryMap[lowerCat];
       } else {
+        // Hasilkan kode kategori unik secara otomatis
+        let baseCode = catName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (baseCode.length < 2) {
+          baseCode = (baseCode + "CAT").substring(0, 3);
+        }
+        let catCode = baseCode;
+        let suffix = 1;
+        while (existingCodes.has(catCode)) {
+          catCode = `${baseCode}${suffix}`;
+          suffix++;
+        }
+        existingCodes.add(catCode);
+
         const { data: newCat } = await supabase
           .from("categories")
-          .insert([{ name: catName.trim() }])
+          .insert([{ 
+            name: catName.trim(),
+            code: catCode
+          }])
           .select("id")
           .single();
         if (newCat) {
@@ -256,7 +277,7 @@ export async function importComputersBulk(computersData: any[]) {
   for (const row of computersData) {
     const name = row["Nama Komputer"] || row["Nama"] || row["name"] || row["Name"];
     let asset_number = row["Nomor Aset"] || row["asset_number"] || row["Asset_Number"] || row["Kode"];
-    const locName = row["Lokasi"] || row["lokasi"] || row["Location"] || row["location"];
+    const locName = row["Lokasi"] || row["lokasi"] || row["Location"] || row["location"] || row["Penempatan"] || row["penempatan"];
     const user_assigned = row["User Assigned"] || row["user_assigned"] || row["User"] || row["Pengguna"];
     const ip_address = row["Alamat IP"] || row["ip_address"] || row["IP"];
     const operating_system = row["Sistem Operasi"] || row["operating_system"] || row["OS"];
@@ -406,7 +427,7 @@ export async function importInfrastructureBulk(infraData: any[]) {
     const name = row["Nama Fasilitas"] || row["Nama"] || row["name"] || row["Name"];
     let asset_number = row["Nomor Aset"] || row["asset_number"] || row["Asset_Number"] || row["Kode"];
     const category = row["Kategori"] || row["category"] || row["Category"] || "Lainnya";
-    const locName = row["Lokasi"] || row["lokasi"] || row["Location"] || row["location"];
+    const locName = row["Lokasi"] || row["lokasi"] || row["Location"] || row["location"] || row["Penempatan"] || row["penempatan"];
     const status = row["Status"] || row["status"] || "Aktif";
     const ip_address = row["Alamat IP"] || row["ip_address"] || row["IP"];
     const vendor_name = row["Vendor / Teknisi"] || row["Vendor"] || row["Teknisi"] || row["vendor_name"];
@@ -786,4 +807,263 @@ export async function importPurchaseOrdersBulk(poData: any[]) {
 
   revalidatePath("/po");
   return { success: true, count: importedPOCount };
+}
+
+// ==========================================
+// 5. SERVER ACTION EXCEL TEMPLATES WITH DROPDOWNS
+// ==========================================
+
+export async function getItemTemplateExcel() {
+  const supabase = await createClient();
+  const { data: categories } = await supabase.from("categories").select("name").order("name");
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Template");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const catNames = (categories || []).map(c => c.name);
+  const locNames = (locations || []).map(l => l.name);
+
+  if (catNames.length === 0) catNames.push("Umum");
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  catNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`B${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "Nama Barang", key: "name", width: 30 },
+    { header: "SKU", key: "sku", width: 15 },
+    { header: "Kategori", key: "category", width: 20 },
+    { header: "Harga (IDR)", key: "price", width: 15 },
+    { header: "Total Stok", key: "stock", width: 15 },
+    { header: "Lokasi", key: "location", width: 25 },
+    { header: "Kondisi", key: "condition", width: 15 },
+    { header: "Deskripsi", key: "description", width: 35 },
+  ];
+
+  templateSheet.addRow({
+    name: "Laptop ThinkPad X1 Carbon",
+    sku: "-AUTO",
+    category: catNames[0],
+    price: 25000000,
+    stock: 5,
+    location: locNames[0],
+    condition: "Baru",
+    description: "Laptop dinas untuk developer senior."
+  });
+
+  templateSheet.addRow({
+    name: "Monitor Dell UltraSharp 27",
+    sku: "-AUTO",
+    category: catNames[0],
+    price: 7500000,
+    stock: 3,
+    location: locNames[0],
+    condition: "Baru",
+    description: "Monitor 2K resolusi tinggi."
+  });
+
+  const catLength = catNames.length;
+  const locLength = locNames.length;
+
+  for (let i = 2; i <= 1000; i++) {
+    // Column C (3) is Kategori
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${catLength}`],
+      showErrorMessage: true,
+      errorTitle: "Kategori Tidak Valid",
+      error: "Silakan pilih kategori dari dropdown list yang tersedia."
+    };
+
+    // Column F (6) is Lokasi
+    templateSheet.getCell(i, 6).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$B$1:$B$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
+    // Column G (7) is Kondisi
+    templateSheet.getCell(i, 7).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Baru,Normal,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Kondisi Tidak Valid",
+      error: "Silakan pilih kondisi dari opsi yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+export async function getComputerTemplateExcel() {
+  const supabase = await createClient();
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Template");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const locNames = (locations || []).map(l => l.name);
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "Nama Komputer", key: "name", width: 25 },
+    { header: "Nomor Aset", key: "asset_number", width: 15 },
+    { header: "Lokasi", key: "location", width: 20 },
+    { header: "User Assigned", key: "user_assigned", width: 20 },
+    { header: "Alamat IP", key: "ip_address", width: 15 },
+    { header: "Sistem Operasi", key: "operating_system", width: 15 },
+    { header: "Processor", key: "processor", width: 20 },
+    { header: "RAM", key: "ram", width: 12 },
+    { header: "Storage", key: "storage", width: 12 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Terakhir Maintenance", key: "last_maint", width: 20 },
+    { header: "Maintenance Berikutnya", key: "next_maint", width: 20 },
+    { header: "Catatan", key: "notes", width: 35 },
+  ];
+
+  templateSheet.addRow({
+    name: "PC-DEVELOPMENT-01",
+    asset_number: "-AUTO",
+    location: locNames[0],
+    user_assigned: "Budi Santoso",
+    ip_address: "192.168.2.10",
+    operating_system: "Windows 11 Pro",
+    processor: "Intel Core i7-12700",
+    ram: "16GB DDR4",
+    storage: "512GB NVMe SSD",
+    status: "Aktif",
+    last_maint: "2026-05-01",
+    next_maint: "2026-11-01",
+    notes: "Kondisi sangat baik, RAM baru diupgrade."
+  });
+
+  const locLength = locNames.length;
+
+  for (let i = 2; i <= 1000; i++) {
+    // Column C (3) is Lokasi
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
+    // Column J (10) is Status
+    templateSheet.getCell(i, 10).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Aktif,Maintenance,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Status Tidak Valid",
+      error: "Silakan pilih status dari opsi yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+export async function getInfrastructureTemplateExcel() {
+  const supabase = await createClient();
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Template");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const locNames = (locations || []).map(l => l.name);
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "Nama Fasilitas", key: "name", width: 25 },
+    { header: "Nomor Aset", key: "asset_number", width: 15 },
+    { header: "Kategori", key: "category", width: 15 },
+    { header: "Lokasi", key: "location", width: 20 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Alamat IP", key: "ip_address", width: 15 },
+    { header: "Vendor / Teknisi", key: "vendor", width: 20 },
+    { header: "Terakhir Maintenance", key: "last_maint", width: 20 },
+    { header: "Maintenance Berikutnya", key: "next_maint", width: 20 },
+    { header: "Catatan", key: "notes", width: 35 },
+  ];
+
+  templateSheet.addRow({
+    name: "Router Core Server Room",
+    asset_number: "-AUTO",
+    category: "Network",
+    location: locNames[0],
+    status: "Aktif",
+    ip_address: "192.168.1.1",
+    vendor: "MikroTik Indonesia",
+    last_maint: "2026-05-01",
+    next_maint: "2026-11-01",
+    notes: "Router utama gedung A."
+  });
+
+  const locLength = locNames.length;
+
+  for (let i = 2; i <= 1000; i++) {
+    // Column C (3) is Kategori
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Server,Network,CCTV,Listrik,AC,Lainnya"'],
+      showErrorMessage: true,
+      errorTitle: "Kategori Tidak Valid",
+      error: "Silakan pilih kategori dari opsi yang tersedia."
+    };
+
+    // Column D (4) is Lokasi
+    templateSheet.getCell(i, 4).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
+    // Column E (5) is Status
+    templateSheet.getCell(i, 5).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Aktif,Maintenance,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Status Tidak Valid",
+      error: "Silakan pilih status dari opsi yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
 }
