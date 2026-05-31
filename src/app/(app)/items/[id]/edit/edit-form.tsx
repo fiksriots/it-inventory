@@ -360,14 +360,14 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                           <select 
                             id={`change_cond_${s.location_id}_${s.condition.replace(/\s+/g, '_')}`}
                             defaultValue={s.condition}
-                            className="flex-1 bg-background/50 border border-border rounded px-2 py-1 text-[11px] outline-none font-bold"
+                            className="flex-1 min-w-0 bg-background border border-border rounded px-2 py-1 text-[11px] outline-none font-bold text-foreground"
                           >
-                            <option value="Baru">Baru</option>
-                            <option value="Normal">Normal</option>
-                            <option value="Rusak (Bisa Diperbaiki)">Rusak (Bisa Diperbaiki)</option>
-                            <option value="Rusak (Total)">Rusak (Total)</option>
-                            <option value="Afkir">Afkir</option>
-                            <option value="Belum Di Cek">Belum Di Cek</option>
+                            <option value="Baru" className="bg-surface text-foreground">Baru</option>
+                            <option value="Normal" className="bg-surface text-foreground">Normal</option>
+                            <option value="Rusak (Bisa Diperbaiki)" className="bg-surface text-foreground">Rusak (Bisa Diperbaiki)</option>
+                            <option value="Rusak (Total)" className="bg-surface text-foreground">Rusak (Total)</option>
+                            <option value="Afkir" className="bg-surface text-foreground">Afkir</option>
+                            <option value="Belum Di Cek" className="bg-surface text-foreground">Belum Di Cek</option>
                           </select>
                           <input
                             type="number"
@@ -376,7 +376,7 @@ export default function EditItemForm({ item, categories, locations, stocks }: { 
                             min={1}
                             max={s.quantity}
                             defaultValue={s.quantity}
-                            className="w-16 bg-background/50 border border-border rounded px-1.5 py-1 text-[11px] focus:ring-1 focus:ring-primary/50 outline-none font-bold text-center"
+                            className="w-14 shrink-0 bg-background border border-border rounded px-1 py-1 text-[11px] focus:ring-1 focus:ring-primary/50 outline-none font-bold text-center text-foreground"
                           />
                         </div>
                         <button 
