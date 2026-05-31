@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff, Users, UserPlus, Trash2, Database, Download } from "lucide-react";
-import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount, generateDatabaseBackup } from "./actions";
+import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount, generateDatabaseBackup, restoreDatabaseBackup, resetDatabaseSystem } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 
@@ -18,6 +18,8 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
   const [activeTab, setActiveTab] = useState("profile"); // Switched default to profile since we are working on it
   const [loading, setLoading] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -51,6 +53,70 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
       toast("Gagal melakukan backup database.", "error");
     } finally {
       setIsBackingUp(false);
+    }
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm("Apakah Anda yakin ingin melakukan restore data? Tindakan ini akan MENGHAPUS seluruh data aktif Anda saat ini dan menggantinya dengan data dari file backup.")) {
+      e.target.value = "";
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      toast("Membaca file backup...", "success");
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          toast("Melakukan restore data ke database...", "success");
+          const result = await restoreDatabaseBackup(json);
+          
+          if (result.error) {
+            toast(result.error, "error");
+          } else {
+            toast("Restore database berhasil dilakukan!", "success");
+            router.refresh();
+          }
+        } catch (err: any) {
+          toast("Format file JSON tidak valid atau rusak.", "error");
+        } finally {
+          setIsRestoring(false);
+        }
+      };
+      reader.readAsText(file);
+    } catch (err: any) {
+      toast("Gagal memproses file backup.", "error");
+      setIsRestoring(false);
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const handleResetSystem = async () => {
+    const confirmInput = window.prompt("PERINGATAN: Tindakan ini akan menghapus semua barang, transaksi, log, subkategori, lokasi, dan vendor.\n\nKetik 'RESET' untuk mengonfirmasi:");
+    if (confirmInput !== "RESET") {
+      toast("Reset sistem dibatalkan.", "success");
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      toast("Sedang mengosongkan database...", "success");
+      const result = await resetDatabaseSystem();
+      if (result?.error) {
+        toast(result.error, "error");
+      } else {
+        toast("Sistem berhasil direset ke kondisi awal!", "success");
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast(err.message || "Gagal melakukan reset sistem.", "error");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -584,43 +650,84 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
                 </div>
               </div>
 
-              {/* Database Backup */}
-              <div className="p-8 mx-8 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
+              {/* Database Backup & Restore */}
+              <div className="p-8 mx-8 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6">
+                <div className="flex-1">
                   <h4 className="font-bold text-emerald-600 flex items-center gap-2">
                     <Database className="w-4 h-4" />
-                    Backup Keseluruhan Data
+                    Backup & Restore Database (JSON)
                   </h4>
-                  <p className="text-xs text-emerald-600/70 mt-1 max-w-sm">Unduh seluruh riwayat data inventaris, pengguna, dan transaksi dalam format JSON sebagai cadangan yang aman.</p>
+                  <p className="text-xs text-emerald-600/70 mt-1 max-w-xl">
+                    Unduh seluruh data inventaris ke format JSON, atau pulihkan data dari file backup JSON sebelumnya. Format JSON ini mempermudah migrasi data ke proyek Supabase lain tanpa merusak struktur database Anda.
+                  </p>
                 </div>
-                <button 
-                  onClick={handleDownloadBackup}
-                  disabled={isBackingUp}
-                  className="px-5 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 whitespace-nowrap active:scale-95 flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isBackingUp ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Memproses Data...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5" />
-                      Unduh Backup (JSON)
-                    </>
-                  )}
-                </button>
+                
+                <div className="flex flex-col sm:flex-row items-stretch gap-3 shrink-0">
+                  {/* Download Backup */}
+                  <button 
+                    onClick={handleDownloadBackup}
+                    disabled={isBackingUp || isRestoring}
+                    className="px-5 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 whitespace-nowrap active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isBackingUp ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Memproses Data...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        Unduh Backup
+                      </>
+                    )}
+                  </button>
+
+                  {/* Restore Backup */}
+                  <label className={`px-5 py-2.5 bg-background border border-emerald-500/30 text-emerald-600 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors whitespace-nowrap active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${isRestoring || isBackingUp ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {isRestoring ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Merestore Data...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        Restore Backup
+                      </>
+                    )}
+                    <input 
+                      type="file" 
+                      accept="application/json" 
+                      onChange={handleRestoreBackup} 
+                      className="hidden" 
+                      disabled={isRestoring || isBackingUp}
+                    />
+                  </label>
+                </div>
               </div>
 
-              {/* Danger Zone Placeholder */}
-              <div className="p-8 m-8 border border-rose-500/20 bg-rose-500/5 rounded-2xl">
-                <h4 className="text-rose-500 font-bold flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Zona Bahaya
-                </h4>
-                <p className="text-xs text-text-muted mb-4">Hapus seluruh data inventaris dan reset sistem. Tindakan ini tidak dapat dibatalkan.</p>
-                <button className="text-xs font-bold text-rose-500 border border-rose-500/30 px-4 py-2 rounded-lg hover:bg-rose-500 hover:text-white transition-all">
-                  Reset Sistem
+              {/* Danger Zone */}
+              <div className="p-8 m-8 border border-rose-500/20 bg-rose-500/5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-rose-500 font-bold flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Zona Bahaya
+                  </h4>
+                  <p className="text-xs text-text-muted max-w-md">Hapus seluruh data inventaris (barang, stok, PO, transfer, log, dll.) dan reset sistem ke kondisi kosong. Tindakan ini tidak dapat dibatalkan.</p>
+                </div>
+                <button 
+                  onClick={handleResetSystem}
+                  disabled={isResetting || isRestoring || isBackingUp}
+                  className="text-xs font-bold text-rose-500 border border-rose-500/30 px-5 py-2.5 rounded-xl hover:bg-rose-500 hover:text-white transition-all active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+                >
+                  {isResetting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Mereset...
+                    </span>
+                  ) : (
+                    "Reset Sistem"
+                  )}
                 </button>
               </div>
             </div>

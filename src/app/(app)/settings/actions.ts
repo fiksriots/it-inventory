@@ -389,3 +389,257 @@ export async function generateDatabaseBackup() {
   return { success: true, data: backupData, skipped: skippedTables };
 }
 
+export async function restoreDatabaseBackup(backupData: any) {
+  const supabase = await createClient();
+
+  // Verifikasi pengguna aktif adalah administrator
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Anda harus login untuk melakukan restore data." };
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "Administrator") {
+    return { error: "Hanya Administrator yang diizinkan melakukan restore data." };
+  }
+
+  if (!backupData || typeof backupData !== "object") {
+    return { error: "Format data backup tidak valid." };
+  }
+
+  // Daftar tabel yang akan dikosongkan (urut terbalik berdasarkan ketergantungan foreign key)
+  const tablesToDelete = [
+    "item_services",
+    "it_project_rab",
+    "it_project_logs",
+    "it_projects",
+    "it_daily_logs",
+    "computer_maintenance_logs",
+    "computers",
+    "infrastructure_maintenance_logs",
+    "infrastructure_assets",
+    "inventory_logs",
+    "item_transfers",
+    "po_items",
+    "purchase_orders",
+    "item_stocks",
+    "items",
+    "suppliers",
+    "locations",
+    "categories"
+  ];
+
+  try {
+    // 1. Kosongkan record yang ada
+    for (const table of tablesToDelete) {
+      const { error } = await supabase.from(table).delete().not("id", "is", null);
+      if (error) {
+        console.error(`Error clearing table ${table}:`, error);
+        throw new Error(`Gagal mengosongkan tabel ${table}: ${error.message}`);
+      }
+    }
+
+    // 2. Restore/Upsert company_profile dan profiles
+    if (backupData.company_profile && backupData.company_profile.length > 0) {
+      const { error } = await supabase.from("company_profile").upsert(backupData.company_profile);
+      if (error) throw new Error(`Gagal restore company_profile: ${error.message}`);
+    }
+
+    if (backupData.profiles && backupData.profiles.length > 0) {
+      const { error } = await supabase.from("profiles").upsert(backupData.profiles);
+      if (error) throw new Error(`Gagal restore profiles: ${error.message}`);
+    }
+
+    // 3. Restore categories (Two-pass approach untuk self-referencing parent_id)
+    if (backupData.categories && backupData.categories.length > 0) {
+      const categoriesTemp = backupData.categories.map((c: any) => ({
+        ...c,
+        parent_id: null
+      }));
+      const { error: err1 } = await supabase.from("categories").insert(categoriesTemp);
+      if (err1) throw new Error(`Gagal restore categories (Pass 1): ${err1.message}`);
+
+      const categoriesToUpdate = backupData.categories.filter((c: any) => c.parent_id !== null);
+      for (const cat of categoriesToUpdate) {
+        const { error: err2 } = await supabase
+          .from("categories")
+          .update({ parent_id: cat.parent_id })
+          .eq("id", cat.id);
+        if (err2) throw new Error(`Gagal restore categories (Pass 2): ${err2.message}`);
+      }
+    }
+
+    // 4. Restore locations (Two-pass approach untuk self-referencing parent_id)
+    if (backupData.locations && backupData.locations.length > 0) {
+      const locationsTemp = backupData.locations.map((l: any) => ({
+        ...l,
+        parent_id: null
+      }));
+      const { error: err1 } = await supabase.from("locations").insert(locationsTemp);
+      if (err1) throw new Error(`Gagal restore locations (Pass 1): ${err1.message}`);
+
+      const locationsToUpdate = backupData.locations.filter((l: any) => l.parent_id !== null);
+      for (const loc of locationsToUpdate) {
+        const { error: err2 } = await supabase
+          .from("locations")
+          .update({ parent_id: loc.parent_id })
+          .eq("id", loc.id);
+        if (err2) throw new Error(`Gagal restore locations (Pass 2): ${err2.message}`);
+      }
+    }
+
+    // 5. Restore suppliers
+    if (backupData.suppliers && backupData.suppliers.length > 0) {
+      const { error } = await supabase.from("suppliers").insert(backupData.suppliers);
+      if (error) throw new Error(`Gagal restore suppliers: ${error.message}`);
+    }
+
+    // 6. Restore items
+    if (backupData.items && backupData.items.length > 0) {
+      const { error } = await supabase.from("items").insert(backupData.items);
+      if (error) throw new Error(`Gagal restore items: ${error.message}`);
+    }
+
+    // 7. Restore item_stocks
+    if (backupData.item_stocks && backupData.item_stocks.length > 0) {
+      const { error } = await supabase.from("item_stocks").insert(backupData.item_stocks);
+      if (error) throw new Error(`Gagal restore item_stocks: ${error.message}`);
+    }
+
+    // 8. Restore purchase_orders
+    if (backupData.purchase_orders && backupData.purchase_orders.length > 0) {
+      const { error } = await supabase.from("purchase_orders").insert(backupData.purchase_orders);
+      if (error) throw new Error(`Gagal restore purchase_orders: ${error.message}`);
+    }
+
+    // 9. Restore po_items
+    if (backupData.po_items && backupData.po_items.length > 0) {
+      const { error } = await supabase.from("po_items").insert(backupData.po_items);
+      if (error) throw new Error(`Gagal restore po_items: ${error.message}`);
+    }
+
+    // 10. Restore item_transfers
+    if (backupData.item_transfers && backupData.item_transfers.length > 0) {
+      const { error } = await supabase.from("item_transfers").insert(backupData.item_transfers);
+      if (error) throw new Error(`Gagal restore item_transfers: ${error.message}`);
+    }
+
+    // 11. Restore inventory_logs
+    if (backupData.inventory_logs && backupData.inventory_logs.length > 0) {
+      const { error } = await supabase.from("inventory_logs").insert(backupData.inventory_logs);
+      if (error) throw new Error(`Gagal restore inventory_logs: ${error.message}`);
+    }
+
+    // 12. Restore infrastructure_assets
+    if (backupData.infrastructure_assets && backupData.infrastructure_assets.length > 0) {
+      const { error } = await supabase.from("infrastructure_assets").insert(backupData.infrastructure_assets);
+      if (error) throw new Error(`Gagal restore infrastructure_assets: ${error.message}`);
+    }
+
+    // 13. Restore infrastructure_maintenance_logs
+    if (backupData.infrastructure_maintenance_logs && backupData.infrastructure_maintenance_logs.length > 0) {
+      const { error } = await supabase.from("infrastructure_maintenance_logs").insert(backupData.infrastructure_maintenance_logs);
+      if (error) throw new Error(`Gagal restore infrastructure_maintenance_logs: ${error.message}`);
+    }
+
+    // 14. Restore computers
+    if (backupData.computers && backupData.computers.length > 0) {
+      const { error } = await supabase.from("computers").insert(backupData.computers);
+      if (error) throw new Error(`Gagal restore computers: ${error.message}`);
+    }
+
+    // 15. Restore computer_maintenance_logs
+    if (backupData.computer_maintenance_logs && backupData.computer_maintenance_logs.length > 0) {
+      const { error } = await supabase.from("computer_maintenance_logs").insert(backupData.computer_maintenance_logs);
+      if (error) throw new Error(`Gagal restore computer_maintenance_logs: ${error.message}`);
+    }
+
+    // 16. Restore it_daily_logs
+    if (backupData.it_daily_logs && backupData.it_daily_logs.length > 0) {
+      const { error } = await supabase.from("it_daily_logs").insert(backupData.it_daily_logs);
+      if (error) throw new Error(`Gagal restore it_daily_logs: ${error.message}`);
+    }
+
+    // 17. Restore it_projects
+    if (backupData.it_projects && backupData.it_projects.length > 0) {
+      const { error } = await supabase.from("it_projects").insert(backupData.it_projects);
+      if (error) throw new Error(`Gagal restore it_projects: ${error.message}`);
+    }
+
+    // 18. Restore it_project_logs
+    if (backupData.it_project_logs && backupData.it_project_logs.length > 0) {
+      const { error } = await supabase.from("it_project_logs").insert(backupData.it_project_logs);
+      if (error) throw new Error(`Gagal restore it_project_logs: ${error.message}`);
+    }
+
+    // 19. Restore it_project_rab
+    if (backupData.it_project_rab && backupData.it_project_rab.length > 0) {
+      const { error } = await supabase.from("it_project_rab").insert(backupData.it_project_rab);
+      if (error) throw new Error(`Gagal restore it_project_rab: ${error.message}`);
+    }
+
+    // 20. Restore item_services
+    if (backupData.item_services && backupData.item_services.length > 0) {
+      const { error } = await supabase.from("item_services").insert(backupData.item_services);
+      if (error) throw new Error(`Gagal restore item_services: ${error.message}`);
+    }
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Critical Restore Error:", err);
+    return { error: err.message || "Terjadi kesalahan saat restore data." };
+  }
+}
+
+export async function resetDatabaseSystem() {
+  const supabase = await createClient();
+
+  // Verifikasi pengguna aktif adalah administrator
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Anda harus login untuk melakukan reset sistem." };
+  }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "Administrator") {
+    return { error: "Hanya Administrator yang diizinkan melakukan reset sistem." };
+  }
+
+  const tablesToDelete = [
+    "item_services",
+    "it_project_rab",
+    "it_project_logs",
+    "it_projects",
+    "it_daily_logs",
+    "computer_maintenance_logs",
+    "computers",
+    "infrastructure_maintenance_logs",
+    "infrastructure_assets",
+    "inventory_logs",
+    "item_transfers",
+    "po_items",
+    "purchase_orders",
+    "item_stocks",
+    "items",
+    "suppliers",
+    "locations",
+    "categories"
+  ];
+
+  try {
+    for (const table of tablesToDelete) {
+      const { error } = await supabase.from(table).delete().not("id", "is", null);
+      if (error) {
+        throw new Error(`Gagal mengosongkan tabel ${table}: ${error.message}`);
+      }
+    }
+    
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Reset system error:", err);
+    return { error: err.message || "Gagal melakukan reset sistem." };
+  }
+}
+
