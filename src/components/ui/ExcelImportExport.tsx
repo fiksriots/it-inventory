@@ -6,7 +6,8 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/components/ui/ToastProvider";
 
 interface ExcelImportExportProps {
-  exportAction: () => Promise<any[]>;
+  exportAction?: () => Promise<any[]>;
+  exportActionBase64?: () => Promise<string>;
   importAction: (data: any[]) => Promise<{ success: boolean; count: number }>;
   templateData?: any[];
   templateAction?: () => Promise<string>;
@@ -16,6 +17,7 @@ interface ExcelImportExportProps {
 
 export default function ExcelImportExport({
   exportAction,
+  exportActionBase64,
   importAction,
   templateData,
   templateAction,
@@ -33,6 +35,31 @@ export default function ExcelImportExport({
   const handleExport = async () => {
     setExportLoading(true);
     try {
+      if (exportActionBase64) {
+        const base64 = await exportActionBase64();
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = window.URL.createObjectURL(blob);
+        const dateStr = new Date().toLocaleDateString("id-ID").replace(/\//g, "-");
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${fileName}_${dateStr}.xlsx`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast(`Berhasil mengexport data ke Excel!`, "success");
+        return;
+      }
+
+      if (!exportAction) {
+        toast("Export tidak dikonfigurasi.", "error");
+        return;
+      }
+
       const data = await exportAction();
       if (!data || data.length === 0) {
         toast("Tidak ada data untuk diexport.", "error");

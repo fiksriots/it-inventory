@@ -52,6 +52,9 @@ export async function getAllItemsForExport() {
 export async function importItemsBulk(itemsData: any[]) {
   const supabase = await createClient();
 
+  // Bersihkan data kategori kosong terlebih dahulu
+  await fixEmptyCategoryCodes();
+
   // Ambil data user saat ini
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -814,6 +817,7 @@ export async function importPurchaseOrdersBulk(poData: any[]) {
 // ==========================================
 
 export async function getItemTemplateExcel() {
+  await fixEmptyCategoryCodes();
   const supabase = await createClient();
   const { data: categories } = await supabase.from("categories").select("name").order("name");
   const { data: locations } = await supabase.from("locations").select("name").order("name");
@@ -1054,6 +1058,352 @@ export async function getInfrastructureTemplateExcel() {
     };
 
     // Column E (5) is Status
+    templateSheet.getCell(i, 5).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Aktif,Maintenance,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Status Tidak Valid",
+      error: "Silakan pilih status dari opsi yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+// ==========================================
+// 6. DYNAMIC CATEGORY CODE AUTO-GENERATION / HEALING
+// ==========================================
+
+export async function fixEmptyCategoryCodes() {
+  const supabase = await createClient();
+
+  const { data: categories, error } = await supabase
+    .from("categories")
+    .select("id, name, code");
+
+  if (error) {
+    console.error("Error fetching categories to fix:", error);
+    return;
+  }
+
+  const needsFix = (categories || []).filter(c => !c.code || c.code.trim() === "");
+  if (needsFix.length === 0) return;
+
+  const existingCodes = new Set(
+    (categories || [])
+      .map(c => c.code?.trim().toUpperCase())
+      .filter(Boolean)
+  );
+
+  for (const cat of needsFix) {
+    let baseCode = cat.name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (baseCode.length < 2) {
+      baseCode = "CAT";
+    }
+
+    let uniqueCode = baseCode;
+    let counter = 1;
+    while (existingCodes.has(uniqueCode)) {
+      uniqueCode = `${baseCode}${counter}`;
+      counter++;
+    }
+
+    await supabase
+      .from("categories")
+      .update({ code: uniqueCode })
+      .eq("id", cat.id);
+
+    existingCodes.add(uniqueCode);
+  }
+}
+
+// ==========================================
+// 7. SERVER ACTION EXCEL EXPORTS WITH DROPDOWNS
+// ==========================================
+
+export async function exportItemsExcel() {
+  await fixEmptyCategoryCodes();
+  const supabase = await createClient();
+
+  const { data: items, error } = await supabase
+    .from("items")
+    .select(`
+      sku,
+      name,
+      price,
+      description,
+      categories (name),
+      item_stocks (
+        quantity,
+        condition,
+        locations (name)
+      )
+    `)
+    .order("sku", { ascending: true });
+
+  if (error) {
+    console.error("Error exporting items:", error);
+    throw new Error(error.message);
+  }
+
+  const { data: categories } = await supabase.from("categories").select("name").order("name");
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Data Barang");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const catNames = (categories || []).map(c => c.name);
+  const locNames = (locations || []).map(l => l.name);
+
+  if (catNames.length === 0) catNames.push("Umum");
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  catNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`B${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "SKU", key: "sku", width: 15 },
+    { header: "Nama Barang", key: "name", width: 30 },
+    { header: "Kategori", key: "category", width: 20 },
+    { header: "Harga (IDR)", key: "price", width: 15 },
+    { header: "Total Stok", key: "total_stock", width: 15 },
+    { header: "Detail Lokasi & Stok", key: "stock_detail", width: 35 },
+    { header: "Deskripsi", key: "description", width: 35 },
+  ];
+
+  const rowsCount = items?.length || 0;
+  (items || []).forEach((item: any) => {
+    const stocks = item.item_stocks || [];
+    const stockDetail = stocks.map((s: any) => `${s.locations?.name || "Gudang"}: ${s.quantity} (${s.condition || "Baru"})`).join(", ");
+    const totalQty = stocks.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+
+    templateSheet.addRow({
+      sku: item.sku,
+      name: item.name,
+      category: item.categories?.name || "-",
+      price: item.price || 0,
+      total_stock: totalQty,
+      stock_detail: stockDetail || "-",
+      description: item.description || "-"
+    });
+  });
+
+  const catLength = catNames.length;
+  for (let i = 2; i <= rowsCount + 1000; i++) {
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${catLength}`],
+      showErrorMessage: true,
+      errorTitle: "Kategori Tidak Valid",
+      error: "Silakan pilih kategori dari dropdown list yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+export async function exportComputersExcel() {
+  const supabase = await createClient();
+  const { data: computers, error } = await supabase
+    .from("computers")
+    .select(`
+      asset_number,
+      name,
+      user_assigned,
+      ip_address,
+      operating_system,
+      processor,
+      ram,
+      storage,
+      status,
+      last_maintenance_date,
+      next_maintenance_date,
+      notes,
+      locations (name)
+    `)
+    .order("asset_number", { ascending: true });
+
+  if (error) {
+    console.error("Error exporting computers:", error);
+    throw new Error(error.message);
+  }
+
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Data Komputer");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const locNames = (locations || []).map(l => l.name);
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "Nomor Aset", key: "asset_number", width: 15 },
+    { header: "Nama Komputer", key: "name", width: 25 },
+    { header: "Lokasi", key: "location", width: 20 },
+    { header: "User Assigned", key: "user_assigned", width: 20 },
+    { header: "Alamat IP", key: "ip_address", width: 15 },
+    { header: "Sistem Operasi", key: "operating_system", width: 15 },
+    { header: "Processor", key: "processor", width: 20 },
+    { header: "RAM", key: "ram", width: 12 },
+    { header: "Storage", key: "storage", width: 12 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Terakhir Maintenance", key: "last_maint", width: 20 },
+    { header: "Maintenance Berikutnya", key: "next_maint", width: 20 },
+    { header: "Catatan", key: "notes", width: 35 },
+  ];
+
+  const rowsCount = computers?.length || 0;
+  (computers || []).forEach((c: any) => {
+    templateSheet.addRow({
+      asset_number: c.asset_number,
+      name: c.name,
+      location: c.locations?.name || "-",
+      user_assigned: c.user_assigned || "-",
+      ip_address: c.ip_address || "-",
+      operating_system: c.operating_system || "-",
+      processor: c.processor || "-",
+      ram: c.ram || "-",
+      storage: c.storage || "-",
+      status: c.status || "Aktif",
+      last_maint: c.last_maintenance_date || "-",
+      next_maint: c.next_maintenance_date || "-",
+      notes: c.notes || "-"
+    });
+  });
+
+  const locLength = locNames.length;
+
+  for (let i = 2; i <= rowsCount + 1000; i++) {
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
+    templateSheet.getCell(i, 10).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Aktif,Maintenance,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Status Tidak Valid",
+      error: "Silakan pilih status dari opsi yang tersedia."
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+export async function exportInfrastructureExcel() {
+  const supabase = await createClient();
+  const { data: infra, error } = await supabase
+    .from("infrastructure_assets")
+    .select(`
+      asset_number,
+      name,
+      category,
+      status,
+      ip_address,
+      last_maintenance_date,
+      next_maintenance_date,
+      vendor_name,
+      notes,
+      locations (name)
+    `)
+    .order("asset_number", { ascending: true });
+
+  if (error) {
+    console.error("Error exporting infrastructure:", error);
+    throw new Error(error.message);
+  }
+
+  const { data: locations } = await supabase.from("locations").select("name").order("name");
+
+  const workbook = new ExcelJS.Workbook();
+  const templateSheet = workbook.addWorksheet("Data Infrastruktur");
+  const refSheet = workbook.addWorksheet("Referensi");
+  
+  refSheet.state = "hidden";
+
+  const locNames = (locations || []).map(l => l.name);
+  if (locNames.length === 0) locNames.push("Gudang Utama");
+
+  locNames.forEach((name, idx) => {
+    refSheet.getCell(`A${idx + 1}`).value = name;
+  });
+
+  templateSheet.columns = [
+    { header: "Nomor Aset", key: "asset_number", width: 15 },
+    { header: "Nama Fasilitas", key: "name", width: 25 },
+    { header: "Kategori", key: "category", width: 15 },
+    { header: "Lokasi", key: "location", width: 20 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Alamat IP", key: "ip_address", width: 15 },
+    { header: "Vendor / Teknisi", key: "vendor", width: 20 },
+    { header: "Terakhir Maintenance", key: "last_maint", width: 20 },
+    { header: "Maintenance Berikutnya", key: "next_maint", width: 20 },
+    { header: "Catatan", key: "notes", width: 35 },
+  ];
+
+  const rowsCount = infra?.length || 0;
+  (infra || []).forEach((inf: any) => {
+    templateSheet.addRow({
+      asset_number: inf.asset_number,
+      name: inf.name,
+      category: inf.category || "Lainnya",
+      location: inf.locations?.name || "-",
+      status: inf.status || "Aktif",
+      ip_address: inf.ip_address || "-",
+      vendor: inf.vendor_name || "-",
+      last_maint: inf.last_maintenance_date || "-",
+      next_maint: inf.next_maintenance_date || "-",
+      notes: inf.notes || "-"
+    });
+  });
+
+  const locLength = locNames.length;
+
+  for (let i = 2; i <= rowsCount + 1000; i++) {
+    templateSheet.getCell(i, 3).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Server,Network,CCTV,Listrik,AC,Lainnya"'],
+      showErrorMessage: true,
+      errorTitle: "Kategori Tidak Valid",
+      error: "Silakan pilih kategori dari opsi yang tersedia."
+    };
+
+    templateSheet.getCell(i, 4).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$A$1:$A$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
     templateSheet.getCell(i, 5).dataValidation = {
       type: "list",
       allowBlank: true,

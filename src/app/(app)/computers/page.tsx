@@ -6,7 +6,7 @@ import Pagination from "@/components/ui/Pagination";
 import DeleteButton from "@/components/ui/DeleteButton";
 import { deleteComputer } from "./actions";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
-import { getAllComputersForExport, importComputersBulk, getComputerTemplateExcel } from "@/app/(app)/services/import-export-actions";
+import { getAllComputersForExport, importComputersBulk, getComputerTemplateExcel, exportComputersExcel } from "@/app/(app)/services/import-export-actions";
 
 const computerTemplate = [
   {
@@ -225,7 +225,7 @@ export default async function ComputersPage({
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <ExcelImportExport
-              exportAction={getAllComputersForExport}
+              exportActionBase64={exportComputersExcel}
               importAction={importComputersBulk}
               templateAction={getComputerTemplateExcel}
               fileName="Data_PC"

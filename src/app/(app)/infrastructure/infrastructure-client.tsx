@@ -6,7 +6,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus, Search, Filter, Layers, CheckCircle2, AlertTriangle, XCircle, Clock, MapPin, Cctv, Video, Wrench, ArrowLeft, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import ExcelImportExport from "@/components/ui/ExcelImportExport";
-import { getAllInfrastructureForExport, importInfrastructureBulk, getInfrastructureTemplateExcel } from "@/app/(app)/services/import-export-actions";
+import { getAllInfrastructureForExport, importInfrastructureBulk, getInfrastructureTemplateExcel, exportInfrastructureExcel } from "@/app/(app)/services/import-export-actions";
 import { updateAssetsCategory } from "./actions";
 
 const infraTemplate = [
@@ -380,7 +380,7 @@ export default function InfrastructureClient({ assets, locations }: Infrastructu
         </div>
         <div className="w-full md:w-auto shrink-0 flex justify-end">
           <ExcelImportExport
-            exportAction={getAllInfrastructureForExport}
+            exportActionBase64={exportInfrastructureExcel}
             importAction={importInfrastructureBulk}
             templateAction={getInfrastructureTemplateExcel}
             fileName="Data_Infrastruktur"
