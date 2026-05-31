@@ -163,6 +163,7 @@ export default function ItemForm({ categories, locations }: { categories: any[];
             <option value="Rusak (Bisa Diperbaiki)">Rusak (Bisa Diperbaiki)</option>
             <option value="Rusak (Total)">Rusak (Total/Mati)</option>
             <option value="Afkir">Afkir / Disposal</option>
+            <option value="Belum Di Cek">Belum Di Cek</option>
           </select>
         </div>
 

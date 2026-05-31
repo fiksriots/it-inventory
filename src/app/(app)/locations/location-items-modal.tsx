@@ -114,8 +114,9 @@ export default function LocationItemsModal({
                           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                             <p className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">{item.items?.name}</p>
                             <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
-                              item.condition === 'Rusak' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                              item.condition === 'Rusak' || item.condition?.includes('Rusak') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
                               item.condition === 'Baru' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 
+                              item.condition === 'Belum Di Cek' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                               'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                             }`}>
                               {item.condition}
