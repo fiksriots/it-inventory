@@ -1166,34 +1166,56 @@ export async function exportItemsExcel() {
   });
 
   templateSheet.columns = [
-    { header: "SKU", key: "sku", width: 15 },
     { header: "Nama Barang", key: "name", width: 30 },
+    { header: "SKU", key: "sku", width: 15 },
     { header: "Kategori", key: "category", width: 20 },
     { header: "Harga (IDR)", key: "price", width: 15 },
-    { header: "Total Stok", key: "total_stock", width: 15 },
-    { header: "Detail Lokasi & Stok", key: "stock_detail", width: 35 },
+    { header: "Total Stok", key: "stock", width: 15 },
+    { header: "Lokasi", key: "location", width: 25 },
+    { header: "Kondisi", key: "condition", width: 15 },
     { header: "Deskripsi", key: "description", width: 35 },
   ];
 
-  const rowsCount = items?.length || 0;
+  const addedRows: any[] = [];
   (items || []).forEach((item: any) => {
     const stocks = item.item_stocks || [];
-    const stockDetail = stocks.map((s: any) => `${s.locations?.name || "Gudang"}: ${s.quantity} (${s.condition || "Baru"})`).join(", ");
-    const totalQty = stocks.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
-
-    templateSheet.addRow({
-      sku: item.sku,
-      name: item.name,
-      category: item.categories?.name || "-",
-      price: item.price || 0,
-      total_stock: totalQty,
-      stock_detail: stockDetail || "-",
-      description: item.description || "-"
-    });
+    if (stocks.length > 0) {
+      stocks.forEach((s: any) => {
+        addedRows.push({
+          name: item.name,
+          sku: item.sku,
+          category: item.categories?.name || "-",
+          price: item.price || 0,
+          stock: s.quantity || 0,
+          location: s.locations?.name || "Gudang Utama",
+          condition: s.condition || "Baru",
+          description: item.description || "-"
+        });
+      });
+    } else {
+      addedRows.push({
+        name: item.name,
+        sku: item.sku,
+        category: item.categories?.name || "-",
+        price: item.price || 0,
+        stock: 0,
+        location: "Gudang Utama",
+        condition: "Baru",
+        description: item.description || "-"
+      });
+    }
   });
 
+  addedRows.forEach(row => {
+    templateSheet.addRow(row);
+  });
+
+  const rowsCount = addedRows.length;
   const catLength = catNames.length;
+  const locLength = locNames.length;
+
   for (let i = 2; i <= rowsCount + 1000; i++) {
+    // Column C (3) is Kategori
     templateSheet.getCell(i, 3).dataValidation = {
       type: "list",
       allowBlank: true,
@@ -1201,6 +1223,26 @@ export async function exportItemsExcel() {
       showErrorMessage: true,
       errorTitle: "Kategori Tidak Valid",
       error: "Silakan pilih kategori dari dropdown list yang tersedia."
+    };
+
+    // Column F (6) is Lokasi
+    templateSheet.getCell(i, 6).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: [`=Referensi!$B$1:$B$${locLength}`],
+      showErrorMessage: true,
+      errorTitle: "Lokasi Tidak Valid",
+      error: "Silakan pilih lokasi dari dropdown list yang tersedia."
+    };
+
+    // Column G (7) is Kondisi
+    templateSheet.getCell(i, 7).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ['"Baru,Normal,Rusak,Afkir"'],
+      showErrorMessage: true,
+      errorTitle: "Kondisi Tidak Valid",
+      error: "Silakan pilih kondisi dari opsi yang tersedia."
     };
   }
 
