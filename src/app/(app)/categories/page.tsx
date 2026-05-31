@@ -6,6 +6,7 @@ import { deleteCategory } from "./actions";
 import SearchInput from "@/components/ui/SearchInput";
 import Pagination from "@/components/ui/Pagination";
 import { formatCategoryName } from "@/utils/category";
+import { fixEmptyCategoryCodes } from "@/app/(app)/services/import-export-actions";
 
 export default async function CategoriesPage({
   searchParams,
@@ -16,6 +17,9 @@ export default async function CategoriesPage({
   const currentPage = parseInt(page || "1");
   const pageSize = 5;
   const supabase = await createClient();
+
+  // Jalankan self-healing untuk kode kategori kosong
+  await fixEmptyCategoryCodes();
 
   let query = supabase
     .from("categories")

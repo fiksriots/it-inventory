@@ -1091,31 +1091,25 @@ export async function fixEmptyCategoryCodes() {
   const needsFix = (categories || []).filter(c => !c.code || c.code.trim() === "");
   if (needsFix.length === 0) return;
 
-  const existingCodes = new Set(
-    (categories || [])
-      .map(c => c.code?.trim().toUpperCase())
-      .filter(Boolean)
-  );
+  // Find the highest sequence number among existing K-XXXX codes
+  let maxNum = 0;
+  (categories || []).forEach(cat => {
+    if (cat.code && cat.code.toUpperCase().startsWith("K-")) {
+      const num = parseInt(cat.code.toUpperCase().replace("K-", ""), 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  });
 
   for (const cat of needsFix) {
-    let baseCode = cat.name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (baseCode.length < 2) {
-      baseCode = "CAT";
-    }
-
-    let uniqueCode = baseCode;
-    let counter = 1;
-    while (existingCodes.has(uniqueCode)) {
-      uniqueCode = `${baseCode}${counter}`;
-      counter++;
-    }
+    maxNum++;
+    const uniqueCode = `K-${maxNum.toString().padStart(4, '0')}`;
 
     await supabase
       .from("categories")
       .update({ code: uniqueCode })
       .eq("id", cat.id);
-
-    existingCodes.add(uniqueCode);
   }
 }
 

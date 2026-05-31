@@ -6,15 +6,30 @@ import { redirect } from "next/navigation";
 
 export async function createCategory(prevState: any, formData: FormData) {
   const name = formData.get("name") as string;
-  const code = formData.get("code") as string;
+  let code = formData.get("code") as string;
   const description = formData.get("description") as string;
   const parentId = formData.get("parent_id") as string || null;
 
-  if (!name || !code) {
-    return { error: "Nama kategori dan Kode wajib diisi." };
+  if (!name) {
+    return { error: "Nama kategori wajib diisi." };
   }
 
   const supabase = await createClient();
+
+  if (!code || code.trim() === "") {
+    const { data: categories } = await supabase.from("categories").select("code");
+    let maxNum = 0;
+    (categories || []).forEach(cat => {
+      if (cat.code && cat.code.toUpperCase().startsWith("K-")) {
+        const num = parseInt(cat.code.toUpperCase().replace("K-", ""), 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    const nextNum = maxNum + 1;
+    code = `K-${nextNum.toString().padStart(4, '0')}`;
+  }
 
   const { error } = await supabase
     .from("categories")
