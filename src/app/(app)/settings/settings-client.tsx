@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { User, Building2, Bell, Shield, Save, Upload, Loader2, Mail, Phone, MapPin, Key, History, Smartphone, Lock, AlertTriangle, Eye, EyeOff, Users, UserPlus, Trash2, Database, Download } from "lucide-react";
-import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount, generateDatabaseBackup, restoreDatabaseBackup, resetDatabaseSystem } from "./actions";
+import { updateCompanyProfile, uploadCompanyLogo, changePassword, uploadProfilePhoto, updateProfileName, updateNotificationSettings, addUserAccount, updateUserRole, deleteUserAccount, generateDatabaseBackup, restoreDatabaseBackup, resetDatabaseSystem, exportAuditLogsAction } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 
@@ -21,8 +21,44 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
   const [isRestoring, setIsRestoring] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [exportingLogs, setExportingLogs] = useState(false);
+  const [logSearch, setLogSearch] = useState("");
+  const [logTypeFilter, setLogTypeFilter] = useState("ALL");
+  const [logPage, setLogPage] = useState(1);
   const { toast } = useToast();
   const router = useRouter();
+
+  const handleExportLogs = async () => {
+    setExportingLogs(true);
+    try {
+      toast("Sedang menyiapkan data log audit...", "success");
+      const base64Data = await exportAuditLogsAction();
+      
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Log_Audit_Keamanan_InventoryIT_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast("Ekspor log berhasil diunduh!", "success");
+    } catch (err: any) {
+      console.error("Export logs error:", err);
+      toast("Gagal melakukan ekspor log audit.", "error");
+    } finally {
+      setExportingLogs(false);
+    }
+  };
 
   const handleDownloadBackup = async () => {
     setIsBackingUp(true);
@@ -267,6 +303,29 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
       setLoading(false);
     }
   };
+
+  const filteredLogs = logs.filter(log => {
+    if (logTypeFilter !== "ALL" && log.mutation_type !== logTypeFilter) {
+      return false;
+    }
+    if (logSearch.trim()) {
+      const query = logSearch.toLowerCase();
+      const itemName = (log.items?.name || "").toLowerCase();
+      const userName = (log.profiles?.full_name || "").toLowerCase();
+      const userEmail = (log.profiles?.email || "").toLowerCase();
+      const notes = (log.notes || "").toLowerCase();
+      const activity = (log.mutation_type || "").toLowerCase();
+      return itemName.includes(query) || userName.includes(query) || userEmail.includes(query) || notes.includes(query) || activity.includes(query);
+    }
+    return true;
+  });
+
+  const logsPerPage = 10;
+  const totalPages = Math.ceil(filteredLogs.length / logsPerPage) || 1;
+  const safeLogPage = Math.min(logPage, totalPages);
+  const indexOfLastLog = safeLogPage * logsPerPage;
+  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
 
   const tabs = [
     { id: "profile", label: "Profil Akun", icon: User },
@@ -593,14 +652,62 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
 
               {/* Activity Audit Log */}
               <div className="p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
-                    <History className="w-5 h-5" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                      <History className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold">Log Audit Keamanan</h3>
+                      <p className="text-sm text-text-muted">Riwayat aktivitas inventaris terbaru untuk pengawasan.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold">Log Audit Keamanan</h3>
-                    <p className="text-sm text-text-muted">Riwayat aktivitas inventaris terbaru untuk pengawasan.</p>
+
+                  <button
+                    onClick={handleExportLogs}
+                    disabled={exportingLogs}
+                    className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-600 shadow-lg shadow-blue-500/20 transition-all text-xs disabled:opacity-50 active:scale-95 cursor-pointer"
+                  >
+                    {exportingLogs ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Mengekspor...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        Ekspor Log (Excel)
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Search & Filters */}
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      placeholder="Cari berdasarkan nama barang, user, catatan..."
+                      value={logSearch}
+                      onChange={(e) => {
+                        setLogSearch(e.target.value);
+                        setLogPage(1);
+                      }}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                    />
                   </div>
+                  <select
+                    value={logTypeFilter}
+                    onChange={(e) => {
+                      setLogTypeFilter(e.target.value);
+                      setLogPage(1);
+                    }}
+                    className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-bold text-text-muted cursor-pointer focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    <option value="ALL">Semua Aktivitas</option>
+                    <option value="INBOUND">INBOUND</option>
+                    <option value="OUTBOUND">OUTBOUND</option>
+                  </select>
                 </div>
 
                 <div className="border border-border rounded-xl overflow-hidden bg-background/30">
@@ -615,8 +722,8 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {logs.length > 0 ? (
-                        logs.map((log) => (
+                      {currentLogs.length > 0 ? (
+                        currentLogs.map((log) => (
                           <tr key={log.id} className="hover:bg-background/50 transition-colors">
                             <td className="px-4 py-3 text-xs text-text-muted whitespace-nowrap">
                               {new Date(log.created_at).toLocaleString("id-ID", { 
@@ -642,12 +749,40 @@ export default function SettingsClient({ user, userProfile, company, logs = [], 
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={4} className="px-4 py-8 text-center text-text-muted italic">Belum ada aktivitas yang tercatat.</td>
+                          <td colSpan={5} className="px-4 py-8 text-center text-text-muted italic">Belum ada aktivitas yang tercatat.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredLogs.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-border">
+                    <span className="text-xs text-text-muted">
+                      Menampilkan <strong className="font-bold">{indexOfFirstLog + 1}</strong> - <strong className="font-bold">{Math.min(indexOfLastLog, filteredLogs.length)}</strong> dari <strong className="font-bold">{filteredLogs.length}</strong> log audit
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                        disabled={safeLogPage === 1}
+                        className="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold text-text-muted hover:bg-surface disabled:opacity-50 transition-colors cursor-pointer"
+                      >
+                        Sebelumnya
+                      </button>
+                      <span className="px-3 text-xs font-bold text-text-muted">
+                        Halaman {safeLogPage} dari {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setLogPage(p => Math.min(totalPages, p + 1))}
+                        disabled={safeLogPage === totalPages}
+                        className="px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold text-text-muted hover:bg-surface disabled:opacity-50 transition-colors cursor-pointer"
+                      >
+                        Berikutnya
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Database Backup & Restore */}

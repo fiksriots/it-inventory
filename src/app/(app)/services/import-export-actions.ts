@@ -57,6 +57,9 @@ export async function importItemsBulk(itemsData: any[]) {
 
   // Ambil data user saat ini
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.warn("WARNING: importItemsBulk - No authenticated user session found.");
+  }
 
   // Cache kategori dan lokasi yang ada untuk optimasi kecepatan kueri
   const { data: allCategories } = await supabase.from("categories").select("id, name, code");
@@ -624,6 +627,9 @@ export async function importPurchaseOrdersBulk(poData: any[]) {
 
   // Ambil data user saat ini
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.warn("WARNING: importPurchaseOrdersBulk - No authenticated user session found.");
+  }
 
   // Cache suppliers, locations, items
   const { data: allSuppliers } = await supabase.from("suppliers").select("id, name");
@@ -1487,6 +1493,69 @@ export async function exportInfrastructureExcel() {
       error: "Silakan pilih status dari opsi yang tersedia."
     };
   }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer).toString("base64");
+}
+
+export async function exportAuditLogsExcel() {
+  const supabase = await createClient();
+
+  const { data: logs, error } = await supabase
+    .from("inventory_logs")
+    .select(`
+      id,
+      mutation_type,
+      quantity,
+      notes,
+      created_at,
+      items (sku, name),
+      profiles (email, full_name)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error exporting audit logs:", error);
+    throw new Error(error.message);
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Log Audit Keamanan");
+
+  sheet.columns = [
+    { header: "No.", key: "no", width: 8 },
+    { header: "Tanggal & Waktu", key: "datetime", width: 22 },
+    { header: "SKU Barang", key: "sku", width: 15 },
+    { header: "Nama Barang", key: "name", width: 30 },
+    { header: "User", key: "user", width: 25 },
+    { header: "Email User", key: "email", width: 25 },
+    { header: "Aktivitas", key: "activity", width: 15 },
+    { header: "Jumlah", key: "quantity", width: 12 },
+    { header: "Catatan / Keterangan", key: "notes", width: 45 },
+  ];
+
+  (logs || []).forEach((log: any, idx: number) => {
+    const formattedDate = new Date(log.created_at).toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+
+    sheet.addRow({
+      no: idx + 1,
+      datetime: formattedDate,
+      sku: log.items?.sku || "-",
+      name: log.items?.name || "-",
+      user: log.profiles?.full_name || "Sistem",
+      email: log.profiles?.email || "Auto-Generated",
+      activity: log.mutation_type,
+      quantity: log.quantity || 0,
+      notes: log.notes || "-"
+    });
+  });
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer).toString("base64");

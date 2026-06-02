@@ -439,6 +439,10 @@ export async function restoreDatabaseBackup(backupData: any) {
       }
     }
 
+    // Get existing profiles to serve as validUserIds set (users that actually exist in auth.users)
+    const { data: currentProfiles } = await supabase.from("profiles").select("id");
+    const validUserIds = new Set((currentProfiles || []).map(p => p.id));
+
     // 2. Restore/Upsert company_profile dan profiles
     if (backupData.company_profile && backupData.company_profile.length > 0) {
       const { error } = await supabase.from("company_profile").upsert(backupData.company_profile);
@@ -446,8 +450,11 @@ export async function restoreDatabaseBackup(backupData: any) {
     }
 
     if (backupData.profiles && backupData.profiles.length > 0) {
-      const { error } = await supabase.from("profiles").upsert(backupData.profiles);
-      if (error) throw new Error(`Gagal restore profiles: ${error.message}`);
+      const sanitizedProfiles = backupData.profiles.filter((p: any) => validUserIds.has(p.id));
+      if (sanitizedProfiles.length > 0) {
+        const { error } = await supabase.from("profiles").upsert(sanitizedProfiles);
+        if (error) throw new Error(`Gagal restore profiles: ${error.message}`);
+      }
     }
 
     // 3. Restore categories (Two-pass approach untuk self-referencing parent_id)
@@ -508,31 +515,48 @@ export async function restoreDatabaseBackup(backupData: any) {
 
     // 8. Restore purchase_orders
     if (backupData.purchase_orders && backupData.purchase_orders.length > 0) {
-      const { error } = await supabase.from("purchase_orders").insert(backupData.purchase_orders);
+      const sanitizedPO = backupData.purchase_orders.map((po: any) => ({
+        ...po,
+        created_by: validUserIds.has(po.created_by) ? po.created_by : null
+      }));
+      const { error } = await supabase.from("purchase_orders").insert(sanitizedPO);
       if (error) throw new Error(`Gagal restore purchase_orders: ${error.message}`);
     }
 
     // 9. Restore po_items
     if (backupData.po_items && backupData.po_items.length > 0) {
-      const { error } = await supabase.from("po_items").insert(backupData.po_items);
+      const sanitizedPoItems = backupData.po_items.map(({ total_price, ...rest }: any) => rest);
+      const { error } = await supabase.from("po_items").insert(sanitizedPoItems);
       if (error) throw new Error(`Gagal restore po_items: ${error.message}`);
     }
 
     // 10. Restore item_transfers
     if (backupData.item_transfers && backupData.item_transfers.length > 0) {
-      const { error } = await supabase.from("item_transfers").insert(backupData.item_transfers);
+      const sanitizedTransfers = backupData.item_transfers.map((t: any) => ({
+        ...t,
+        user_id: validUserIds.has(t.user_id) ? t.user_id : null
+      }));
+      const { error } = await supabase.from("item_transfers").insert(sanitizedTransfers);
       if (error) throw new Error(`Gagal restore item_transfers: ${error.message}`);
     }
 
     // 11. Restore inventory_logs
     if (backupData.inventory_logs && backupData.inventory_logs.length > 0) {
-      const { error } = await supabase.from("inventory_logs").insert(backupData.inventory_logs);
+      const sanitizedLogs = backupData.inventory_logs.map((log: any) => ({
+        ...log,
+        user_id: validUserIds.has(log.user_id) ? log.user_id : null
+      }));
+      const { error } = await supabase.from("inventory_logs").insert(sanitizedLogs);
       if (error) throw new Error(`Gagal restore inventory_logs: ${error.message}`);
     }
 
     // 12. Restore infrastructure_assets
     if (backupData.infrastructure_assets && backupData.infrastructure_assets.length > 0) {
-      const { error } = await supabase.from("infrastructure_assets").insert(backupData.infrastructure_assets);
+      const sanitizedAssets = backupData.infrastructure_assets.map((a: any) => ({
+        ...a,
+        created_by: validUserIds.has(a.created_by) ? a.created_by : null
+      }));
+      const { error } = await supabase.from("infrastructure_assets").insert(sanitizedAssets);
       if (error) throw new Error(`Gagal restore infrastructure_assets: ${error.message}`);
     }
 
@@ -544,7 +568,11 @@ export async function restoreDatabaseBackup(backupData: any) {
 
     // 14. Restore computers
     if (backupData.computers && backupData.computers.length > 0) {
-      const { error } = await supabase.from("computers").insert(backupData.computers);
+      const sanitizedComputers = backupData.computers.map((c: any) => ({
+        ...c,
+        created_by: validUserIds.has(c.created_by) ? c.created_by : null
+      }));
+      const { error } = await supabase.from("computers").insert(sanitizedComputers);
       if (error) throw new Error(`Gagal restore computers: ${error.message}`);
     }
 
@@ -580,7 +608,11 @@ export async function restoreDatabaseBackup(backupData: any) {
 
     // 20. Restore item_services
     if (backupData.item_services && backupData.item_services.length > 0) {
-      const { error } = await supabase.from("item_services").insert(backupData.item_services);
+      const sanitizedServices = backupData.item_services.map((s: any) => ({
+        ...s,
+        created_by: validUserIds.has(s.created_by) ? s.created_by : null
+      }));
+      const { error } = await supabase.from("item_services").insert(sanitizedServices);
       if (error) throw new Error(`Gagal restore item_services: ${error.message}`);
     }
 
@@ -641,5 +673,10 @@ export async function resetDatabaseSystem() {
     console.error("Reset system error:", err);
     return { error: err.message || "Gagal melakukan reset sistem." };
   }
+}
+
+export async function exportAuditLogsAction() {
+  const { exportAuditLogsExcel } = await import("../services/import-export-actions");
+  return await exportAuditLogsExcel();
 }
 

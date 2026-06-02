@@ -834,8 +834,20 @@ NOTIFY pgrst, 'reload schema';`);
                                 ))}
                               </select>
                             </div>
+                            <div className="flex items-center gap-2 sm:col-span-3 mt-1 pt-1 border-t border-amber-500/10">
+                              <input 
+                                type="checkbox" 
+                                id="infra_discard_old_part" 
+                                name="discard_old_part" 
+                                value="true"
+                                className="rounded border-border text-amber-500 focus:ring-amber-500/20 w-3.5 h-3.5"
+                              />
+                              <label htmlFor="infra_discard_old_part" className="text-[10px] font-bold text-text-muted cursor-pointer select-none">
+                                Buang part lama / Jangan simpan ke Gudang Rusak (misal: pita printer, kabel rusak, dll)
+                              </label>
+                            </div>
                             <p className="text-[10px] text-amber-600/70 sm:col-span-3">
-                              *Stok di gudang sumber akan dikurangi. Suku cadang lama akan otomatis dipindahkan ke "Gudang Rusak".
+                              *Stok di gudang sumber akan dikurangi. Part lama akan dipindahkan ke "Gudang Rusak" kecuali jika opsi buang dicentang.
                             </p>
                           </div>
                         )}

@@ -37,7 +37,7 @@ export default async function SettingsPage() {
       profiles (email, full_name)
     `)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(150);
 
   // Ambil daftar seluruh pengguna dari tabel profiles
   const { data: usersList } = await supabase

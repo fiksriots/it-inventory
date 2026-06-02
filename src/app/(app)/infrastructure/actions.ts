@@ -246,39 +246,45 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
   const replaced_quantity_str = formData.get("replaced_quantity") as string;
   const source_location_id = formData.get("source_location_id") as string;
   const replaced_quantity = replaced_quantity_str ? parseInt(replaced_quantity_str) : 0;
+  const discard_old_part = formData.get("discard_old_part") === "true";
 
   let partReplacementNote = "";
 
   if (replaced_item_id && replaced_quantity > 0 && source_location_id) {
-    // 1. Pastikan "Gudang Rusak" ada
-    let { data: rusakLocation } = await supabase.from("locations").select("id").eq("name", "Gudang Rusak").single();
-    if (!rusakLocation) {
-      const { data: newLoc } = await supabase.from("locations").insert([{ name: "Gudang Rusak", address: "Penampungan Barang Rusak" }]).select().single();
-      rusakLocation = newLoc;
+    // 1. Pastikan "Gudang Rusak" ada jika tidak dibuang
+    let rusakLocation = null;
+    if (!discard_old_part) {
+      let { data: rLoc } = await supabase.from("locations").select("id").eq("name", "Gudang Rusak").single();
+      if (!rLoc) {
+        const { data: newLoc } = await supabase.from("locations").insert([{ name: "Gudang Rusak", address: "Penampungan Barang Rusak" }]).select().single();
+        rusakLocation = newLoc;
+      } else {
+        rusakLocation = rLoc;
+      }
     }
 
-    if (rusakLocation) {
-      // 2. Kurangi dari source location (cari yang kondisinya non-Rusak)
-      const { data: sourceStocks } = await supabase
-        .from("item_stocks")
-        .select("condition, quantity")
-        .eq("item_id", replaced_item_id)
-        .eq("location_id", source_location_id)
-        .neq("condition", "Rusak");
+    // 2. Kurangi dari source location (cari yang kondisinya non-Rusak)
+    const { data: sourceStocks } = await supabase
+      .from("item_stocks")
+      .select("condition, quantity")
+      .eq("item_id", replaced_item_id)
+      .eq("location_id", source_location_id)
+      .neq("condition", "Rusak");
 
-      const sourceStock = sourceStocks?.find(s => s.quantity >= replaced_quantity);
-      if (!sourceStock) {
-        throw new Error("Stok suku cadang aktif (non-Rusak) di gudang sumber tidak mencukupi untuk pergantian.");
-      }
-      const sourceCondition = sourceStock.condition || "Normal";
+    const sourceStock = sourceStocks?.find(s => s.quantity >= replaced_quantity);
+    if (!sourceStock) {
+      throw new Error("Stok suku cadang aktif (non-Rusak) di gudang sumber tidak mencukupi untuk pergantian.");
+    }
+    const sourceCondition = sourceStock.condition || "Normal";
 
-      await supabase
-        .from("item_stocks")
-        .update({ quantity: sourceStock.quantity - replaced_quantity, last_updated: new Date().toISOString() })
-        .eq("item_id", replaced_item_id)
-        .eq("location_id", source_location_id)
-        .eq("condition", sourceCondition);
+    await supabase
+      .from("item_stocks")
+      .update({ quantity: sourceStock.quantity - replaced_quantity, last_updated: new Date().toISOString() })
+      .eq("item_id", replaced_item_id)
+      .eq("location_id", source_location_id)
+      .eq("condition", sourceCondition);
 
+    if (!discard_old_part && rusakLocation) {
       // 3. Tambah di Gudang Rusak dengan kondisi 'Rusak'
       const { data: rusakStock } = await supabase
         .from("item_stocks")
@@ -300,19 +306,27 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
           .from("item_stocks")
           .insert([{ item_id: replaced_item_id, location_id: rusakLocation.id, quantity: replaced_quantity, condition: "Rusak" }]);
       }
+    }
 
-      // 4. Catat ke inventory_logs
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || null;
+    // 4. Catat ke inventory_logs
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || null;
+    
+    // Log outbound
+    await supabase.from("inventory_logs").insert([
+      {
+        item_id: replaced_item_id,
+        location_id: source_location_id,
+        mutation_type: "OUTBOUND",
+        quantity: replaced_quantity,
+        notes: `Suku cadang bagus (${sourceCondition}) digunakan untuk pemeliharaan infrastruktur. Catatan: ${notes || '-'}`,
+        user_id: userId
+      }
+    ]);
+
+    // Log inbound ke Gudang Rusak jika tidak dibuang
+    if (!discard_old_part && rusakLocation) {
       await supabase.from("inventory_logs").insert([
-        {
-          item_id: replaced_item_id,
-          location_id: source_location_id,
-          mutation_type: "OUTBOUND",
-          quantity: replaced_quantity,
-          notes: `Suku cadang bagus (${sourceCondition}) digunakan untuk pemeliharaan infrastruktur. Catatan: ${notes || '-'}`,
-          user_id: userId
-        },
         {
           item_id: replaced_item_id,
           location_id: rusakLocation.id,
@@ -322,8 +336,12 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
           user_id: userId
         }
       ]);
+    }
 
-      const { data: itemData } = await supabase.from("items").select("name").eq("id", replaced_item_id).single();
+    const { data: itemData } = await supabase.from("items").select("name").eq("id", replaced_item_id).single();
+    if (discard_old_part) {
+      partReplacementNote = `\n\n[Sistem] Pergantian Part: ${itemData?.name || 'Item'} (x${replaced_quantity}). Part lama dibuang/tidak disimpan.`;
+    } else {
       partReplacementNote = `\n\n[Sistem] Pergantian Part: ${itemData?.name || 'Item'} (x${replaced_quantity}). Part lama dimasukkan ke Gudang Rusak dengan status Rusak.`;
     }
   }
