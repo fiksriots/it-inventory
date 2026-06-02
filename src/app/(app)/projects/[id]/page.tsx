@@ -40,10 +40,26 @@ export default async function ProjectDetailPage({ params }: ProjectPageProps) {
     console.error("Error fetching project logs:", err);
   }
 
+  // 3. Fetch Linked Purchase Orders
+  let initialPos: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("purchase_orders")
+      .select("*, suppliers(name)")
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      initialPos = data.filter((po: any) => po.notes?.includes(`[Project: ${id}]`));
+    }
+  } catch (err) {
+    console.error("Error fetching project POs:", err);
+  }
+
   return (
     <ProjectDetailClient 
       project={project} 
       initialLogs={logs} 
+      initialPos={initialPos}
     />
   );
 }

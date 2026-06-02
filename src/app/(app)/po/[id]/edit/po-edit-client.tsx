@@ -238,36 +238,54 @@ export default function POEditClient({ po, initialItems, suppliers, masterItems,
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-text-muted uppercase tracking-tight">Biaya Admin</div>
-                  <input 
-                    type="number" 
-                    name="admin_fee"
-                    value={adminFee}
-                    onChange={(e) => setAdminFee(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="admin_fee"
+                      value={adminFee === 0 ? "" : adminFee.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setAdminFee(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none font-medium text-white" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-text-muted uppercase tracking-tight">Biaya Pengiriman</div>
-                  <input 
-                    type="number" 
-                    name="shipping_fee"
-                    value={shippingFee}
-                    onChange={(e) => setShippingFee(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="shipping_fee"
+                      value={shippingFee === 0 ? "" : shippingFee.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setShippingFee(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none font-medium text-white" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-rose-500 uppercase tracking-tight">Diskon / Voucher (-)</div>
-                  <input 
-                    type="number" 
-                    name="discount_amount"
-                    value={discountAmount}
-                    onChange={(e) => setDiscountAmount(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right text-rose-500 focus:ring-2 focus:ring-rose-500/20 border-rose-500/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-500/70 font-bold pointer-events-none group-focus-within:text-rose-500 transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="discount_amount"
+                      value={discountAmount === 0 ? "" : discountAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setDiscountAmount(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-rose-500/20 text-rose-500 rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-rose-500/20 outline-none font-medium" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="pt-4 border-t border-border flex flex-col gap-1">
                   <span className="text-xs text-text-muted font-medium uppercase tracking-widest">Total Pembelian</span>
@@ -298,7 +316,7 @@ export default function POEditClient({ po, initialItems, suppliers, masterItems,
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-background/80 text-text-muted text-[10px] uppercase tracking-widest border-b border-border">
                 <tr>
                   <th className="px-4 py-4 text-left font-bold">Barang</th>

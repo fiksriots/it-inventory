@@ -13,9 +13,9 @@ export async function createPurchaseOrder(prevState: any, formData: FormData) {
   const supplierId = formData.get("supplier_id") as string;
   let poNumber = formData.get("po_number") as string;
   
-  const adminFee = parseFloat(formData.get("admin_fee") as string || "0");
-  const shippingFee = parseFloat(formData.get("shipping_fee") as string || "0");
-  const discountAmount = parseFloat(formData.get("discount_amount") as string || "0");
+  const adminFee = parseFloat((formData.get("admin_fee") as string || "0").replace(/\./g, "").replace(/,/g, "."));
+  const shippingFee = parseFloat((formData.get("shipping_fee") as string || "0").replace(/\./g, "").replace(/,/g, "."));
+  const discountAmount = parseFloat((formData.get("discount_amount") as string || "0").replace(/\./g, "").replace(/,/g, "."));
   const paymentMethod = formData.get("payment_method") as string;
   
   // New Fields
@@ -323,9 +323,9 @@ export async function updatePurchaseOrder(id: string, prevState: any, formData: 
   const supabase = await createClient();
 
   const supplierId = formData.get("supplier_id") as string;
-  const adminFee = parseFloat(formData.get("admin_fee") as string || "0");
-  const shippingFee = parseFloat(formData.get("shipping_fee") as string || "0");
-  const discountAmount = parseFloat(formData.get("discount_amount") as string || "0");
+  const adminFee = parseFloat((formData.get("admin_fee") as string || "0").replace(/\./g, "").replace(/,/g, "."));
+  const shippingFee = parseFloat((formData.get("shipping_fee") as string || "0").replace(/\./g, "").replace(/,/g, "."));
+  const discountAmount = parseFloat((formData.get("discount_amount") as string || "0").replace(/\./g, "").replace(/,/g, "."));
   const paymentMethod = formData.get("payment_method") as string;
   
   const department = formData.get("department") as string;

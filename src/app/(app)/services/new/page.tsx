@@ -362,13 +362,21 @@ export default function NewServicePage() {
                 Estimasi Biaya
               </h2>
               <div className="mt-4 space-y-2">
-                <label className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Perkiraan Biaya Awal (Rp)</label>
-                <input 
-                  type="number" 
-                  name="cost"
-                  defaultValue="0"
-                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-right font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
-                />
+                <label className="text-[10px] text-text-muted uppercase font-bold tracking-tight">Perkiraan Biaya Awal</label>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors text-xs">Rp</span>
+                  <input 
+                    type="text" 
+                    name="cost"
+                    placeholder="0"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      const num = parseInt(val, 10);
+                      e.target.value = isNaN(num) ? "" : num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                    }}
+                    className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2.5 text-right font-bold text-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  />
+                </div>
               </div>
             </div>
 

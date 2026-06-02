@@ -20,6 +20,7 @@ export default function NewPurchaseOrderPage() {
   const [shippingFee, setShippingFee] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [autoPo, setAutoPo] = useState(true);
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,8 +31,42 @@ export default function NewPurchaseOrderPage() {
         supabase.from("locations").select("id, name").order("name")
       ]);
       setSuppliers(suppliersRes.data || []);
-      setItems(itemsRes.data || []);
+      const fetchedItems = itemsRes.data || [];
+      setItems(fetchedItems);
       setLocations(locationsRes.data || []);
+      
+      // Parse query params for RAB prefill
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const rabName = params.get("rab_item_name");
+        const rabQty = params.get("rab_quantity");
+        const rabUnit = params.get("rab_unit");
+        const rabPrice = params.get("rab_price");
+        const projectId = params.get("project_id");
+        const projectName = params.get("project_name");
+
+        if (projectId && projectName) {
+          setNotes(`[Project: ${projectId}] Pembelian barang untuk project "${projectName}"`);
+        }
+
+        if (rabName) {
+          const matchedItem = fetchedItems.find(
+            (i: any) => i.name.toLowerCase() === rabName.toLowerCase()
+          );
+          setSelectedItems([
+            {
+              item_id: matchedItem ? matchedItem.id : "",
+              custom_item_name: matchedItem ? "" : rabName,
+              is_manual: !matchedItem,
+              item_link: "",
+              unit: rabUnit || "PCS",
+              quantity: rabQty ? parseFloat(rabQty) : 1,
+              unit_price: rabPrice ? parseFloat(rabPrice) : 0
+            }
+          ]);
+        }
+      }
+      
       setIsLoading(false);
     };
     fetchData();
@@ -210,6 +245,8 @@ export default function NewPurchaseOrderPage() {
               <textarea 
                 name="notes"
                 rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 placeholder="Tulis alasan pembelian atau catatan khusus di sini..."
                 className="w-full bg-background border border-border rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
               ></textarea>
@@ -244,33 +281,54 @@ export default function NewPurchaseOrderPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-text-muted uppercase tracking-tight">Biaya Admin</div>
-                  <input 
-                    type="number" 
-                    name="admin_fee"
-                    onChange={(e) => setAdminFee(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="admin_fee"
+                      value={adminFee === 0 ? "" : adminFee.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setAdminFee(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none font-medium text-white" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-text-muted uppercase tracking-tight">Biaya Pengiriman</div>
-                  <input 
-                    type="number" 
-                    name="shipping_fee"
-                    onChange={(e) => setShippingFee(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-primary transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="shipping_fee"
+                      value={shippingFee === 0 ? "" : shippingFee.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setShippingFee(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-border rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-primary/20 outline-none font-medium text-white" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-medium text-rose-500 uppercase tracking-tight">Diskon / Voucher (-)</div>
-                  <input 
-                    type="number" 
-                    name="discount_amount"
-                    onChange={(e) => setDiscountAmount(parseFloat(e.target.value || "0"))}
-                    className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm text-right text-rose-500 focus:ring-2 focus:ring-rose-500/20 border-rose-500/20 outline-none" 
-                    placeholder="0"
-                  />
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-500/70 font-bold pointer-events-none group-focus-within:text-rose-500 transition-colors text-xs">Rp</span>
+                    <input 
+                      type="text" 
+                      name="discount_amount"
+                      value={discountAmount === 0 ? "" : discountAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setDiscountAmount(parseInt(raw) || 0);
+                      }}
+                      className="w-full bg-background border border-rose-500/20 text-rose-500 rounded-lg pl-12 pr-4 py-2 text-sm text-right focus:ring-2 focus:ring-rose-500/20 outline-none font-medium" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="pt-4 border-t border-border flex flex-col gap-1">
                   <span className="text-xs text-text-muted font-medium uppercase tracking-widest">Total Pembelian</span>
@@ -301,7 +359,7 @@ export default function NewPurchaseOrderPage() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-background/80 text-text-muted text-[10px] uppercase tracking-widest">
                 <tr>
                   <th className="px-4 py-4 text-left font-bold border-b border-border">Barang</th>

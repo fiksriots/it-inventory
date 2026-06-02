@@ -459,11 +459,11 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
             Catat agenda, perbaikan, instalasi, dan penanganan gangguan yang dilakukan oleh IT Support setiap harinya.
           </p>
         </div>
-        <div className="flex items-center gap-2 no-print">
-          <div className="relative">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 no-print w-full sm:w-auto">
+          <div className="relative flex-grow sm:flex-grow-0 w-full sm:w-auto">
             <button
               onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 shrink-0 text-xs shadow-sm"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 bg-surface hover:bg-background border border-border text-text-muted hover:text-foreground font-bold rounded-xl transition-all active:scale-95 text-xs shadow-sm"
               title="Ekspor Laporan"
             >
               <Download className="w-4.5 h-4.5" />
@@ -499,7 +499,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
           </div>
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 shrink-0 text-xs"
+            className="flex-grow sm:flex-grow-0 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 text-xs"
           >
             <Plus className="w-4.5 h-4.5" />
             Buat Laporan
@@ -771,7 +771,7 @@ CREATE POLICY "Authenticated users can delete daily logs" ON public.it_daily_log
               </button>
             </div>
             <form onSubmit={handleCreateSubmit} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Tanggal Kerja <span className="text-rose-500">*</span></label>
                   <input

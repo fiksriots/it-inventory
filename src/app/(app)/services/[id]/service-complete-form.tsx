@@ -102,14 +102,22 @@ export default function ServiceCompleteForm({ service, locations }: ServiceCompl
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-text-muted uppercase tracking-tight">Total Biaya Akhir (Rp)</label>
-            <input 
-              type="number" 
-              name="cost"
-              defaultValue={service.cost || 0}
-              required
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-right font-bold text-primary focus:ring-2 focus:ring-emerald-500/20 outline-none"
-            />
+            <label className="text-xs font-bold text-text-muted uppercase tracking-tight">Total Biaya Akhir</label>
+            <div className="relative group">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold pointer-events-none group-focus-within:text-emerald-500 transition-colors text-xs">Rp</span>
+              <input 
+                type="text" 
+                name="cost"
+                defaultValue={(service.cost || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                required
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  const num = parseInt(val, 10);
+                  e.target.value = isNaN(num) ? "" : num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                }}
+                className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-right font-bold text-primary focus:ring-2 focus:ring-emerald-500/20 outline-none"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

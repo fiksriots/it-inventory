@@ -377,7 +377,8 @@ export async function createInfraMaintenanceLog(assetId: string, formData: FormD
     details: `${maintenance_title}\n\nNotes: ${notes || "-"}`,
     status: status_after === "Aktif" ? "Selesai" : "Pending",
     date: maintenance_date,
-    technician_name: performed_by || "Tim IT Support"
+    technician_name: performed_by || "Tim IT Support",
+    image_url: imageUrl
   });
 
   revalidatePath("/infrastructure");

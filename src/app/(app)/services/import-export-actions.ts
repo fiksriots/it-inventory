@@ -75,6 +75,18 @@ export async function importItemsBulk(itemsData: any[]) {
     locationMap[loc.name.trim().toLowerCase()] = loc.id;
   });
 
+  // Cache items yang sudah ada berdasarkan nama (case-insensitive) dan SKU
+  const { data: allItems } = await supabase.from("items").select("id, sku, name");
+  const itemSkuMap: Record<string, { id: string; sku: string; name: string }> = {};
+  const itemNameMap: Record<string, { id: string; sku: string; name: string }> = {};
+  allItems?.forEach(item => {
+    const skuLower = item.sku.trim().toLowerCase();
+    const nameLower = item.name.trim().toLowerCase();
+    const itemObj = { id: item.id, sku: item.sku, name: item.name };
+    itemSkuMap[skuLower] = itemObj;
+    itemNameMap[nameLower] = itemObj;
+  });
+
   let importedCount = 0;
   const generatedSequences: Record<string, number> = {};
 
@@ -126,39 +138,52 @@ export async function importItemsBulk(itemsData: any[]) {
       }
     }
 
-    // Auto generate SKU jika kosong / -AUTO
-    if (!sku || sku === "-AUTO") {
-      const prefix = catName ? catName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "ITEM";
-      
-      if (generatedSequences[prefix] === undefined) {
-        const { data: existingItems } = await supabase
-          .from("items")
-          .select("sku")
-          .like("sku", `${prefix}-%`);
+    const nameTrimmed = name.toString().trim();
+    const lowerName = nameTrimmed.toLowerCase();
+    let existingItem = itemNameMap[lowerName];
 
-        let maxSeq = 0;
-        if (existingItems && existingItems.length > 0) {
-          existingItems.forEach((item: any) => {
-            const parts = item.sku.split('-');
-            const numStr = parts[parts.length - 1];
-            const num = parseInt(numStr, 10);
-            if (!isNaN(num) && num > maxSeq) {
-              maxSeq = num;
-            }
-          });
+    const lowerSku = sku ? sku.toString().trim().toLowerCase() : "";
+    if (!existingItem && lowerSku && lowerSku !== "-auto" && itemSkuMap[lowerSku]) {
+      existingItem = itemSkuMap[lowerSku];
+    }
+
+    if (existingItem) {
+      sku = existingItem.sku;
+    } else {
+      // Auto generate SKU jika kosong / -AUTO
+      if (!sku || sku === "-AUTO") {
+        const prefix = catName ? catName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, "") : "ITEM";
+        
+        if (generatedSequences[prefix] === undefined) {
+          const { data: existingItems } = await supabase
+            .from("items")
+            .select("sku")
+            .like("sku", `${prefix}-%`);
+
+          let maxSeq = 0;
+          if (existingItems && existingItems.length > 0) {
+            existingItems.forEach((item: any) => {
+              const parts = item.sku.split('-');
+              const numStr = parts[parts.length - 1];
+              const num = parseInt(numStr, 10);
+              if (!isNaN(num) && num > maxSeq) {
+                maxSeq = num;
+              }
+            });
+          }
+          generatedSequences[prefix] = maxSeq;
         }
-        generatedSequences[prefix] = maxSeq;
-      }
 
-      generatedSequences[prefix]++;
-      sku = `${prefix}-${generatedSequences[prefix].toString().padStart(4, '0')}`;
+        generatedSequences[prefix]++;
+        sku = `${prefix}-${generatedSequences[prefix].toString().padStart(4, '0')}`;
+      }
     }
 
     // Simpan data barang (upsert berdasarkan SKU agar jika sudah ada, datanya diperbarui)
     const { data: newItem, error: itemErr } = await supabase
       .from("items")
       .upsert({
-        name: name.trim(),
+        name: nameTrimmed,
         sku: sku.trim(),
         category_id,
         price: parseFloat(priceVal.toString().replace(/[^0-9.-]/g, "")) || 0,
@@ -170,6 +195,12 @@ export async function importItemsBulk(itemsData: any[]) {
     if (itemErr) {
       console.error(`Gagal mengimpor barang ${name}:`, itemErr);
       continue;
+    }
+
+    if (newItem) {
+      const itemObj = { id: newItem.id, sku: newItem.sku, name: newItem.name };
+      itemNameMap[lowerName] = itemObj;
+      itemSkuMap[newItem.sku.trim().toLowerCase()] = itemObj;
     }
 
     importedCount++;
@@ -891,7 +922,7 @@ export async function getItemTemplateExcel() {
       type: "list",
       allowBlank: true,
       formulae: [`=Referensi!$A$1:$A$${catLength}`],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Kategori Tidak Valid",
       error: "Silakan pilih kategori dari dropdown list yang tersedia."
     };
@@ -901,7 +932,7 @@ export async function getItemTemplateExcel() {
       type: "list",
       allowBlank: true,
       formulae: [`=Referensi!$B$1:$B$${locLength}`],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Lokasi Tidak Valid",
       error: "Silakan pilih lokasi dari dropdown list yang tersedia."
     };
@@ -911,7 +942,7 @@ export async function getItemTemplateExcel() {
       type: "list",
       allowBlank: true,
       formulae: ['"Baru,Normal,Rusak,Afkir,Belum Di Cek"'],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Kondisi Tidak Valid",
       error: "Silakan pilih kondisi dari opsi yang tersedia."
     };
@@ -1227,7 +1258,7 @@ export async function exportItemsExcel() {
       type: "list",
       allowBlank: true,
       formulae: [`=Referensi!$A$1:$A$${catLength}`],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Kategori Tidak Valid",
       error: "Silakan pilih kategori dari dropdown list yang tersedia."
     };
@@ -1237,7 +1268,7 @@ export async function exportItemsExcel() {
       type: "list",
       allowBlank: true,
       formulae: [`=Referensi!$B$1:$B$${locLength}`],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Lokasi Tidak Valid",
       error: "Silakan pilih lokasi dari dropdown list yang tersedia."
     };
@@ -1247,7 +1278,7 @@ export async function exportItemsExcel() {
       type: "list",
       allowBlank: true,
       formulae: ['"Baru,Normal,Rusak,Afkir,Belum Di Cek"'],
-      showErrorMessage: true,
+      showErrorMessage: false,
       errorTitle: "Kondisi Tidak Valid",
       error: "Silakan pilih kondisi dari opsi yang tersedia."
     };

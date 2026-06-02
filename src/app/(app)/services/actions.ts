@@ -46,7 +46,7 @@ export async function createService(prevState: any, formData: FormData) {
   const initialCondition = formData.get("initial_condition") as string || "Rusak";
   const sentByName = formData.get("sent_by_name") as string;
   const sentDateInput = formData.get("sent_date") as string;
-  const costEstimate = parseFloat(formData.get("cost") as string || "0");
+  const costEstimate = parseFloat((formData.get("cost") as string || "0").replace(/\./g, "").replace(/,/g, "."));
   
   let serviceNumber = formData.get("service_number") as string;
 
@@ -246,8 +246,8 @@ export async function completeService(id: string, formData: FormData) {
   const { supabase } = await getActionClient();
   
   const finalCondition = formData.get("final_condition") as string || "Normal";
-  const costStr = formData.get("cost") as string;
-  const cost = costStr ? parseFloat(costStr) : 0;
+  const costStr = (formData.get("cost") as string || "0").replace(/\./g, "").replace(/,/g, ".");
+  const cost = parseFloat(costStr) || 0;
   const notes = formData.get("notes") as string;
   const completedDateInput = formData.get("completed_date") as string;
   const destinationLocationIdVal = formData.get("destination_location_id") as string;

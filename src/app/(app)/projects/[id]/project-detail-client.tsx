@@ -1,26 +1,39 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import Link from "next/link";
 import { 
   ArrowLeft, Calendar, Clock, Plus, Trash2, Image, FileImage, 
   X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, Maximize2, FolderKanban, Coins,
-  Printer, Download, ChevronDown, FileSpreadsheet, FileText
+  Printer, Download, ChevronDown, FileSpreadsheet, FileText, ShoppingCart
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem, updateProjectLog } from "../actions";
+import { createClient } from "@/utils/supabase/client";
 
 interface ProjectDetailClientProps {
   project: any;
   initialLogs: any[];
+  initialPos?: any[];
 }
 
-export default function ProjectDetailClient({ project, initialLogs }: ProjectDetailClientProps) {
+export default function ProjectDetailClient({ project, initialLogs, initialPos = [] }: ProjectDetailClientProps) {
   const [logs, setLogs] = useState(initialLogs);
   const [rabItems, setRabItems] = useState<any[]>(project.it_project_rab || []);
+  const [projectPos] = useState<any[]>(initialPos);
+  const [items, setItems] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from("items").select("id, name, price, sku").order("name");
+      if (data) setItems(data);
+    };
+    fetchItems();
+  }, []);
   
   // New Log Form State
   const [content, setContent] = useState("");
@@ -594,10 +607,17 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                         {item.quantity} {item.unit} x {formatRupiah(item.price_per_unit)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xs font-black text-foreground">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs font-black text-foreground mr-2">
                         {formatRupiah(item.quantity * item.price_per_unit)}
                       </span>
+                      <Link
+                        href={`/po/new?rab_item_name=${encodeURIComponent(item.item_name)}&rab_quantity=${item.quantity}&rab_unit=${encodeURIComponent(item.unit)}&rab_price=${item.price_per_unit}&project_id=${project.id}&project_name=${encodeURIComponent(project.name)}`}
+                        className="p-1 hover:bg-emerald-500/10 text-text-muted/60 hover:text-emerald-500 rounded border border-transparent hover:border-emerald-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
+                        title="Beli Barang / Buat PO"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                      </Link>
                       <button
                         onClick={() => handleDeleteRabItem(item.id, item.item_name)}
                         className="p-1 hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded border border-transparent hover:border-rose-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
@@ -618,6 +638,98 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
                 {formatRupiah(rabItems.reduce((sum, item) => sum + (item.quantity * item.price_per_unit), 0))}
               </span>
             </div>
+          </div>
+
+          {/* Linked POs / Realisasi Pengeluaran Card */}
+          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-sm text-foreground uppercase tracking-wider flex items-center gap-2 border-b border-border/40 pb-2">
+              <ShoppingCart className="w-4 h-4 text-emerald-500" />
+              Realisasi Belanja & Pembelian (PO)
+            </h3>
+
+            {projectPos.length === 0 ? (
+              <div className="p-6 text-center rounded-xl bg-background border border-border/30">
+                <p className="text-text-muted text-xs font-bold">Belum ada realisasi pembelian PO.</p>
+                <p className="text-[10px] text-text-muted/65 mt-0.5">Klik ikon keranjang di atas untuk memproses pembelian barang.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {projectPos.map((po) => (
+                  <Link 
+                    key={po.id} 
+                    href={`/po/${po.id}`}
+                    className="flex justify-between items-center bg-background border border-border/40 p-3 rounded-xl gap-2 hover:border-emerald-500/25 hover:bg-emerald-500/[0.02] transition-all group/po"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-foreground group-hover/po:text-primary transition-colors">{po.po_number}</span>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${
+                          po.status === "Selesai" || po.status === "Disetujui" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/10" :
+                          po.status === "Ditolak" ? "bg-rose-500/10 text-rose-500 border border-rose-500/10" :
+                          "bg-amber-500/10 text-amber-500 border border-amber-500/10"
+                        }`}>
+                          {po.status}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-text-muted mt-0.5 font-medium">
+                        Supplier: {po.suppliers?.name || "Offline Supplier"}
+                      </p>
+                    </div>
+                    <span className="text-xs font-black text-foreground shrink-0">
+                      {formatRupiah(po.total_amount || 0)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Budget Utilization Comparison */}
+            {(() => {
+              const totalRab = rabItems.reduce((sum, item) => sum + (item.quantity * item.price_per_unit), 0);
+              const totalPo = projectPos.reduce((sum, po) => sum + Number(po.total_amount || 0), 0);
+              const percentage = totalRab > 0 ? Math.min(100, (totalPo / totalRab) * 100) : 0;
+              const isOver = totalPo > totalRab;
+
+              return (
+                <div className="space-y-3 pt-3 border-t border-border/30">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-text-muted">RAB Terpakai</span>
+                    <span className={isOver ? "text-rose-500" : "text-emerald-500"}>
+                      {totalRab > 0 ? `${(totalPo / totalRab * 100).toFixed(0)}%` : "0%"}
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-background border border-border/40 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 rounded-full ${
+                        isOver ? "bg-rose-500" : percentage > 85 ? "bg-amber-500" : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] font-extrabold uppercase mt-1">
+                    <span className="text-text-muted">Total Pengeluaran:</span>
+                    <span className={`text-xs ${isOver ? "text-rose-500" : "text-foreground"}`}>
+                      {formatRupiah(totalPo)} / {formatRupiah(totalRab)}
+                    </span>
+                  </div>
+
+                  {totalRab > 0 && (
+                    <div className={`p-2.5 rounded-lg border text-[10px] font-bold flex items-center gap-1.5 justify-center ${
+                      isOver 
+                        ? "bg-rose-500/10 border-rose-500/25 text-rose-500 animate-pulse" 
+                        : "bg-emerald-500/10 border-emerald-500/25 text-emerald-500"
+                    }`}>
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {isOver 
+                        ? `OVER-BUDGET SEBESAR ${formatRupiah(totalPo - totalRab)}` 
+                        : `SISA ANGGARAN AMAN: ${formatRupiah(totalRab - totalPo)}`}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Progress Log Submission Card */}
@@ -866,6 +978,31 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
             </div>
             <form onSubmit={handleRabSubmit} className="p-6 space-y-4">
               <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Pilih dari Master Barang (Opsional)</label>
+                <select
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    if (selectedId) {
+                      const matched = items.find(it => it.id === selectedId);
+                      if (matched) {
+                        setRabItemName(matched.name);
+                        setRabPricePerUnit(matched.price || 0);
+                        setRabUnit("pcs");
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors font-semibold cursor-pointer text-text-muted hover:text-foreground"
+                >
+                  <option value="">-- Ketik manual atau Pilih master barang --</option>
+                  {items.map(it => (
+                    <option key={it.id} value={it.id}>
+                      {it.name} ({it.sku}) - {formatRupiah(it.price || 0)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Nama Barang / Jasa <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
@@ -904,16 +1041,19 @@ export default function ProjectDetailClient({ project, initialLogs }: ProjectDet
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Harga Satuan (Rupiah) <span className="text-rose-500">*</span></label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted">Rp</span>
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Harga Satuan <span className="text-rose-500">*</span></label>
+                <div className="relative group">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted group-focus-within:text-primary transition-colors pointer-events-none">Rp</span>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
                     required
-                    value={rabPricePerUnit}
-                    onChange={(e) => setRabPricePerUnit(parseFloat(e.target.value || "0"))}
-                    className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                    value={rabPricePerUnit === 0 ? "" : rabPricePerUnit.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      setRabPricePerUnit(parseInt(raw) || 0);
+                    }}
+                    className="w-full pl-9 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm text-right focus:outline-none focus:border-primary/50 transition-colors font-bold text-primary"
+                    placeholder="0"
                   />
                 </div>
               </div>
