@@ -6,24 +6,47 @@
 
 ## 📑 Daftar Isi
 1. [Ringkasan Eksekutif & PRD](#-1-ringkasan-eksekutif--product-requirement-document-prd)
-2. [Dokumentasi PRD Berdasarkan Versi](#-2-dokumentasi-prd-berdasarkan-versi)
+2. [🛠️ Tech Stack & Teknologi](#%EF%B8%8F-2-tech-stack--teknologi)
+3. [📦 Dokumentasi Fitur Berdasarkan Versi](#-3-dokumentasi-fitur-berdasarkan-versi)
    - [Versi 1.0 (Rilis Inti)](#versi-10-rilis-inti)
    - [Versi 1.1 (Live Print Customizer)](#versi-11-live-print-customizer)
-3. [Perbandingan & Histori Pembaruan (Changelog)](#-3-perbandingan--histori-pembaruan-changelog)
-4. [Panduan Penggunaan & Tutorial Lengkap](#-4-panduan-penggunaan--tutorial-lengkap)
-5. [Panduan Deployment (Vercel, Docker, VPS)](#-5-panduan-deployment-server)
+   - [Versi 2.0 (IT Operations Suite)](#versi-20-it-operations-suite)
+   - [Versi 2.1 (Advanced Inventory & Database Tools)](#versi-21-advanced-inventory--database-tools)
+   - [Versi 2.2 (PWA & Mobile Optimization)](#versi-22-pwa--mobile-optimization)
+4. [🔄 Perbandingan & Histori Pembaruan (Changelog)](#-4-perbandingan--histori-pembaruan-changelog)
+5. [📖 Panduan Penggunaan & Tutorial Lengkap](#-5-panduan-penggunaan--tutorial-lengkap)
+6. [🚀 Panduan Deployment Server](#-6-panduan-deployment-server)
 
 ---
 
 ## 🎯 1. Ringkasan Eksekutif & Product Requirement Document (PRD)
 
-**IT Inventory System** adalah aplikasi manajemen aset fisik, sarana infrastruktur, serta siklus pengadaan dan perbaikan perangkat berbasis web yang dikembangkan menggunakan **Next.js App Router**, bergaya antarmuka modern yang dikustomisasi secara murni (Vanilla CSS/Tailwind), serta dioptimalkan untuk kinerja tanpa kompromi baik di lingkungan *cloud* berbasis nirserver (*serverless*) maupun peladen luring mandiri (*on-premise server*).
+**IT Inventory System** (kini dikenal sebagai **OpsFlow IT**) adalah platform manajemen aset fisik IT, sarana infrastruktur jaringan, penjadwalan tim, serta siklus pengadaan (Purchase Order) dan perbaikan perangkat berbasis web yang dikembangkan menggunakan **Next.js App Router** dan **React Server Components**, bergaya antarmuka modern yang dikustomisasi secara murni (Tailwind CSS v4 & Vanilla CSS), serta dioptimalkan untuk kinerja tanpa kompromi baik di lingkungan *cloud* berbasis nirserver (*serverless*) maupun peladen luring mandiri (*on-premise server*).
 
-Tujuan utama sistem ini adalah menghadirkan keterlihatan mutlak (*absolute visibility*) terhadap pergerakan aset dan stok gudang di multi-lokasi/departemen, mempermudah pelacakan pemeliharaan preventif, serta menghasilkan pelaporan siap cetak bergaya profesional untuk kebutuhan audit akuntansi dan manajemen tingkat tinggi.
+Tujuan utama sistem ini adalah menghadirkan keterlihatan mutlak (*absolute visibility*) terhadap pergerakan aset dan stok gudang di multi-lokasi/departemen, mempermudah pelacakan pemeliharaan preventif, mendukung kestabilan luring penuh dengan Progressive Web App (PWA), serta menghasilkan pelaporan siap cetak bergaya profesional untuk kebutuhan audit akuntansi dan manajemen tingkat tinggi.
 
 ---
 
-## 📦 2. Dokumentasi PRD Berdasarkan Versi
+## 🛠️ 2. Tech Stack & Teknologi
+
+Aplikasi **OpsFlow IT** dirancang dengan arsitektur modern berkinerja tinggi, mengutamakan keamanan dan stabilitas operasional baik di cloud maupun on-premise:
+
+*   **Framework Utama**: **Next.js 16.2.6 (App Router)** - Memanfaatkan React Server Components (RSC) untuk pemuatan data yang cepat dan Server Actions untuk manipulasi basis data yang aman.
+*   **Library UI**: **React 19.2.4** & **React DOM 19.2.4** - Menghadirkan rendering sisi klien yang reaktif dan rendering sisi server (SSR) yang optimal.
+*   **Database & Backend (BaaS)**: **Supabase** dengan database relasional **PostgreSQL** - Mendukung keamanan Row Level Security (RLS) tingkat lanjut, trigger basis data, dan real-time subscriptions.
+*   **Styling & Desain**: **TailwindCSS v4.0.0** & **PostCSS** - Menyajikan antarmuka premium, responsif penuh, dengan transisi halus dan fitur Dark/Light Mode adaptif.
+*   **Progressive Web App (PWA)**: Registrasi **Service Worker** kustom (`sw.js`) dengan strategi caching pintar (*Network-First* untuk halaman, *Cache-First* untuk aset statis), serta manifest PWA terintegrasi agar aplikasi dapat diinstal di perangkat Android, iOS (Safari), Windows, dan macOS.
+*   **Pemrosesan Dokumen & Laporan**:
+    *   `exceljs` & `xlsx` untuk modul ekspor-impor data inventaris secara massal dengan Excel.
+    *   `jspdf` & `jspdf-autotable` untuk pembuatan laporan dalam format PDF secara dinamis.
+*   **Utilitas Pendukung**:
+    *   `browser-image-compression` untuk kompresi file gambar/bukti fisik sebelum diunggah ke server.
+    *   `lucide-react` sebagai repositori ikon visual bertipe SVG beresolusi tinggi.
+    *   `sharp` untuk penanganan kompresi dan pembuatan ikon multi-ukuran otomatis.
+
+---
+
+## 📦 3. Dokumentasi Fitur Berdasarkan Versi
 
 ### 🟢 Versi 1.0 (Rilis Inti)
 *Status: Dirilis dan Ditandai (Tag `v1.0`)*
@@ -52,18 +75,15 @@ Tujuan utama sistem ini adalah menghadirkan keterlihatan mutlak (*absolute visib
 ---
 
 ### 🔵 Versi 1.1 (Live Print Customizer)
-*Status: Dirilis dan Ditandai (Tag `v1.1`) — Versi Aktif Saat Ini*
+*Status: Dirilis dan Ditandai (Tag `v1.1`)*
 
 #### **A. Penambahan Fitur & Kustomisasi**
 1. **Live Printable Report Customizer (Kop & TTD Laporan)**
    - **Laci Panel Interaktif**: Pengguna dapat memicu tombol **⚙️ Atur Kop & TTD** pada halaman `/reports` untuk membuka formulir penyesuaian dinamis.
    - **Fleksibilitas Identitas**: Memungkinkan pengubahan instan untuk **Nama Perusahaan/Organisasi** dan **Slogan/Keterangan Unit Kerja** pada kop surat tercetak.
-   - **Manajemen Pengesahan Footer**: Mendukung penyesuaian Nama Lengkap dan Jabatan untuk 3 pihak penandatangan:
-     - Pihak Pembuat (*Disiapkan Oleh*)
-     - Pihak Pemeriksa (*Diperiksa Oleh*)
-     - Pihak Pengesah/Penyetuju (*Disetujui Oleh*)
+   - **Manajemen Pengesahan Footer**: Mendukung penyesuaian Nama Lengkap dan Jabatan untuk 3 pihak penandatangan: Pembuat (*Disiapkan Oleh*), Pemeriksa (*Diperiksa Oleh*), dan Pengesah/Penyetuju (*Disetujui Oleh*).
 2. **Persistensi Data Konfigurasi Luring**
-   - Seluruh entri kustomisasi disimpan seketika (*real-time*) ke dalam media penyimpanan lokal peramban (`localStorage`). Konfigurasi kop surat dan tanda tangan akan bertahan permanen di perangkat pengguna tanpa memerlukan basis data sisi server tambahan.
+   - Seluruh entri kustomisasi disimpan seketitas (*real-time*) ke dalam media penyimpanan lokal peramban (`localStorage`). Konfigurasi kop surat dan tanda tangan akan bertahan permanen di perangkat pengguna tanpa memerlukan basis data sisi server tambahan.
 3. **Pembersihan Native Print Header/Footer Peramban**
    - Menerapkan arsitektur pemformatan cetak absolut menggunakan arahan CSS murni `@page { margin: 0mm !important; }`. Arahan ini secara mutlak mencopot dan mematikan teks tanggal, waktu cetak, URL dokumen, dan nomor halaman yang disuntikkan secara otomatis oleh peramban web (Chromium/Safari/Firefox), menyajikan hasil cetak kertas fisik bergaya kop surat resmi perusahaan (*pixel perfect*).
 4. **Bypass Keamanan RLS Tanpa Konfigurasi (Zero-Config Admin Fallback)**
@@ -71,19 +91,88 @@ Tujuan utama sistem ini adalah menghadirkan keterlihatan mutlak (*absolute visib
 
 ---
 
-## 🔄 3. Perbandingan & Histori Pembaruan (Changelog)
+### 🟠 Versi 2.0 (IT Operations Suite)
+*Status: Dirilis dan Ditandai (Tag `v2.0`)*
 
-| Komponen / Fitur | Versi 1.0 | Versi 1.1 (Terbaru) | Keterangan Pembaruan |
-| :--- | :--- | :--- | :--- |
-| **Kop Surat Laporan** | Bersifat statis (*Hardcoded*) | **100% Dinamis & Kustom** | Dapat diubah langsung via UI aplikasi kapan saja. |
-| **Kolom Tanda Tangan** | Statis (Admin, Kepala Bagian, Direktur) | **Dinamis (Tersimpan di `localStorage`)** | Nama dan jabatan penandatangan disesuaikan mandiri. |
-| **Tampilan Cetak Kertas** | Terdapat coretan URL dan Tanggal Browser | **Bersih / Pure Layout Margin** | Penggunaan `@page margin: 0` mematikan coretan browser. |
-| **Versi Paket Semver** | `0.1.0` | **`1.1.0`** | Diperbarui secara resmi pada berkas `package.json`. |
-| **Kueri RLS Peladen Lokal** | Rawan tersembunyi jika `.env` tidak diatur | **Ter-render Sempurna** | Klien admin otomatis mengambil alih otorisasi secara aman. |
+#### **A. Penambahan Modul & Fungsionalitas Operasional**
+1.  **IT Project Planning & Tracking Dashboard**
+    *   Dasbor interaktif untuk pemantauan dan pengelolaan pengerjaan infrastruktur IT jangka panjang.
+    *   Visualisasi status multi-tahap: `Planning` (Kuning), `In Progress` (Biru), `On Hold` (Merah), dan `Completed` (Hijau).
+    *   Bilah kemajuan (*progress bar*) dinamis dalam persentase (%) untuk mempermudah audit kemajuan fisik proyek.
+2.  **Rencana Anggaran Biaya (RAB) / Project Costing**
+    *   Penyusunan anggaran belanja perangkat keras, perangkat lunak, maupun jasa teknisi yang terikat langsung pada proyek IT.
+    *   Kalkulator anggaran dinamis dengan penambahan/penghapusan item anggaran secara real-time dan pemformatan Rupiah (`formatRupiah`) otomatis.
+3.  **Laporan Kerja Harian (Daily Activity Log) Unified Feed**
+    *   Lini masa (*timeline*) kronologis terpadu yang menggabungkan Laporan Harian Mandiri (troubleshooting/perawatan umum) dan Laporan Progres Proyek secara otomatis.
+    *   Dilengkapi filter cepat berdasarkan status penyelesaian (`Selesai`, `Pending`, `Terhambat`) dan pencarian kalender tanggal.
+    *   Tautan silang interaktif (🔗) untuk navigasi instan dari daily log ke detail proyek.
+4.  **Sistem Unggah Dokumentasi & Premium Lightbox**
+    *   Pemuatan foto bukti fisik hasil kerja tim IT Support dengan modal pop-up visual bertema *backdrop-blur glassmorphism* yang mewah.
+    *   Validasi ukuran file maksimum 5MB untuk mencegah beban penyimpanan yang berlebihan.
+5.  **Hybrid File Storage Handler (Cloud & Local Server)**
+    *   Penyimpanan cerdas otomatis: menggunakan **Base64 Data URL** di Supabase ketika dideploy di Vercel (karena serverless bersifat read-only), dan menulis file biner fisik ke direktori `/public/uploads` jika dideploy di Docker / server fisik lokal.
 
 ---
 
-## 📖 4. Panduan Penggunaan & Tutorial Lengkap
+### 🟡 Versi 2.1 (Advanced Inventory & Database Tools)
+*Status: Dirilis dan Ditandai (Tag `v2.1`)*
+
+#### **A. Penambahan Fitur & Optimalisasi Sistem**
+1.  **Struktur Kategori Bersarang (Nested Category Tree View)**
+    *   Mengubah daftar kategori datar menjadi struktur hierarki bersarang (parent-child category).
+    *   Antarmuka accordion expand/collapse yang interaktif untuk memudahkan navigasi kategori yang kompleks.
+    *   Integrasi **CategoryItemsModal** untuk melihat secara instan daftar barang yang berada di dalam suatu kategori tertentu cukup dengan satu klik.
+2.  **Manajemen Kondisi Stok Tingkat Lanjut (Inline Stock Condition Editor)**
+    *   Kemampuan mengubah kondisi stok barang (`Normal`, `Rusak`, `Belum Di Cek`) secara langsung pada tabel stok (inline editing).
+    *   Mendukung pemecahan kuantitas stok (*partial stock splitting*) untuk mengubah sebagian kondisi stok barang.
+    *   Mekanisme penggabungan otomatis (*automatic merge*) untuk stok dengan kondisi yang sama dan pembersihan otomatis data stok bersaldo nol (`0`).
+3.  **Restorasi & Pencadangan Database Mandiri (Database Backup & Restore)**
+    *   Fitur ekspor seluruh basis data ke dalam file cadangan berformat JSON (`backup.json`).
+    *   Fungsionalitas **Restore Database Backup** dan **Reset Database System** langsung melalui panel pengaturan untuk mempermudah pemindahan data antar-lingkungan server secara offline.
+    *   Pengurutan ketergantungan tabel otomatis saat restorasi data dilakukan untuk menghindari kegagalan *foreign key constraint*.
+4.  **Sistem Impor Excel yang Cerdas & Audit Trail Akurat**
+    *   Peningkatan importir Excel massal dengan pencocokan barang berbasis nama (*name-based item matching*).
+    *   Masukan manual interaktif untuk kategori dan lokasi apabila data Excel tidak cocok dengan data sistem saat ini.
+    *   Pencatatan log transaksi yang akurat: merekam `user_id` dari staf IT yang sedang aktif melakukan import, bukan lagi sekadar tercatat sebagai aktivitas otomatis "system".
+5.  **Integrasi Proyek RAB & Purchase Order**
+    *   Integrasi langsung modul Rencana Anggaran Biaya (RAB) proyek dengan sistem pengadaan (PO).
+    *   Memungkinkan pembuatan Purchase Order langsung dari item RAB proyek, lengkap dengan pemformatan mata uang Rupiah secara otomatis dan sinkronisasi data master barang.
+
+---
+
+### 🟣 Versi 2.2 (PWA & Mobile Optimization)
+*Status: Dirilis dan Ditandai (Tag `v2.2`) — Versi Aktif Saat Ini*
+
+#### **A. Penambahan Fitur PWA & Mobile UX**
+1.  **Progressive Web App (PWA) Terintegrasi**
+    *   Dilengkapi berkas manifest PWA (`src/app/manifest.ts`) untuk kustomisasi warna tema, nama, dan ikon peluncuran.
+    *   Pemasangan banner instalasi (*PWA Install Banner*) adaptif untuk perangkat Android, Windows, macOS, serta panduan khusus bagi pengguna iOS Safari.
+2.  **Offline Capability & Smart Caching Service Worker**
+    *   Strategi *Network-First* untuk rute navigasi halaman untuk menjamin data terbaru, dibantu fallback cache luring.
+    *   Strategi *Cache-First* untuk aset-aset statis peramban guna mempercepat waktu muat.
+    *   Strategi *Stale-While-Revalidate* untuk visualisasi gambar/ikon dinamis.
+3.  **Optimalisasi Layout Mobile & Cetak Kertas**
+    *   Perbaikan padding responsif pada panel form dan tabel untuk kenyamanan pengoperasian pada layar ponsel/tablet.
+    *   Integrasi printer customizer kop surat dan footer tanda tangan yang persisten di `localStorage`.
+
+---
+
+## 🔄 4. Perbandingan & Histori Pembaruan (Changelog)
+
+| Komponen / Fitur | Versi 1.x (Lama) | Versi 2.x (Terbaru) | Keterangan Pembaruan |
+| :--- | :--- | :--- | :--- |
+| **Kategori Barang** | Bersifat daftar datar (*flat list*) | **Hierarki Bersarang (Tree View)** | Kategori memiliki parent-child relasi, dilengkapi accordion expand/collapse & popup item modal. |
+| **Manajemen Kondisi Stok** | Diubah terpisah via mutasi manual | **Inline Editor & Partial Split** | Kondisi stok (`Normal`, `Rusak`, `Belum Di Cek`) dapat diedit langsung di tabel, stok bisa dipecah & digabung otomatis. |
+| **Manajemen Proyek IT** | Belum tersedia | **Project Planning & RAB Terintegrasi** | Papan pemantauan kemajuan proyek IT lengkap dengan modul penyusunan anggaran biaya (RAB) dan mata uang Rupiah. |
+| **Laporan Kerja Harian** | Input manual terpisah | **Unified Activity Feed** | Penggabungan log harian teknisi dan log progres proyek secara otomatis dalam satu linimasa terpadu. |
+| **Impor Data Excel** | Impor standar (Sering tabrakan constraint) | **Name-Based Matching & User Log Attribution** | Pencocokan barang cerdas, input manual bila data baru, pencatatan pembuat transaksi yang akurat (`user_id`). |
+| **Pencadangan & Pemulihan** | Tidak didukung (Manual via SQL) | **JSON Backup & System Restore** | Ekspor data lengkap ke JSON, pembersihan sistem, dan pemulihan data offline teratur dengan penanganan foreign key. |
+| **Dukungan Mobile & Offline** | Hanya web standar responsif | **Progressive Web App (PWA)** | Instalasi aplikasi di ponsel/desktop, caching service worker luring, dan banner panduan setup iOS/Android. |
+| **Metode Unggah File** | Penyimpanan statis fisik saja | **Hybrid File Storage Handler** | Deteksi otomatis: Base64 di serverless Vercel, file fisik di folder `/public/uploads` pada Docker/VPS. |
+
+---
+
+## 📖 5. Panduan Penggunaan & Tutorial Lengkap
 
 ### **A. Menambah dan Mengelola Barang & Stok**
 1. Buka menu navigasi **📦 Barang Inventaris**.
@@ -120,9 +209,32 @@ Tujuan utama sistem ini adalah menghadirkan keterlihatan mutlak (*absolute visib
 4. Klik tombol **Cetak Laporan Resmi** (berwarna jingga/amber).
 5. Pada jendela pratinjau cetak browser, pastikan pengaturan ukuran kertas adalah **A4** dengan orientasi **Portrait**. Halaman siap dicetak bersih tanpa coretan tanggal/URL peramban.
 
+### **F. Pengelolaan Proyek IT & Rencana Anggaran (RAB)**
+1. Navigasikan ke menu **📁 Rencana Proyek** pada sidebar.
+2. Tekan tombol **+ Buat Proyek Baru**, masukkan Nama Proyek, Deskripsi, Tanggal Mulai, dan Tanggal Target Selesai.
+3. Di dalam detail proyek, buka tab **Rencana Anggaran (RAB)** untuk menyusun kebutuhan belanja. Masukkan Nama Barang, Kuantitas, Satuan, dan Harga Satuan. Nilai total anggaran akan terhitung secara otomatis.
+4. Anda dapat mengaitkan item RAB ke Purchase Order (PO) logistik melalui menu **Integrasi PO**.
+5. Pada tab **Laporan Progres**, tambahkan catatan perkembangan fisik harian dan lampirkan foto dokumentasi lapangan. Setiap penambahan progres akan tercatat di **Laporan Harian** secara global.
+
+### **G. Penggunaan Menu Import Excel & Restorasi Backup**
+1. **Impor Massal Excel**:
+   - Klik **Impor Excel** pada halaman daftar barang.
+   - Unggah berkas spreadsheet Anda. Jika sistem menemukan nama barang yang sudah terdaftar, ia akan mencocokkannya secara otomatis (*Name-Based Matching*).
+   - Apabila terdapat data lokasi atau kategori baru yang belum terdaftar di sistem, formulir input manual akan muncul agar Anda dapat mengarahkan data tersebut ke kategori/lokasi yang tepat.
+2. **Pencadangan & Restorasi Database (JSON)**:
+   - Akses menu **⚙️ Pengaturan Aplikasi** -> tab **Database Tools**.
+   - Klik **Unduh Backup (JSON)** untuk mengekspor seluruh konfigurasi, mutasi, transaksi, dan data aset Anda ke dalam berkas `backup.json`.
+   - Untuk memulihkan data di server baru, gunakan tombol **Restore Backup**, pilih berkas `backup.json` Anda, lalu konfirmasi. Sistem akan menyusun ulang urutan masukan tabel secara aman agar tidak merusak relasi database.
+   - Gunakan **Reset Database** jika ingin menghapus seluruh data transaksi untuk memulai sistem dari awal secara bersih.
+
+### **H. Navigasi Struktur Kategori Bersarang (Tree View)**
+1. Masuk ke halaman **📁 Kategori Barang**.
+2. Kategori kini ditampilkan dalam format pohon hierarki. Tekan ikon panah (▶/▼) di sebelah nama kategori untuk membuka/menutup subkategori di bawahnya.
+3. Untuk melihat seluruh produk yang terdaftar di dalam kategori tersebut beserta rincian lokasinya, cukup klik nama kategori atau tombol **Lihat Barang**. Sebuah modal panel (*CategoryItemsModal*) akan terbuka menyajikan daftar produk secara detail.
+
 ---
 
-## 🚀 5. Panduan Deployment Server
+## 🚀 6. Panduan Deployment Server
 
 Aplikasi ini mendukung penerapan di berbagai arsitektur infrastruktur peladen:
 
@@ -169,7 +281,7 @@ Untuk peladen kantor lokal (Ubuntu/Linux/Windows) yang menginginkan penyimpanan 
 4. Jalankan aplikasi menggunakan pengelola proses seperti **PM2** agar tetap menyala di latar belakang:
    ```bash
    npm install -g pm2
-   pm2 start npm --name "it-inventory" -- run start
+   pm2 start npm --name "opsflow-it" -- run start
    pm2 save
    pm2 startup
    ```
@@ -177,4 +289,4 @@ Untuk peladen kantor lokal (Ubuntu/Linux/Windows) yang menginginkan penyimpanan 
 
 ---
 *Didesain dan dikembangkan dengan standar rekayasa perangkat lunak berkinerja tinggi.*  
-**Hak Cipta © 2026 Fiksriots. Semua Hak Dilindungi.**
+**Hak Cipta © 2026 PT. Inventaris Teknologi Utama & Fiksriots. Seluruh Hak Cipta Dilindungi.**
