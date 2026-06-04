@@ -207,8 +207,13 @@ export async function deleteComputer(id: string) {
   redirect("/computers");
 }
 
-export async function createComputerMaintenanceLog(computerId: string, formData: FormData) {
+export async function createComputerMaintenanceLog(formData: FormData) {
   const supabase = await createClient();
+
+  const computerId = formData.get("computer_id") as string;
+  if (!computerId) {
+    throw new Error("ID Komputer wajib ditentukan.");
+  }
 
   const maintenance_date = formData.get("maintenance_date") as string;
   const maintenance_title = formData.get("maintenance_title") as string;
@@ -421,8 +426,14 @@ export async function deleteComputerMaintenanceLog(id: string, computerId: strin
   return { success: true };
 }
 
-export async function updateComputerMaintenanceLog(logId: string, computerId: string, formData: FormData) {
+export async function updateComputerMaintenanceLog(formData: FormData) {
   const supabase = await createClient();
+
+  const logId = formData.get("log_id") as string;
+  const computerId = formData.get("computer_id") as string;
+  if (!logId || !computerId) {
+    throw new Error("ID Log dan ID Komputer wajib ditentukan.");
+  }
 
   const maintenance_title = formData.get("maintenance_title") as string;
   const maintenance_date = formData.get("maintenance_date") as string;

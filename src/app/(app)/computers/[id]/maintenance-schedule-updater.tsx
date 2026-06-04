@@ -89,7 +89,8 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
           if (nextDate) {
             logData.append("next_maintenance_date", nextDate);
           }
-          await createComputerMaintenanceLog(computer.id, logData);
+          logData.append("computer_id", computer.id);
+          await createComputerMaintenanceLog(logData);
           setSuccessMsg(`Jadwal diperbarui & log "${defaultTitle}" dicatat otomatis!`);
         } else {
           const result = await updateMaintenanceSchedule(computer.id, lastDate, nextDate, status);
@@ -119,7 +120,8 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
       if (selectedImage) {
         formData.append("image", selectedImage);
       }
-      await createComputerMaintenanceLog(computer.id, formData);
+      formData.append("computer_id", computer.id);
+      await createComputerMaintenanceLog(formData);
       toast("Riwayat pemeliharaan berhasil dicatat!", "success");
       setIsAddingLog(false);
       clearImage();
@@ -144,7 +146,9 @@ export default function MaintenanceScheduleUpdater({ computer, maintenanceLogs =
       } else if (!imagePreview) {
         formData.append("remove_image", "true");
       }
-      await updateComputerMaintenanceLog(logId, computer.id, formData);
+      formData.append("log_id", logId);
+      formData.append("computer_id", computer.id);
+      await updateComputerMaintenanceLog(formData);
       toast("Riwayat pemeliharaan berhasil diperbarui!", "success");
       setEditingLogId(null);
       clearImage();
