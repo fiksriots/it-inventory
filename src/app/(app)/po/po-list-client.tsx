@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ShoppingCart, Plus, Eye, Calendar, Building2, ChevronLeft, ChevronRight, Printer, CheckSquare, Square, AlertCircle } from "lucide-react";
+import { ShoppingCart, Plus, Eye, Calendar, Building2, Printer, CheckSquare, Square, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import POSearch from "./po-search";
 import POFilter from "./po-filter";
@@ -34,8 +34,6 @@ const poTemplate = [
 interface POListClientProps {
   pos: any[];
   count: number;
-  currentPage: number;
-  totalPages: number;
   statuses: any[];
   departments: string[];
   q?: string;
@@ -47,8 +45,6 @@ interface POListClientProps {
 export default function POListClient({
   pos,
   count,
-  currentPage,
-  totalPages,
   statuses,
   departments,
   q,
@@ -285,27 +281,8 @@ export default function POListClient({
           </div>
           
           <div className="text-xs text-text-muted flex items-center gap-4">
-            {(q || status) && (
-              <div className="hidden sm:block">
-                Hasil: <span className="text-primary font-bold">{count || 0}</span> data
-              </div>
-            )}
-            <div className="bg-background/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-3">
-              <span className="font-medium">Halaman <span className="text-white">{currentPage}</span> dari {totalPages || 1}</span>
-              <div className="flex items-center border-l border-border pl-3 gap-1">
-                <Link 
-                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), ... (department ? {department} : {}), page: Math.max(1, currentPage - 1) } }}
-                  className={`p-1 rounded hover:bg-surface transition-colors ${currentPage <= 1 ? 'opacity-30 pointer-events-none' : ''}`}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Link>
-                <Link 
-                  href={{ query: { ... (q ? {q} : {}), ... (status ? {status} : {}), ... (department ? {department} : {}), page: Math.min(totalPages, currentPage + 1) } }}
-                  className={`p-1 rounded hover:bg-surface transition-colors ${currentPage >= totalPages ? 'opacity-30 pointer-events-none' : ''}`}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
+            <div className="bg-background/50 border border-border px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+              <span className="font-medium">Total: <span className="text-white font-bold">{count || 0}</span> data</span>
             </div>
           </div>
         </div>

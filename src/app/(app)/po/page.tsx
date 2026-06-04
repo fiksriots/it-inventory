@@ -5,11 +5,9 @@ import POListClient from "./po-list-client";
 export default async function PurchaseOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; department?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; department?: string }>;
 }) {
-  const { q, status, department, page } = await searchParams;
-  const currentPage = parseInt(page || "1");
-  const pageSize = 5;
+  const { q, status, department } = await searchParams;
   const supabase = await createClient();
 
   // Fetch unique departments list from purchase_orders for filtering
@@ -37,11 +35,7 @@ export default async function PurchaseOrdersPage({
     query = query.or(`po_number.ilike.%${q}%,department.ilike.%${q}%,supplier_name.ilike.%${q}%,location_name.ilike.%${q}%`);
   }
 
-  // Pagination Range
-  const from = (currentPage - 1) * pageSize;
-  const to = from + pageSize - 1;
-  
-  const { data: pos, error, count } = await query.range(from, to);
+  const { data: pos, error, count } = await query;
 
   // Ambil rincian item untuk masing-masing PO yang terdaftar agar ringkasan cetakan terisi data valid
   const poIds = (pos || []).map(p => p.id);
@@ -69,15 +63,11 @@ export default async function PurchaseOrdersPage({
     { label: "Selesai", count: allPos?.filter(p => p.status === 'Selesai').length || 0, color: "text-emerald-500", bg: "bg-emerald-500/10" },
   ];
 
-  const totalPages = Math.ceil((count || 0) / pageSize);
-
   return (
     <div className="max-w-7xl mx-auto pb-10">
       <POListClient 
         pos={enrichedPos}
         count={count || 0}
-        currentPage={currentPage}
-        totalPages={totalPages || 1}
         statuses={statuses}
         departments={departments}
         q={q}
