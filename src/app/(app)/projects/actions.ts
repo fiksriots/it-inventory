@@ -454,3 +454,44 @@ export async function deleteProjectRabItem(itemId: string, projectId: string) {
     return { error: "Terjadi kesalahan sistem internal." };
   }
 }
+
+export async function updateProjectRabItem(prevState: any, formData: FormData) {
+  try {
+    const { supabase } = await getActionClient();
+
+    const id = formData.get("id") as string;
+    const projectId = formData.get("project_id") as string;
+    const itemName = formData.get("item_name") as string;
+    const quantity = parseFloat(formData.get("quantity") as string || "1");
+    const unit = formData.get("unit") as string || "pcs";
+    const pricePerUnit = parseFloat(formData.get("price_per_unit") as string || "0");
+
+    if (!id || !projectId || !itemName) {
+      return { error: "ID dan nama barang/jasa wajib diisi." };
+    }
+
+    const { data: rabItem, error } = await supabase
+      .from("it_project_rab")
+      .update({
+        item_name: itemName,
+        quantity,
+        unit,
+        price_per_unit: pricePerUnit,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating rab item:", error);
+      return { error: `Gagal memperbarui item RAB: ${error.message}` };
+    }
+
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, rabItem };
+  } catch (err: any) {
+    console.error("Server action error:", err);
+    return { error: "Terjadi kesalahan sistem internal." };
+  }
+}

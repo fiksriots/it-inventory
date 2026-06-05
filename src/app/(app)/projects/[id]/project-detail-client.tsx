@@ -6,10 +6,10 @@ import Link from "next/link";
 import { 
   ArrowLeft, Calendar, Clock, Plus, Trash2, Image, FileImage, 
   X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, Maximize2, FolderKanban, Coins,
-  Printer, Download, ChevronDown, FileSpreadsheet, FileText, ShoppingCart, Globe
+  Printer, Download, ChevronDown, FileSpreadsheet, FileText, ShoppingCart, Globe, Pencil
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
-import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem, updateProjectLog } from "../actions";
+import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem, updateProjectLog, updateProjectRabItem } from "../actions";
 import { createClient } from "@/utils/supabase/client";
 
 interface ProjectDetailClientProps {
@@ -48,6 +48,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
   const [rabQuantity, setRabQuantity] = useState(1);
   const [rabUnit, setRabUnit] = useState("pcs");
   const [rabPricePerUnit, setRabPricePerUnit] = useState(0);
+  const [editingRabId, setEditingRabId] = useState<string | null>(null);
   
   // Image Lightbox State
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
@@ -89,23 +90,52 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
       formData.append("unit", rabUnit);
       formData.append("price_per_unit", String(rabPricePerUnit));
 
-      const res = await addProjectRabItem(null, formData);
-      if (res.error) {
-        toast(res.error, "error");
+      if (editingRabId) {
+        formData.append("id", editingRabId);
+        const res = await updateProjectRabItem(null, formData);
+        if (res.error) {
+          toast(res.error, "error");
+        } else {
+          toast("Item RAB berhasil diperbarui!", "success");
+          setRabItems(rabItems.map(item => item.id === editingRabId ? res.rabItem : item));
+          setRabItemName("");
+          setRabProductLink("");
+          setRabQuantity(1);
+          setRabUnit("pcs");
+          setRabPricePerUnit(0);
+          setEditingRabId(null);
+          setIsRabModalOpen(false);
+        }
       } else {
-        toast("Item RAB berhasil ditambahkan!", "success");
-        setRabItemName("");
-        setRabProductLink("");
-        setRabQuantity(1);
-        setRabUnit("pcs");
-        setRabPricePerUnit(0);
-        setIsRabModalOpen(false);
-        
-        if (res.rabItem) {
-          setRabItems([...rabItems, res.rabItem]);
+        const res = await addProjectRabItem(null, formData);
+        if (res.error) {
+          toast(res.error, "error");
+        } else {
+          toast("Item RAB berhasil ditambahkan!", "success");
+          setRabItemName("");
+          setRabProductLink("");
+          setRabQuantity(1);
+          setRabUnit("pcs");
+          setRabPricePerUnit(0);
+          setIsRabModalOpen(false);
+          
+          if (res.rabItem) {
+            setRabItems([...rabItems, res.rabItem]);
+          }
         }
       }
     });
+  };
+
+  const startEditRab = (item: any) => {
+    const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+    setEditingRabId(item.id);
+    setRabItemName(name);
+    setRabProductLink(link || "");
+    setRabQuantity(item.quantity);
+    setRabUnit(item.unit);
+    setRabPricePerUnit(item.price_per_unit);
+    setIsRabModalOpen(true);
   };
 
   const handlePrintRab = () => {
@@ -863,7 +893,15 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                   </button>
                 )}
                 <button
-                  onClick={() => setIsRabModalOpen(true)}
+                  onClick={() => {
+                    setEditingRabId(null);
+                    setRabItemName("");
+                    setRabProductLink("");
+                    setRabQuantity(1);
+                    setRabUnit("pcs");
+                    setRabPricePerUnit(0);
+                    setIsRabModalOpen(true);
+                  }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -909,6 +947,13 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                         <span className="text-xs font-black text-foreground mr-2">
                           {formatRupiah(item.quantity * item.price_per_unit)}
                         </span>
+                        <button
+                          onClick={() => startEditRab(item)}
+                          className="p-1 hover:bg-primary/10 text-text-muted/60 hover:text-primary rounded border border-transparent hover:border-primary/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
+                          title="Edit Anggaran"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         <Link
                           href={`/po/new?rab_item_name=${encodeURIComponent(item.item_name)}&rab_quantity=${item.quantity}&rab_unit=${encodeURIComponent(item.unit)}&rab_price=${item.price_per_unit}&project_id=${project.id}&project_name=${encodeURIComponent(project.name)}`}
                           className="p-1 hover:bg-emerald-500/10 text-text-muted/60 hover:text-emerald-500 rounded border border-transparent hover:border-emerald-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
@@ -1266,7 +1311,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
             <div className="flex justify-between items-center px-6 py-4 border-b border-border">
               <h3 className="font-black text-base text-foreground flex items-center gap-2">
                 <Coins className="w-5 h-5 text-primary" />
-                Tambah Rencana Anggaran (RAB)
+                {editingRabId ? "Edit Rencana Anggaran (RAB)" : "Tambah Rencana Anggaran (RAB)"}
               </h3>
               <button 
                 onClick={() => setIsRabModalOpen(false)}
@@ -1390,7 +1435,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                       Menyimpan...
                     </>
                   ) : (
-                    "Tambahkan RAB"
+                    editingRabId ? "Perbarui RAB" : "Tambahkan RAB"
                   )}
                 </button>
               </div>
