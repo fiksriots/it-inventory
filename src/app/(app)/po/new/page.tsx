@@ -50,15 +50,19 @@ export default function NewPurchaseOrderPage() {
         }
 
         if (rabName) {
+          const [cleanRabName, productLink] = rabName.includes('|') ? rabName.split('|') : [rabName, ''];
+          if (productLink) {
+            setSupplierType("Online");
+          }
           const matchedItem = fetchedItems.find(
-            (i: any) => i.name.toLowerCase() === rabName.toLowerCase()
+            (i: any) => i.name.toLowerCase() === cleanRabName.trim().toLowerCase()
           );
           setSelectedItems([
             {
               item_id: matchedItem ? matchedItem.id : "",
-              custom_item_name: matchedItem ? "" : rabName,
+              custom_item_name: matchedItem ? "" : cleanRabName.trim(),
               is_manual: !matchedItem,
-              item_link: "",
+              item_link: productLink ? productLink.trim() : "",
               unit: rabUnit || "PCS",
               quantity: rabQty ? parseFloat(rabQty) : 1,
               unit_price: rabPrice ? parseFloat(rabPrice) : 0

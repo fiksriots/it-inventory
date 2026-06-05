@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   ArrowLeft, Calendar, Clock, Plus, Trash2, Image, FileImage, 
   X, Loader2, CheckCircle2, AlertTriangle, ChevronRight, Maximize2, FolderKanban, Coins,
-  Printer, Download, ChevronDown, FileSpreadsheet, FileText, ShoppingCart
+  Printer, Download, ChevronDown, FileSpreadsheet, FileText, ShoppingCart, Globe
 } from "lucide-react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { addProjectLog, deleteProjectLog, addProjectRabItem, deleteProjectRabItem, updateProjectLog } from "../actions";
@@ -44,6 +44,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
   // RAB Form States
   const [isRabModalOpen, setIsRabModalOpen] = useState(false);
   const [rabItemName, setRabItemName] = useState("");
+  const [rabProductLink, setRabProductLink] = useState("");
   const [rabQuantity, setRabQuantity] = useState(1);
   const [rabUnit, setRabUnit] = useState("pcs");
   const [rabPricePerUnit, setRabPricePerUnit] = useState(0);
@@ -78,7 +79,12 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
     startTransition(async () => {
       const formData = new FormData();
       formData.append("project_id", project.id);
-      formData.append("item_name", rabItemName);
+      
+      const combinedName = rabProductLink.trim()
+        ? `${rabItemName.trim()}|${rabProductLink.trim()}`
+        : rabItemName.trim();
+
+      formData.append("item_name", combinedName);
       formData.append("quantity", String(rabQuantity));
       formData.append("unit", rabUnit);
       formData.append("price_per_unit", String(rabPricePerUnit));
@@ -89,6 +95,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
       } else {
         toast("Item RAB berhasil ditambahkan!", "success");
         setRabItemName("");
+        setRabProductLink("");
         setRabQuantity(1);
         setRabUnit("pcs");
         setRabPricePerUnit(0);
@@ -99,6 +106,267 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
         }
       }
     });
+  };
+
+  const handlePrintRab = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return toast("Gagal membuka jendela cetak. Pastikan pop-up diizinkan.", "error");
+    
+    const totalAmount = rabItems.reduce((sum, item) => sum + (item.quantity * item.price_per_unit), 0);
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Rencana Anggaran Biaya (RAB) - ${project.name.replace(/"/g, '&quot;')}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              color: #1f2937; 
+              background-color: #ffffff;
+              line-height: 1.5;
+            }
+            .header-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #e5e7eb;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .header-left h1 {
+              font-size: 24px;
+              font-weight: 800;
+              margin: 0;
+              color: #111827;
+              letter-spacing: -0.025em;
+            }
+            .header-left p {
+              font-size: 13px;
+              color: #4b5563;
+              margin: 4px 0 0 0;
+              font-weight: 500;
+            }
+            .header-right {
+              text-align: right;
+            }
+            .header-right h2 {
+              font-size: 16px;
+              font-weight: 700;
+              margin: 0;
+              color: #3b82f6;
+            }
+            .header-right p {
+              font-size: 12px;
+              color: #6b7280;
+              margin: 4px 0 0 0;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+              margin-bottom: 30px;
+            }
+            .meta-card {
+              background-color: #f9fafb;
+              border: 1px solid #f3f4f6;
+              border-radius: 8px;
+              padding: 16px;
+            }
+            .meta-title {
+              font-size: 10px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              color: #9ca3af;
+              margin-bottom: 8px;
+            }
+            .meta-value {
+              font-size: 14px;
+              font-weight: 600;
+              color: #1f2937;
+            }
+            .meta-desc {
+              font-size: 12px;
+              color: #6b7280;
+              margin-top: 4px;
+              line-height: 1.4;
+            }
+            .rab-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            .rab-table th {
+              background-color: #f9fafb;
+              border-bottom: 2px solid #e5e7eb;
+              padding: 12px 16px;
+              font-size: 11px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              color: #4b5563;
+              text-align: left;
+            }
+            .rab-table td {
+              border-bottom: 1px solid #e5e7eb;
+              padding: 14px 16px;
+              font-size: 13px;
+              color: #374151;
+            }
+            .rab-table tr:hover {
+              background-color: #fafafa;
+            }
+            .text-center {
+              text-align: center !important;
+            }
+            .text-right {
+              text-align: right !important;
+            }
+            .font-bold {
+              font-weight: 700;
+            }
+            .product-link {
+              color: #2563eb;
+              text-decoration: none;
+              font-weight: 500;
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+            }
+            .product-link:hover {
+              text-decoration: underline;
+            }
+            .total-section {
+              margin-top: 30px;
+              display: flex;
+              justify-content: flex-end;
+            }
+            .total-box {
+              background-color: #eff6ff;
+              border: 1px solid #bfdbfe;
+              border-radius: 8px;
+              padding: 16px 24px;
+              min-width: 300px;
+            }
+            .total-label {
+              font-size: 11px;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              color: #1e3a8a;
+              margin-bottom: 4px;
+            }
+            .total-value {
+              font-size: 20px;
+              font-weight: 800;
+              color: #2563eb;
+            }
+            .footer {
+              margin-top: 60px;
+              border-top: 1px dashed #d1d5db;
+              padding-top: 16px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #9ca3af;
+              font-weight: 500;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .total-box {
+                background-color: #f3f4f6 !important;
+                border-color: #d1d5db !important;
+              }
+              .total-label {
+                color: #374151 !important;
+              }
+              .total-value {
+                color: #111827 !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-container">
+            <div class="header-left">
+              <h1>Rencana Anggaran Biaya (RAB)</h1>
+              <p>IT Inventory & Asset Management System</p>
+            </div>
+            <div class="header-right">
+              <h2>Laporan Perencanaan</h2>
+              <p>Tanggal: ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+          </div>
+          
+          <div class="meta-grid">
+            <div class="meta-card">
+              <div class="meta-title">Detail Project</div>
+              <div class="meta-value">${project.name}</div>
+              <div class="meta-desc">${project.description || 'Tidak ada deskripsi.'}</div>
+            </div>
+            <div class="meta-card">
+              <div class="meta-title">Status & Realisasi</div>
+              <div class="meta-value">Status: ${project.status}</div>
+              <div class="meta-desc">Progres Pengerjaan: <strong>${project.progress_percent}%</strong><br>Target Selesai: ${formatDateShort(project.target_date)}</div>
+            </div>
+          </div>
+
+          <table class="rab-table">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 50px;">No</th>
+                <th>Nama Barang / Jasa</th>
+                <th>Link Produk</th>
+                <th class="text-center" style="width: 100px;">Jumlah</th>
+                <th class="text-right" style="width: 150px;">Harga Satuan</th>
+                <th class="text-right" style="width: 150px;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rabItems.map((item, index) => {
+                const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+                const subtotal = item.quantity * item.price_per_unit;
+                return `
+                  <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td class="font-bold">${name}</td>
+                    <td>${link ? `<a class="product-link" href="${link}" target="_blank">${link.substring(0, 30)}...</a>` : '-'}</td>
+                    <td class="text-center">${item.quantity} ${item.unit}</td>
+                    <td class="text-right">${formatRupiah(item.price_per_unit)}</td>
+                    <td class="text-right font-bold">${formatRupiah(subtotal)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          
+          <div class="total-section">
+            <div class="total-box">
+              <div class="total-label">Total Estimasi Anggaran</div>
+              <div class="total-value">${formatRupiah(totalAmount)}</div>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <div>Dokumen ini dicetak otomatis melalui sistem IT Inventory</div>
+            <div>Halaman 1 dari 1</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const handleDeleteRabItem = async (itemId: string, itemName: string) => {
@@ -583,13 +851,25 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                 <Coins className="w-4 h-4 text-primary" />
                 Rencana Anggaran Biaya (RAB)
               </h3>
-              <button
-                onClick={() => setIsRabModalOpen(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah RAB
-              </button>
+              <div className="flex items-center gap-2">
+                {rabItems.length > 0 && (
+                  <button
+                    onClick={handlePrintRab}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-background text-text-muted hover:text-primary border border-border hover:border-primary/20 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                    title="Cetak RAB"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Cetak
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsRabModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah RAB
+                </button>
+              </div>
             </div>
 
             {rabItems.length === 0 ? (
@@ -599,35 +879,54 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
               </div>
             ) : (
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {rabItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center bg-background border border-border/40 p-3 rounded-xl gap-2 hover:border-primary/20 transition-colors group/rab">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-foreground truncate">{item.item_name}</p>
-                      <p className="text-[10px] text-text-muted mt-0.5 font-medium">
-                        {item.quantity} {item.unit} x {formatRupiah(item.price_per_unit)}
-                      </p>
+                {rabItems.map((item) => {
+                  const [itemName, productLink] = item.item_name.includes('|') 
+                    ? item.item_name.split('|') 
+                    : [item.item_name, ''];
+                    
+                  return (
+                    <div key={item.id} className="flex justify-between items-center bg-background border border-border/40 p-3 rounded-xl gap-2 hover:border-primary/20 transition-colors group/rab">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">{itemName}</p>
+                          {productLink && (
+                            <a
+                              href={productLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-0.5 hover:bg-primary/10 text-text-muted/60 hover:text-primary rounded transition-all shrink-0 animate-pulse"
+                              title="Buka Link Produk"
+                            >
+                              <Globe className="w-3 h-3 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-text-muted mt-0.5 font-medium">
+                          {item.quantity} {item.unit} x {formatRupiah(item.price_per_unit)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs font-black text-foreground mr-2">
+                          {formatRupiah(item.quantity * item.price_per_unit)}
+                        </span>
+                        <Link
+                          href={`/po/new?rab_item_name=${encodeURIComponent(item.item_name)}&rab_quantity=${item.quantity}&rab_unit=${encodeURIComponent(item.unit)}&rab_price=${item.price_per_unit}&project_id=${project.id}&project_name=${encodeURIComponent(project.name)}`}
+                          className="p-1 hover:bg-emerald-500/10 text-text-muted/60 hover:text-emerald-500 rounded border border-transparent hover:border-emerald-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
+                          title="Beli Barang / Buat PO"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteRabItem(item.id, item.item_name)}
+                          className="p-1 hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded border border-transparent hover:border-rose-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
+                          title="Hapus Anggaran"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs font-black text-foreground mr-2">
-                        {formatRupiah(item.quantity * item.price_per_unit)}
-                      </span>
-                      <Link
-                        href={`/po/new?rab_item_name=${encodeURIComponent(item.item_name)}&rab_quantity=${item.quantity}&rab_unit=${encodeURIComponent(item.unit)}&rab_price=${item.price_per_unit}&project_id=${project.id}&project_name=${encodeURIComponent(project.name)}`}
-                        className="p-1 hover:bg-emerald-500/10 text-text-muted/60 hover:text-emerald-500 rounded border border-transparent hover:border-emerald-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
-                        title="Beli Barang / Buat PO"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteRabItem(item.id, item.item_name)}
-                        className="p-1 hover:bg-rose-500/10 text-text-muted/60 hover:text-rose-500 rounded border border-transparent hover:border-rose-500/20 transition-all lg:opacity-0 lg:group-hover/rab:opacity-100 opacity-100"
-                        title="Hapus Anggaran"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1014,6 +1313,20 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" />
+                  Link Produk (Opsional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://tokopedia.com/..."
+                  value={rabProductLink}
+                  onChange={(e) => setRabProductLink(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Jumlah <span className="text-rose-500">*</span></label>
@@ -1226,7 +1539,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
           <div className="flex text-sm"><strong className="w-32">Diekspor pada:</strong> <span>{new Date().toLocaleDateString('id-ID')}</span></div>
         </div>
 
-        <table className="w-full text-xs border-collapse border border-black">
+        <table className="w-full text-xs border-collapse border border-black mb-10">
           <thead>
             <tr className="bg-gray-100">
               <th className="border border-black p-2 text-center w-12 font-bold">No.</th>
@@ -1276,6 +1589,45 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
             })()}
           </tbody>
         </table>
+
+        {/* Print-only RAB section */}
+        {rabItems.length > 0 && (
+          <div className="mt-12 print-break-before-always">
+            <h2 className="text-xl font-bold mb-4 text-center pb-2 border-b-2 border-black underline">Rencana Anggaran Biaya (RAB)</h2>
+            <table className="w-full text-xs border-collapse border border-black">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border border-black p-2 text-center w-12 font-bold">No.</th>
+                  <th className="border border-black p-2 text-left font-bold">Nama Barang / Jasa</th>
+                  <th className="border border-black p-2 text-left font-bold">Link Produk</th>
+                  <th className="border border-black p-2 text-center w-24 font-bold">Jumlah</th>
+                  <th className="border border-black p-2 text-right w-32 font-bold">Harga Satuan</th>
+                  <th className="border border-black p-2 text-right w-32 font-bold">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rabItems.map((item, index) => {
+                  const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+                  const subtotal = item.quantity * item.price_per_unit;
+                  return (
+                    <tr key={item.id} className="print-break-inside-avoid">
+                      <td className="border border-black p-2 text-center">{index + 1}</td>
+                      <td className="border border-black p-2 font-bold">{name}</td>
+                      <td className="border border-black p-2 text-left truncate max-w-xs">{link || '-'}</td>
+                      <td className="border border-black p-2 text-center">{item.quantity} {item.unit}</td>
+                      <td className="border border-black p-2 text-right">{formatRupiah(item.price_per_unit)}</td>
+                      <td className="border border-black p-2 text-right font-bold">{formatRupiah(subtotal)}</td>
+                    </tr>
+                  );
+                })}
+                <tr className="font-bold bg-gray-50">
+                  <td colSpan={5} className="border border-black p-2 text-right">Total Estimasi Biaya:</td>
+                  <td className="border border-black p-2 text-right">{formatRupiah(rabItems.reduce((sum, item) => sum + (item.quantity * item.price_per_unit), 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
