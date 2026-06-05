@@ -49,6 +49,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
   const [rabUnit, setRabUnit] = useState("pcs");
   const [rabPricePerUnit, setRabPricePerUnit] = useState(0);
   const [editingRabId, setEditingRabId] = useState<string | null>(null);
+  const [rabDescription, setRabDescription] = useState("");
   
   // Image Lightbox State
   const [selectedDocImage, setSelectedDocImage] = useState<string | null>(null);
@@ -81,9 +82,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
       const formData = new FormData();
       formData.append("project_id", project.id);
       
-      const combinedName = rabProductLink.trim()
-        ? `${rabItemName.trim()}|${rabProductLink.trim()}`
-        : rabItemName.trim();
+      const combinedName = `${rabItemName.trim()}|${rabProductLink.trim()}|${rabDescription.trim()}`;
 
       formData.append("item_name", combinedName);
       formData.append("quantity", String(rabQuantity));
@@ -100,6 +99,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
           setRabItems(rabItems.map(item => item.id === editingRabId ? res.rabItem : item));
           setRabItemName("");
           setRabProductLink("");
+          setRabDescription("");
           setRabQuantity(1);
           setRabUnit("pcs");
           setRabPricePerUnit(0);
@@ -114,6 +114,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
           toast("Item RAB berhasil ditambahkan!", "success");
           setRabItemName("");
           setRabProductLink("");
+          setRabDescription("");
           setRabQuantity(1);
           setRabUnit("pcs");
           setRabPricePerUnit(0);
@@ -128,10 +129,11 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
   };
 
   const startEditRab = (item: any) => {
-    const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+    const [name, link, desc] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, '', ''];
     setEditingRabId(item.id);
     setRabItemName(name);
     setRabProductLink(link || "");
+    setRabDescription(desc || "");
     setRabQuantity(item.quantity);
     setRabUnit(item.unit);
     setRabPricePerUnit(item.price_per_unit);
@@ -359,12 +361,15 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
             </thead>
             <tbody>
               ${rabItems.map((item, index) => {
-                const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+                const [name, link, desc] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, '', ''];
                 const subtotal = item.quantity * item.price_per_unit;
                 return `
                   <tr>
                     <td class="text-center">${index + 1}</td>
-                    <td class="font-bold">${name}</td>
+                    <td class="font-bold">
+                      ${name}
+                      ${desc ? `<div style="font-size: 11px; font-weight: normal; color: #4b5563; margin-top: 4px; font-style: italic;">Ket: ${desc}</div>` : ''}
+                    </td>
                     <td>${link ? `<a class="product-link" href="${link}" target="_blank">${link.substring(0, 30)}...</a>` : '-'}</td>
                     <td class="text-center">${item.quantity} ${item.unit}</td>
                     <td class="text-right">${formatRupiah(item.price_per_unit)}</td>
@@ -897,6 +902,7 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                     setEditingRabId(null);
                     setRabItemName("");
                     setRabProductLink("");
+                    setRabDescription("");
                     setRabQuantity(1);
                     setRabUnit("pcs");
                     setRabPricePerUnit(0);
@@ -918,9 +924,9 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
             ) : (
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                 {rabItems.map((item) => {
-                  const [itemName, productLink] = item.item_name.includes('|') 
+                  const [itemName, productLink, description] = item.item_name.includes('|') 
                     ? item.item_name.split('|') 
-                    : [item.item_name, ''];
+                    : [item.item_name, '', ''];
                     
                   return (
                     <div key={item.id} className="flex justify-between items-center bg-background border border-border/40 p-3 rounded-xl gap-2 hover:border-primary/20 transition-colors group/rab">
@@ -939,6 +945,11 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                             </a>
                           )}
                         </div>
+                        {description && (
+                          <p className="text-[10px] text-text-muted/80 italic font-medium truncate mt-0.5">
+                            Ket: {description}
+                          </p>
+                        )}
                         <p className="text-[10px] text-text-muted mt-0.5 font-medium">
                           {item.quantity} {item.unit} x {formatRupiah(item.price_per_unit)}
                         </p>
@@ -1416,6 +1427,16 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Keterangan (Opsional)</label>
+                <textarea
+                  placeholder="Misal: Spesifikasi barang, merk, prioritaskan lantai 2, dll."
+                  value={rabDescription}
+                  onChange={(e) => setRabDescription(e.target.value)}
+                  className="w-full px-4 py-2 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary/50 transition-colors resize-none h-16 font-semibold"
+                />
+              </div>
+
               <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
                 <button
                   type="button"
@@ -1652,12 +1673,19 @@ export default function ProjectDetailClient({ project, initialLogs, initialPos =
               </thead>
               <tbody>
                 {rabItems.map((item, index) => {
-                  const [name, link] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, ''];
+                  const [name, link, desc] = item.item_name.includes('|') ? item.item_name.split('|') : [item.item_name, '', ''];
                   const subtotal = item.quantity * item.price_per_unit;
                   return (
                     <tr key={item.id} className="print-break-inside-avoid">
                       <td className="border border-black p-2 text-center">{index + 1}</td>
-                      <td className="border border-black p-2 font-bold">{name}</td>
+                      <td className="border border-black p-2 font-bold text-left">
+                        {name}
+                        {desc && (
+                          <div className="text-[10px] font-normal text-gray-500 mt-0.5 italic">
+                            Ket: {desc}
+                          </div>
+                        )}
+                      </td>
                       <td className="border border-black p-2 text-left truncate max-w-xs">{link || '-'}</td>
                       <td className="border border-black p-2 text-center">{item.quantity} {item.unit}</td>
                       <td className="border border-black p-2 text-right">{formatRupiah(item.price_per_unit)}</td>
